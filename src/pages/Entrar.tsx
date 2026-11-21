@@ -23,11 +23,16 @@ function readUrlError() {
   if (!hasError && !strayCode) return null
   // Limpa a URL para a mensagem não reaparecer ao recarregar.
   window.history.replaceState(null, '', window.location.pathname)
-  if (errorCode === 'otp_expired') return 'Esse link expirou ou já foi usado. Peça um novo abaixo.'
+  if (errorCode === 'otp_expired')
+    return 'Esse link expirou ou já foi usado. Use o código de 6 dígitos do e-mail mais recente, ou peça um novo acesso abaixo.'
   if (strayCode)
     return 'Esse link foi aberto em um aparelho diferente de onde você pediu o acesso. No outro aparelho, digite o código de 6 dígitos do e-mail. Ou peça um acesso novo aqui.'
   return 'Não deu para entrar com esse link. Tente pedir outro.'
 }
+
+// Lido uma única vez, quando o app abre: a função limpa a URL, então chamá-la de novo
+// (o React chama inicializadores duas vezes no modo dev) apagaria a mensagem.
+const URL_ERROR = readUrlError()
 
 /** Traduz o erro do Supabase. `wait` = segundos que o servidor pede para esperar. */
 function friendly(message: string): { text: string; wait?: number } {
@@ -48,7 +53,7 @@ export function Entrar() {
   const [email, setEmail] = useState('')
   const [sentTo, setSentTo] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
-  const [error, setError] = useState<string | null>(() => readUrlError())
+  const [error, setError] = useState<string | null>(URL_ERROR)
   const [cooldown, setCooldown] = useState(0)
   const [privacy, setPrivacy] = useState(false)
   const [code, setCode] = useState('')
