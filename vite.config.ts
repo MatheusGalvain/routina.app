@@ -34,5 +34,20 @@ export default defineConfig(({ mode }) => {
   assertNoSecretKeys(loadEnv(mode, '.', 'VITE_'))
   return {
     plugins: [react(), tailwindcss()],
+    build: {
+      rolldownOptions: {
+        output: {
+          // Bibliotecas grandes em arquivos próprios: nenhum arquivo passa de 500 kB e,
+          // como elas mudam pouco, o navegador reaproveita o cache entre versões do app.
+          codeSplitting: {
+            groups: [
+              { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 3 },
+              { name: 'motion', test: /node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/, priority: 2 },
+              { name: 'supabase', test: /node_modules[\\/]@supabase[\\/]/, priority: 1 },
+            ],
+          },
+        },
+      },
+    },
   }
 })
