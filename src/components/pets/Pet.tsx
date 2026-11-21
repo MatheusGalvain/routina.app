@@ -29,6 +29,10 @@ interface PetProps {
   size?: number
   /** Flutuar parado no lugar. */
   float?: boolean
+  /** Sobrescreve o estilo de olho padrão do pet (ex.: em histórias). */
+  mood?: EyeStyle
+  /** Chamado depois do toque (além da animação de cutucar). */
+  onPoke?: () => void
   className?: string
 }
 
@@ -36,8 +40,9 @@ interface PetProps {
  * Pet animado: flutua, respira, pisca sozinho, reage ao clique
  * e troca de forma com uma transição quando `kind` muda.
  */
-export function Pet({ kind, size = 120, float = true, className = '' }: PetProps) {
+export function Pet({ kind, size = 120, float = true, mood, onPoke, className = '' }: PetProps) {
   const def = PETS[kind]
+  const eyeStyle = mood ?? def.eyeStyle
   const [blink, setBlink] = useState(false)
   const controls = useAnimationControls()
 
@@ -54,8 +59,10 @@ export function Pet({ kind, size = 120, float = true, className = '' }: PetProps
     return () => window.clearTimeout(timer)
   }, [])
 
-  const poke = () =>
+  const poke = () => {
     controls.start({ scale: [1, 1.14, 0.9, 1.04, 1], rotate: [0, -6, 5, 0, 0], transition: { duration: 0.55 } })
+    onPoke?.()
+  }
 
   return (
     <button
@@ -91,7 +98,7 @@ export function Pet({ kind, size = 120, float = true, className = '' }: PetProps
               >
                 {def.body}
                 {def.eyes.map(([cx, cy], i) => (
-                  <Eye key={i} cx={cx} cy={cy} side={i} style={def.eyeStyle} blink={blink} />
+                  <Eye key={i} cx={cx} cy={cy} side={i} style={eyeStyle} blink={blink} />
                 ))}
               </motion.g>
             </motion.g>

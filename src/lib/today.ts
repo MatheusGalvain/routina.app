@@ -1,4 +1,4 @@
-import type { BlockLog, DayLog, PetState, Routine, TodayItem } from '../types'
+import type { BlockLog, DayLog, PetState, PlanEntry, Routine, TodayItem } from '../types'
 
 export function isDone(type: string, log: BlockLog, target?: number) {
   if (type === 'contador') return (log.value ?? 0) >= (target ?? 1)
@@ -34,6 +34,40 @@ export function getTodayItems(
     }
   }
   return items
+}
+
+/** Congela a lista do dia (sem status) para o histórico. */
+export function buildPlan(items: TodayItem[]): PlanEntry[] {
+  return items.map(({ block, routine }) => ({ block, routine: { id: routine.id, name: routine.name, color: routine.color } }))
+}
+
+const withStatus = (plan: PlanEntry[], dayLog: DayLog | undefined): TodayItem[] =>
+  plan.map(({ block, routine }) => {
+    const log = dayLog?.blocks[block.id] ?? {}
+    return { block, routine, log, done: isDone(block.type, log, block.target), skipped: !!log.skipped }
+  })
+
+/**
+ * Itens de um dia qualquer. Hoje é sempre calculado ao vivo; dias passados usam a lista
+ * congelada (`plan`). Registros antigos, sem `plan`, caem nas rotinas atuais.
+ */
+export function getDayItems(
+  routines: Routine[],
+  dayLog: DayLog | undefined,
+  completedTasks: Record<string, string>,
+  date: Date,
+  dateKey: string,
+  todayKey: string,
+): TodayItem[] {
+  if (dateKey === todayKey) return getTodayItems(routines, dayLog, completedTasks, date, dateKey)
+  if (dateKey > todayKey || !dayLog) return [] // futuro ou dia sem registro
+  if (dayLog.plan) return withStatus(dayLog.plan, dayLog)
+  return getTodayItems(routines, dayLog, completedTasks, date, dateKey)
+}
+
+export function dayProgress(items: TodayItem[]) {
+  const done = items.filter((i) => i.done).length
+  return { done, total: items.length, pct: items.length ? done / items.length : 0 }
 }
 
 export function computePetState(items: TodayItem[], activeId: string | null, now = new Date()): PetState {

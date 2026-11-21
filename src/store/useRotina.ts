@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Block, BlockLog, DayLog, Routine } from '../types'
+import type { Block, BlockLog, DayLog, PlanEntry, Routine } from '../types'
 import { TEMPLATES } from '../data/templates'
 import { ROUTINE_COLORS } from '../data/areas'
 
@@ -28,6 +28,8 @@ interface RotinaState {
   toggleSkip: (date: string, blockId: string) => boolean
   setActive: (blockId: string | null) => void
   setNote: (date: string, note: string) => void
+  /** Guarda a lista planejada do dia, para o histórico não depender das rotinas atuais. */
+  setPlan: (date: string, plan: PlanEntry[]) => void
 }
 
 const mapRoutine = (routines: Routine[], id: string, fn: (r: Routine) => Routine) =>
@@ -132,6 +134,11 @@ export const useRotina = create<RotinaState>()(
         setNote: (date, note) => {
           const day = get().logs[date] ?? { blocks: {} }
           set({ logs: { ...get().logs, [date]: { ...day, note } } })
+        },
+        setPlan: (date, plan) => {
+          const day = get().logs[date] ?? { blocks: {} }
+          if (JSON.stringify(day.plan) === JSON.stringify(plan)) return
+          set({ logs: { ...get().logs, [date]: { ...day, plan } } })
         },
       }
     },

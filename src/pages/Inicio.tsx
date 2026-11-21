@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { useRotina } from '../store/useRotina'
 import { getTodayItems } from '../lib/today'
 import { dayKey, greeting } from '../lib/dates'
@@ -7,6 +8,8 @@ import { TEMPLATES } from '../data/templates'
 import { Bar, Icon, Logo, Panel, ProgressRing } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
 import { PETS, PET_ORDER } from '../components/pets/pets'
+import { PetStory } from '../components/pets/PetStory'
+import type { PetKind } from '../types'
 
 const daysLabel = (days: number[]) =>
   days.length === 7 ? 'todo dia' : days.length === 0 ? 'nenhum dia' : days.map((d) => WEEKDAYS[d].long.slice(0, 3).toLowerCase()).join(' · ')
@@ -19,6 +22,7 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
   const completedTasks = useRotina((s) => s.completedTasks)
   const createRoutine = useRotina((s) => s.createRoutine)
   const addTemplate = useRotina((s) => s.addTemplate)
+  const [storyPet, setStoryPet] = useState<PetKind | null>(null)
 
   const items = useMemo(() => getTodayItems(routines, dayLog, completedTasks, now, date), [routines, dayLog, completedTasks, date])
   const done = items.filter((i) => i.done).length
@@ -144,16 +148,20 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
           <div className="grid grid-cols-3 gap-y-4">
             {PET_ORDER.map((k) => (
               <div key={k} className="flex flex-col items-center gap-1.5 text-center">
-                <Pet kind={k} size={64} />
+                <Pet kind={k} size={64} onPoke={() => setStoryPet(k)} />
                 <span className="text-[13px] font-semibold">{PETS[k].name}</span>
                 <span className="font-mono text-[10.5px] tracking-wider uppercase" style={{ color: PETS[k].color === '#F1F3F6' ? '#C9CED8' : PETS[k].color }}>
                   {PETS[k].label.split(' / ')[1]}
                 </span>
+                <button type="button" onClick={() => setStoryPet(k)} className="mt-0.5 rounded-full border border-line px-2.5 py-0.5 text-[11px] font-semibold text-muted hover:text-soft">
+                  📖 História
+                </button>
               </div>
             ))}
           </div>
         </Panel>
       </div>
+      <AnimatePresence>{storyPet && <PetStory key={storyPet} kind={storyPet} onClose={() => setStoryPet(null)} />}</AnimatePresence>
     </div>
   )
 }

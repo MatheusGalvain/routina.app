@@ -10,6 +10,12 @@ export function formatLong(d = new Date()) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+/** "Novembro de 2026" */
+export function formatMonth(d = new Date()) {
+  const s = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(d)
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 export function greeting(d = new Date()) {
   const h = d.getHours()
   if (h < 12) return 'Bom dia'

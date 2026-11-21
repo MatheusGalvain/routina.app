@@ -16,6 +16,8 @@ const PATHS: Record<string, ReactNode> = {
   edit: <path d="M4 20 L8 19 L19 8 L16 5 L5 16 Z" />,
   grip: <path d="M9 6 L9 6.01 M15 6 L15 6.01 M9 12 L9 12.01 M15 12 L15 12.01 M9 18 L9 18.01 M15 18 L15 18.01" />,
   note: <path d="M6 4 L15 4 L19 8 L19 20 L6 20 Z M9 11 L16 11 M9 15 L14 15" />,
+  'chevron-left': <path d="M15 5 L8 12 L15 19" />,
+  'chevron-right': <path d="M9 5 L16 12 L9 19" />,
   gauge: <><path d="M4 16 A8 8 0 0 1 20 16" /><path d="M12 16 L16 10" /></>,
 }
 

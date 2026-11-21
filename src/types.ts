@@ -32,14 +32,25 @@ export interface BlockLog {
   value?: number
 }
 
+/** O essencial de uma rotina para exibir um item (nome e cor congelados no histórico). */
+export type RoutineRef = Pick<Routine, 'id' | 'name' | 'color'>
+
+/** Um bloco como estava planejado naquele dia — sobrevive a edições/remoções da rotina. */
+export interface PlanEntry {
+  block: Block
+  routine: RoutineRef
+}
+
 export interface DayLog {
   blocks: Record<string, BlockLog>
   note?: string
+  /** Lista do dia congelada (atualizada enquanto o dia é "hoje"). */
+  plan?: PlanEntry[]
 }
 
 export interface TodayItem {
   block: Block
-  routine: Routine
+  routine: RoutineRef
   log: BlockLog
   done: boolean
   skipped: boolean
