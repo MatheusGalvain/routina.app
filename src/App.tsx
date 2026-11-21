@@ -69,7 +69,7 @@ function AppShell() {
 
   return (
     <section className="flex min-h-screen w-full flex-col">
-      <div className="mx-auto flex flex-col max-w-[1320px] gap-6 px-4 pt-6 pb-14 sm:px-6">
+      <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6 px-4 pt-6 pb-14 sm:px-6">
         <nav aria-label="Seções" className="flex max-w-full gap-1 self-start overflow-x-auto rounded-full border border-line bg-panel p-1">
           {TABS.map((t) => (
             <button
