@@ -1,6 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useRotina, DEFAULT_PROGRESS } from '../store/useRotina'
+import { useRotina } from '../store/useRotina'
+import { reloadFromServer } from '../sync/session'
+import { flushNow } from '../sync/outbox'
 import { useDevOverrides, type CornerStage, type ForcedState } from '../store/useDevOverrides'
 import { usePetEvents } from '../store/usePetEvents'
 import { useStats } from '../store/useCompanion'
@@ -10,8 +12,8 @@ import { PETS, PET_ORDER } from '../components/pets/pets'
 import { PHASES, phaseFor } from '../lib/companion'
 import { dayKey } from '../lib/dates'
 import { Icon } from '../components/ui/ui'
-import type { AreaId, PetProgress } from '../types'
-import { BACKUP_KEY, STORE_KEY, clearDev, hasDev, simulateActiveDays, simulateArea, simulateIdle, simulateStreak, testRoutine } from './simulate'
+import type { AreaId } from '../types'
+import { clearDev, simulateActiveDays, simulateArea, simulateIdle, simulateStreak, testRoutine } from './simulate'
 
 const STATES: { id: ForcedState; label: string }[] = [
   { id: 'neutro', label: 'Neutro' },
@@ -23,19 +25,19 @@ const STATES: { id: ForcedState; label: string }[] = [
   { id: 'dormindo', label: 'Dormindo' },
 ]
 
-/** Salva os dados reais antes da primeira simulação (se ainda não há nada simulado). */
-function backupIfReal() {
-  if (hasDev(useRotina.getState().logs)) return
-  const raw = localStorage.getItem(STORE_KEY)
-  if (raw) localStorage.setItem(BACKUP_KEY, raw)
-}
-
-function backupProgress(): PetProgress | null {
+/**
+ * As simulações ficam só neste aparelho: tudo leva `dev: true` e a sincronização ignora.
+ * Os dados reais continuam na conta, então "limpar" é recarregar da conta.
+ */
+async function discardSimulation(onStatus: (s: string) => void) {
   try {
-    const raw = localStorage.getItem(BACKUP_KEY)
-    return raw ? (JSON.parse(raw).state?.petProgress ?? null) : null
+    await reloadFromServer()
+    onStatus('Dados simulados removidos. Recarregado da sua conta.')
   } catch {
-    return null
+    // Sem conexão: limpa localmente e o servidor nunca soube da simulação.
+    const { logs, routines } = useRotina.getState()
+    useRotina.setState({ logs: clearDev(logs), routines: routines.filter((r) => !r.dev) })
+    onStatus('Sem conexão: simulação removida deste aparelho.')
   }
 }
 
@@ -205,7 +207,6 @@ function Simulation({ onStatus }: { onStatus: (s: string) => void }) {
   const [areaK, setAreaK] = useState(5)
 
   const run = (label: string, fn: (today: string) => void) => {
-    backupIfReal()
     fn(dayKey())
     onStatus(`${label}: feito.`)
   }
@@ -249,19 +250,7 @@ function Simulation({ onStatus }: { onStatus: (s: string) => void }) {
       </Row>
       <p className="m-0 text-[11.5px] text-muted">Os 6 dias antes de hoje. Hoje continua com seus dados reais e também conta nos "últimos 7".</p>
       <Row>
-        <Btn
-          onClick={() => {
-            const { logs, routines } = useRotina.getState()
-            useRotina.setState({
-              logs: clearDev(logs),
-              routines: routines.filter((r) => !r.dev),
-              petProgress: backupProgress() ?? DEFAULT_PROGRESS,
-            })
-            onStatus('Dados simulados removidos. Os reais continuam.')
-          }}
-        >
-          Limpar dados simulados
-        </Btn>
+        <Btn onClick={() => void discardSimulation(onStatus)}>Limpar dados simulados</Btn>
       </Row>
     </Section>
   )
@@ -345,38 +334,27 @@ function Overrides() {
 
 function Safety({ onStatus }: { onStatus: (s: string) => void }) {
   const [confirming, setConfirming] = useState(false)
-  const [hasBackup, setHasBackup] = useState(() => !!localStorage.getItem(BACKUP_KEY))
-  const logs = useRotina((s) => s.logs)
-
-  useEffect(() => setHasBackup(!!localStorage.getItem(BACKUP_KEY)), [logs])
 
   return (
     <Section title="Segurança">
+      <p className="m-0 text-[11.5px] text-muted">
+        Simulações nunca vão para o Supabase: tudo que o painel gera fica só neste aparelho. Seus dados reais estão na conta.
+      </p>
       <Row>
-        <Btn
-          disabled={!hasBackup}
-          onClick={async () => {
-            const raw = localStorage.getItem(BACKUP_KEY)
-            if (!raw) return
-            localStorage.setItem(STORE_KEY, raw)
-            await useRotina.persist.rehydrate()
-            onStatus('Backup restaurado.')
-          }}
-        >
-          Restaurar backup
-        </Btn>
+        <Btn onClick={() => void discardSimulation(onStatus)}>Restaurar dados reais (recarregar da conta)</Btn>
         {!confirming ? (
           <Btn tone="danger" onClick={() => setConfirming(true)}>
-            Resetar tudo
+            Resetar tudo neste aparelho
           </Btn>
         ) : (
           <>
-            <span className="text-[12px] text-[#FDA4AF]">Apagar todos os dados do app?</span>
+            <span className="text-[12px] text-[#FDA4AF]">Apagar o cache local do app? A conta não é afetada.</span>
             <Btn
               tone="danger"
-              onClick={() => {
+              onClick={async () => {
+                await flushNow() // não perde mudanças reais que ainda não subiram
                 Object.keys(localStorage)
-                  .filter((k) => k.startsWith(STORE_KEY))
+                  .filter((k) => k.startsWith('rotina-app'))
                   .forEach((k) => localStorage.removeItem(k))
                 location.reload()
               }}
@@ -387,7 +365,6 @@ function Safety({ onStatus }: { onStatus: (s: string) => void }) {
           </>
         )}
       </Row>
-      <p className="m-0 text-[11.5px] text-muted">O backup é salvo automaticamente antes da primeira simulação, enquanto os dados ainda são reais.</p>
     </Section>
   )
 }

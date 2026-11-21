@@ -9,8 +9,6 @@ import { isActiveDay, type Logs } from '../lib/stats'
  * ele fica guardado em `real` e volta ao limpar os dados simulados.
  */
 
-export const STORE_KEY = 'rotina-app'
-export const BACKUP_KEY = 'rotina-app-backup'
 
 const uid = () => crypto.randomUUID()
 
@@ -133,16 +131,4 @@ export function simulateArea(logs: Logs, routines: Routine[], area: AreaId, k: n
   return out
 }
 
-export const hasDev = (logs: Logs) => Object.values(logs).some((d) => d.dev || Object.values(d.blocks).some((b) => b.dev))
-
-/** Remove só o que é simulado; dias reais substituídos voltam. */
-export function clearDev(logs: Logs): Logs {
-  const out: Logs = {}
-  for (const [k, day] of Object.entries(logs)) {
-    const base = day.dev ? day.real : day
-    if (!base) continue
-    const blocks = Object.fromEntries(Object.entries(base.blocks).filter(([, b]) => !b.dev))
-    out[k] = { ...base, blocks }
-  }
-  return out
-}
+export { clearDev, hasDev } from '../lib/devData'

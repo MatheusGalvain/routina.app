@@ -1,15 +1,40 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import type { AccessoryId, Block, BlockLog, Companion, DayLog, PetKind, PetProgress, PlanEntry, Routine, Slot } from '../types'
 import { TEMPLATES } from '../data/templates'
 import { ROUTINE_COLORS } from '../data/areas'
 
 const uid = () => crypto.randomUUID()
 
+/** Chave antiga (antes das contas), usada só para oferecer a migração dos dados deste aparelho. */
+export const LEGACY_KEY = 'rotina-app'
+
+// O cache local é separado por usuário: "rotina-app:<id do usuário>". Sem usuário, nada é lido nem gravado.
+let storageUser: string | null = null
+export const setStorageUser = (uid: string | null) => {
+  storageUser = uid
+}
+export const userStorageKey = () => (storageUser ? `${LEGACY_KEY}:${storageUser}` : null)
+
+const scopedStorage: StateStorage = {
+  getItem: () => {
+    const key = userStorageKey()
+    return key ? localStorage.getItem(key) : null
+  },
+  setItem: (_name, value) => {
+    const key = userStorageKey()
+    if (key) localStorage.setItem(key, value)
+  },
+  removeItem: () => {
+    const key = userStorageKey()
+    if (key) localStorage.removeItem(key)
+  },
+}
+
 export const DEFAULT_COMPANION: Companion = { kind: null, name: '', equipped: {} }
 export const DEFAULT_PROGRESS: PetProgress = { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
 
-interface RotinaState {
+export interface RotinaState {
   routines: Routine[]
   logs: Record<string, DayLog>
   /** Tarefas concluídas: id do bloco → dia em que foi feita. */
@@ -166,8 +191,11 @@ export const useRotina = create<RotinaState>()(
       }
     },
     {
-      name: 'rotina-app',
+      name: LEGACY_KEY,
       version: 2,
+      storage: createJSONStorage(() => scopedStorage),
+      // Só carrega o cache depois do login, quando já se sabe de quem são os dados.
+      skipHydration: true,
       migrate: (persisted, version) => migrate(persisted as Partial<RotinaState>, version),
     },
   ),
@@ -177,7 +205,7 @@ export const useRotina = create<RotinaState>()(
  * v1 → v2: mantém tudo e completa `areaId`/`type` dos registros antigos,
  * buscando o bloco na lista congelada do dia ou, sem ela, nas rotinas atuais.
  */
-function migrate(state: Partial<RotinaState>, version: number) {
+export function migrate(state: Partial<RotinaState>, version: number) {
   if (version < 2) {
     const fromRoutines = new Map<string, Block>()
     for (const r of state.routines ?? []) for (const b of r.blocks) fromRoutines.set(b.id, b)

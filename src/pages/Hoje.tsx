@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRotina } from '../store/useRotina'
 import { computePetState, getTodayItems, petMessage } from '../lib/today'
-import { dayKey, formatLong } from '../lib/dates'
+import { dayKey, formatLong, nowInTz } from '../lib/dates'
 import { Panel } from '../components/ui/ui'
 import { DayList } from '../components/day/DayList'
 import { Pet } from '../components/pets/Pet'
@@ -11,7 +11,7 @@ import { useShownPet } from '../store/useCompanion'
 import type { PetState, TodayItem } from '../types'
 
 export function Hoje({ goRoutines }: { goRoutines: () => void }) {
-  const now = new Date()
+  const now = nowInTz()
   const date = dayKey(now)
   const routines = useRotina((s) => s.routines)
   const dayLog = useRotina((s) => s.logs[date])

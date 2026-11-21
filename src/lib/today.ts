@@ -1,3 +1,4 @@
+import { nowInTz, parseKey } from './dates'
 import type { BlockLog, DayLog, PetState, PlanEntry, Routine, TodayItem } from '../types'
 
 export function isDone(type: string, log: BlockLog, target?: number) {
@@ -16,7 +17,8 @@ export function getTodayItems(
   date: Date,
   dateKey: string,
 ): TodayItem[] {
-  const weekday = date.getDay()
+  // Dia da semana pela própria chave do dia (que já está no fuso do usuário).
+  const weekday = parseKey(dateKey).getDay()
   const items: TodayItem[] = []
   for (const routine of routines) {
     if (!routine.days.includes(weekday)) continue
@@ -70,7 +72,7 @@ export function dayProgress(items: TodayItem[]) {
   return { done, total: items.length, pct: items.length ? done / items.length : 0 }
 }
 
-export function computePetState(items: TodayItem[], activeId: string | null, now = new Date()): PetState {
+export function computePetState(items: TodayItem[], activeId: string | null, now = nowInTz()): PetState {
   if (items.length === 0) return 'neutro'
   const pending = items.filter((i) => !i.done && !i.skipped)
   if (pending.length === 0) return 'descanso'
@@ -83,7 +85,7 @@ export function computePetState(items: TodayItem[], activeId: string | null, now
   return 'neutro'
 }
 
-export function petMessage(state: PetState, items: TodayItem[], activeId: string | null, now = new Date()) {
+export function petMessage(state: PetState, items: TodayItem[], activeId: string | null, now = nowInTz()) {
   const pending = items.filter((i) => !i.done && !i.skipped)
   const active = items.find((i) => i.block.id === activeId)
   switch (state) {

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useRotina } from '../store/useRotina'
 import { computePetState, getTodayItems } from '../lib/today'
-import { dayKey, greeting } from '../lib/dates'
+import { dayKey, greeting, nowInTz } from '../lib/dates'
 import { AREAS, WEEKDAYS } from '../data/areas'
 import { TEMPLATES } from '../data/templates'
 import { Bar, Icon, Logo, Panel, ProgressRing } from '../components/ui/ui'
@@ -16,7 +16,7 @@ const daysLabel = (days: number[]) =>
   days.length === 7 ? 'todo dia' : days.length === 0 ? 'nenhum dia' : days.map((d) => WEEKDAYS[d].long.slice(0, 3).toLowerCase()).join(' · ')
 
 export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRoutine: (id: string) => void }) {
-  const now = new Date()
+  const now = nowInTz()
   const date = dayKey(now)
   const routines = useRotina((s) => s.routines)
   const dayLog = useRotina((s) => s.logs[date])

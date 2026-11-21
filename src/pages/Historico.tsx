@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useRotina } from '../store/useRotina'
 import { dayProgress, getDayItems } from '../lib/today'
-import { dayKey, formatLong, formatMonth } from '../lib/dates'
+import { dayKey, formatLong, formatMonth, nowInTz } from '../lib/dates'
 import { WEEKDAYS } from '../data/areas'
 import { Icon, Panel, ProgressRing } from '../components/ui/ui'
 import { DayList } from '../components/day/DayList'
@@ -27,7 +27,7 @@ function cellStyle(c: DayCell) {
 }
 
 export function Historico({ goToday }: { goToday: () => void }) {
-  const today = new Date()
+  const today = nowInTz()
   const todayKey = dayKey(today)
   const routines = useRotina((s) => s.routines)
   const logs = useRotina((s) => s.logs)

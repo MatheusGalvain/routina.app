@@ -1,4 +1,9 @@
+import { useState } from 'react'
 import { useRotina } from '../store/useRotina'
+import { useAuth, signOut } from '../store/useAuth'
+import { deleteAccount, exportMyData, setProfileTimezone, useSession } from '../sync/session'
+import { flushNow } from '../sync/outbox'
+import { deviceTimeZone } from '../lib/dates'
 import { useCompanionView } from '../store/useCompanion'
 import { Bar, Icon, Panel } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
@@ -8,7 +13,7 @@ import { ACCESSORIES, SLOT_NAMES } from '../data/accessories'
 import { unlockStats } from '../store/useCompanion'
 
 /** Aba "Pet": escolher o favorito, dar um nome e cuidar dos acessórios. */
-export function Companheiro() {
+export function Companheiro({ openPrivacy }: { openPrivacy: () => void }) {
   const companion = useRotina((s) => s.companion)
   const { setCompanionKind, setCompanionName } = useRotina.getState()
   const view = useCompanionView()
@@ -65,6 +70,7 @@ export function Companheiro() {
       </Panel>
 
       <Accessories />
+      <Account openPrivacy={openPrivacy} />
     </div>
   )
 }
@@ -179,5 +185,158 @@ function Accessories() {
         })}
       </ul>
     </Panel>
+  )
+}
+
+/** Conta: e-mail, fuso horário e a opção de sair. */
+function Account({ openPrivacy }: { openPrivacy: () => void }) {
+  const email = useAuth((s) => s.session?.user.email)
+  const timezone = useSession((s) => s.profile?.timezone)
+  const device = deviceTimeZone()
+  const [leaving, setLeaving] = useState(false)
+
+  const leave = async () => {
+    setLeaving(true)
+    // Tenta subir o que falta antes de sair (sem travar se estiver sem conexão).
+    await Promise.race([flushNow(), new Promise((r) => setTimeout(r, 3000))])
+    await signOut()
+  }
+
+  return (
+    <Panel title="Sua conta" icon="lock" color="#9AA3B5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="m-0 text-sm text-muted">
+          Conectado como <strong className="text-soft">{email ?? 'sua conta'}</strong>
+        </p>
+        <button
+          type="button"
+          disabled={leaving}
+          onClick={leave}
+          className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-soft hover:bg-panel-2 disabled:opacity-50"
+        >
+          {leaving ? 'Saindo…' : 'Sair'}
+        </button>
+      </div>
+      <Privacy openPrivacy={openPrivacy} />
+      {timezone && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+          <p className="m-0 text-sm text-muted">
+            Fuso horário dos seus dias: <strong className="text-soft">{timezone.replace(/_/g, ' ')}</strong>
+          </p>
+          {timezone !== device && (
+            <button
+              type="button"
+              onClick={() => setProfileTimezone(device)}
+              className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-soft hover:bg-panel-2"
+            >
+              Usar o deste aparelho ({device.replace(/_/g, ' ')})
+            </button>
+          )}
+        </div>
+      )}
+    </Panel>
+  )
+}
+
+/** Baixar os dados, ler a política e excluir a conta. */
+function Privacy({ openPrivacy }: { openPrivacy: () => void }) {
+  const [exporting, setExporting] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const download = async () => {
+    setExporting(true)
+    setError(null)
+    try {
+      await exportMyData()
+    } catch {
+      setError('Não foi possível baixar agora. Verifique a conexão e tente de novo.')
+    }
+    setExporting(false)
+  }
+
+  const remove = async () => {
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteAccount()
+    } catch {
+      setError('Não foi possível excluir agora. Nada foi apagado. Verifique a conexão e tente de novo.')
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-line pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={download}
+          disabled={exporting}
+          className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-soft hover:bg-panel-2 disabled:opacity-50"
+        >
+          {exporting ? 'Preparando…' : 'Baixar meus dados'}
+        </button>
+        <button type="button" onClick={openPrivacy} className="rounded-full px-4 py-2 text-sm font-semibold text-[#5AA7FF] hover:underline">
+          Política de privacidade
+        </button>
+        {!confirming && (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="rounded-full border border-[#5A1C2A] px-4 py-2 text-sm font-semibold text-[#FDA4AF] hover:bg-[#2A0F16] sm:ml-auto"
+          >
+            Excluir minha conta e meus dados
+          </button>
+        )}
+      </div>
+
+      {confirming && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#5A1C2A] bg-[#1A0B10] p-4">
+          <p className="m-0 text-sm text-[#FECDD3]">
+            Isso apaga <strong>para sempre</strong> sua conta, rotinas, registros, notas e seu pet, em todos os aparelhos. Não dá para desfazer. Se
+            quiser guardar uma cópia, baixe seus dados antes.
+          </p>
+          <label className="flex flex-col gap-1.5 text-sm text-[#FECDD3]">
+            Para confirmar, digite EXCLUIR
+            <input
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              autoComplete="off"
+              className="max-w-[220px] rounded-xl border border-[#5A1C2A] bg-[#0B0E15] px-3 py-2 font-mono text-soft"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={typed.trim().toUpperCase() !== 'EXCLUIR' || deleting}
+              onClick={remove}
+              className="rounded-full bg-[#E11D48] px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            >
+              {deleting ? 'Excluindo…' : 'Excluir tudo'}
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => {
+                setConfirming(false)
+                setTyped('')
+              }}
+              className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-soft hover:bg-panel-2"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p role="alert" className="m-0 text-sm text-[#FDA4AF]">
+          {error}
+        </p>
+      )}
+    </div>
   )
 }

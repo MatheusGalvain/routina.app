@@ -4,14 +4,22 @@ import { Hoje } from './pages/Hoje'
 import { Rotinas } from './pages/Rotinas'
 import { Historico } from './pages/Historico'
 import { Companheiro } from './pages/Companheiro'
+import { Privacidade } from './pages/Privacidade'
 import { useSyncTodayPlan } from './store/useSyncTodayPlan'
 import { useCompanionProgress } from './store/useCompanion'
 import { PetCelebration } from './components/pets/PetCelebration'
+import { Entrar } from './pages/Entrar'
+import { useAuth } from './store/useAuth'
+import { Logo } from './components/ui/ui'
+import { useSession } from './sync/session'
+import { SyncNotice } from './components/sync/SyncNotice'
+import { LocalImportPrompt } from './components/sync/LocalImportPrompt'
+import { Footer } from './components/ui/Footer'
 
 // Só existe no modo dev: em produção a condição vira `false` e o import some do build.
 const DevPanel = import.meta.env.DEV ? lazy(() => import('./dev/DevPanel')) : null
 
-type Page = 'inicio' | 'hoje' | 'historico' | 'rotinas' | 'pet'
+type Page = 'inicio' | 'hoje' | 'historico' | 'rotinas' | 'pet' | 'privacidade'
 
 const TABS: { id: Page; label: string }[] = [
   { id: 'inicio', label: 'Início' },
@@ -21,10 +29,37 @@ const TABS: { id: Page; label: string }[] = [
   { id: 'pet', label: 'Pet' },
 ]
 
+/** Sem sessão: tela de entrada. Com sessão: o app. */
 export default function App() {
+  const status = useAuth((s) => s.status)
+  const data = useSession((s) => s.status)
+  if (status === 'signedOut') return <Entrar />
+  // Espera o login e os dados da conta antes de mostrar o app.
+  if (status === 'loading' || data !== 'ready')
+    return (
+      <div className="grid min-h-screen place-items-center" role="status">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-pulse">
+            <Logo size={44} />
+          </div>
+          <span className="text-sm text-muted">{status === 'signedIn' ? 'Carregando suas rotinas…' : 'Carregando…'}</span>
+        </div>
+      </div>
+    )
+  return <AppShell />
+}
+
+function AppShell() {
   useSyncTodayPlan()
   useCompanionProgress()
   const [page, setPage] = useState<Page>('inicio')
+  // A política abre por cima da página atual e o "Voltar" retorna para ela.
+  const [beforePrivacy, setBeforePrivacy] = useState<Page>('inicio')
+  const openPrivacy = () => {
+    if (page !== 'privacidade') setBeforePrivacy(page)
+    setPage('privacidade')
+    window.scrollTo({ top: 0 })
+  }
   const [routineId, setRoutineId] = useState<string | null>(null)
 
   const openRoutine = (id: string | null) => {
@@ -33,7 +68,7 @@ export default function App() {
   }
 
   return (
-    <section className="w-full">
+    <section className="flex min-h-screen w-full flex-col">
       <div className="mx-auto flex flex-col max-w-[1320px] gap-6 px-4 pt-6 pb-14 sm:px-6">
         <nav aria-label="Seções" className="flex max-w-full gap-1 self-start overflow-x-auto rounded-full border border-line bg-panel p-1">
           {TABS.map((t) => (
@@ -53,8 +88,11 @@ export default function App() {
         {page === 'hoje' && <Hoje goRoutines={() => openRoutine(null)} />}
         {page === 'historico' && <Historico goToday={() => setPage('hoje')} />}
         {page === 'rotinas' && <Rotinas selectedId={routineId} select={setRoutineId} />}
-      {page === 'pet' && <Companheiro />}
+      {page === 'pet' && <Companheiro openPrivacy={openPrivacy} />}
+      {page === 'privacidade' && <Privacidade onBack={() => setPage(beforePrivacy)} />}
       <PetCelebration />
+      <SyncNotice />
+      <LocalImportPrompt />
 
       {DevPanel && (
         <Suspense fallback={null}>
@@ -63,11 +101,7 @@ export default function App() {
       )}
       </div>
 
-      <footer className="flex w-full gap-1 py-5 bg-panel p-1 justify-center items-center">
-        <div className='font-extralight'>
-          © 2026 / Matheus Galvain
-        </div>
-      </footer>
+      <Footer onPrivacy={openPrivacy} />
     </section>
   )
 }

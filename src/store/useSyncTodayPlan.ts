@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useRotina } from './useRotina'
 import { buildPlan, getTodayItems } from '../lib/today'
-import { dayKey } from '../lib/dates'
+import { dayKey, nowInTz } from '../lib/dates'
 
 /**
  * Enquanto o app está aberto, mantém salva a lista planejada de hoje.
@@ -13,7 +13,7 @@ export function useSyncTodayPlan() {
   const hasLog = useRotina((s) => !!s.logs[dayKey()])
 
   useEffect(() => {
-    const now = new Date()
+    const now = nowInTz()
     const date = dayKey(now)
     const { logs, setPlan } = useRotina.getState()
     const plan = buildPlan(getTodayItems(routines, logs[date], completedTasks, now, date))
