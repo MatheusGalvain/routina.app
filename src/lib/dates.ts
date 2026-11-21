@@ -5,6 +5,24 @@ export function dayKey(d = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/** Converte AAAA-MM-DD em Date local (meio-dia, para não sofrer com horário de verão). */
+export function parseKey(key: string) {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y, m - 1, d, 12)
+}
+
+/** Soma (ou subtrai) dias a uma chave AAAA-MM-DD. */
+export function addDays(key: string, n: number) {
+  const d = parseKey(key)
+  d.setDate(d.getDate() + n)
+  return dayKey(d)
+}
+
+/** Quantos dias `a` está depois de `b`. */
+export function diffDays(a: string, b: string) {
+  return Math.round((parseKey(a).getTime() - parseKey(b).getTime()) / 86_400_000)
+}
+
 export function formatLong(d = new Date()) {
   const s = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(d)
   return s.charAt(0).toUpperCase() + s.slice(1)

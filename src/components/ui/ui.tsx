@@ -19,6 +19,11 @@ const PATHS: Record<string, ReactNode> = {
   'chevron-left': <path d="M15 5 L8 12 L15 19" />,
   'chevron-right': <path d="M9 5 L16 12 L9 19" />,
   gauge: <><path d="M4 16 A8 8 0 0 1 20 16" /><path d="M12 16 L16 10" /></>,
+  lock: <><rect x="5" y="11" width="14" height="9" rx="2.5" /><path d="M8 11 V8 A4 4 0 0 1 16 8 V11" /></>,
+  x: <path d="M6 6 L18 18 M18 6 L6 18" />,
+  sparkle: <path d="M12 3 L13.8 10.2 L21 12 L13.8 13.8 L12 21 L10.2 13.8 L3 12 L10.2 10.2 Z" />,
+  book: <><path d="M4 5 Q8 3.5 12 6 Q16 3.5 20 5 L20 19 Q16 17.5 12 20 Q8 17.5 4 19 Z" /><path d="M12 6 L12 20" /></>,
+  hand: <path d="M9 11 V5.5 A1.5 1.5 0 0 1 12 5.5 V10 M12 9.5 A1.5 1.5 0 0 1 15 9.5 V11 M15 10.5 A1.5 1.5 0 0 1 18 10.5 V15 A6 6 0 0 1 12 21 A6 6 0 0 1 6.5 17 L4.8 13.2 A1.4 1.4 0 0 1 7.3 12 L9 14" />,
 }
 
 export function Icon({ name, size = 18, className = '' }: { name: keyof typeof PATHS | string; size?: number; className?: string }) {

@@ -1,10 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Block, BlockLog, DayLog, PlanEntry, Routine } from '../types'
+import type { AccessoryId, Block, BlockLog, Companion, DayLog, PetKind, PetProgress, PlanEntry, Routine, Slot } from '../types'
 import { TEMPLATES } from '../data/templates'
 import { ROUTINE_COLORS } from '../data/areas'
 
 const uid = () => crypto.randomUUID()
+
+export const DEFAULT_COMPANION: Companion = { kind: null, name: '', equipped: {} }
+export const DEFAULT_PROGRESS: PetProgress = { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
 
 interface RotinaState {
   routines: Routine[]
@@ -12,6 +15,8 @@ interface RotinaState {
   /** Tarefas concluídas: id do bloco → dia em que foi feita. */
   completedTasks: Record<string, string>
   activeBlockId: string | null
+  companion: Companion
+  petProgress: PetProgress
 
   createRoutine: (name?: string) => string
   updateRoutine: (id: string, patch: Partial<Omit<Routine, 'id' | 'blocks'>>) => void
@@ -25,11 +30,17 @@ interface RotinaState {
 
   toggleDone: (date: string, block: Block) => boolean
   increment: (date: string, block: Block, delta: number) => boolean
-  toggleSkip: (date: string, blockId: string) => boolean
+  toggleSkip: (date: string, block: Block) => boolean
   setActive: (blockId: string | null) => void
   setNote: (date: string, note: string) => void
   /** Guarda a lista planejada do dia, para o histórico não depender das rotinas atuais. */
   setPlan: (date: string, plan: PlanEntry[]) => void
+
+  setCompanionKind: (kind: PetKind | null) => void
+  setCompanionName: (name: string) => void
+  /** Equipa um acessório no slot (ou tira, com `null`). */
+  equip: (slot: Slot, id: AccessoryId | null) => void
+  updateProgress: (patch: Partial<PetProgress>) => void
 }
 
 const mapRoutine = (routines: Routine[], id: string, fn: (r: Routine) => Routine) =>
@@ -38,10 +49,11 @@ const mapRoutine = (routines: Routine[], id: string, fn: (r: Routine) => Routine
 export const useRotina = create<RotinaState>()(
   persist(
     (set, get) => {
-      const patchLog = (date: string, blockId: string, fn: (l: BlockLog) => BlockLog) => {
+      // Todo registro guarda a área e o tipo do bloco, para o histórico não depender das rotinas atuais.
+      const patchLog = (date: string, block: Block, fn: (l: BlockLog) => BlockLog) => {
         const day = get().logs[date] ?? { blocks: {} }
-        const next = fn(day.blocks[blockId] ?? {})
-        set({ logs: { ...get().logs, [date]: { ...day, blocks: { ...day.blocks, [blockId]: next } } } })
+        const next = { ...fn(day.blocks[block.id] ?? {}), areaId: block.areaId, type: block.type }
+        set({ logs: { ...get().logs, [date]: { ...day, blocks: { ...day.blocks, [block.id]: next } } } })
         return next
       }
 
@@ -50,6 +62,8 @@ export const useRotina = create<RotinaState>()(
         logs: {},
         completedTasks: {},
         activeBlockId: null,
+        companion: DEFAULT_COMPANION,
+        petProgress: DEFAULT_PROGRESS,
 
         createRoutine: (name = 'Nova rotina') => {
           const id = uid()
@@ -91,12 +105,12 @@ export const useRotina = create<RotinaState>()(
           let nowDone = false
           if (block.type === 'contador') {
             const target = block.target ?? 1
-            patchLog(date, block.id, (l) => {
+            patchLog(date, block, (l) => {
               nowDone = (l.value ?? 0) < target
-              return { ...l, value: nowDone ? target : 0, skipped: false }
+              return { ...l, value: nowDone ? target : 0, done: nowDone, skipped: false }
             })
           } else {
-            patchLog(date, block.id, (l) => {
+            patchLog(date, block, (l) => {
               nowDone = !l.done
               return { ...l, done: nowDone, skipped: false }
             })
@@ -112,22 +126,21 @@ export const useRotina = create<RotinaState>()(
         },
         increment: (date, block, delta) => {
           const target = block.target ?? 1
-          const next = patchLog(date, block.id, (l) => ({
-            ...l,
-            skipped: false,
-            value: Math.max(0, Math.round(((l.value ?? 0) + delta) * 100) / 100),
-          }))
+          const next = patchLog(date, block, (l) => {
+            const value = Math.max(0, Math.round(((l.value ?? 0) + delta) * 100) / 100)
+            return { ...l, skipped: false, value, done: value >= target }
+          })
           const reached = (next.value ?? 0) >= target
           if (reached && get().activeBlockId === block.id) set({ activeBlockId: null })
           return reached
         },
-        toggleSkip: (date, blockId) => {
+        toggleSkip: (date, block) => {
           let skipped = false
-          patchLog(date, blockId, (l) => {
+          patchLog(date, block, (l) => {
             skipped = !l.skipped
             return { ...l, skipped }
           })
-          if (skipped && get().activeBlockId === blockId) set({ activeBlockId: null })
+          if (skipped && get().activeBlockId === block.id) set({ activeBlockId: null })
           return skipped
         },
         setActive: (blockId) => set({ activeBlockId: blockId }),
@@ -140,8 +153,46 @@ export const useRotina = create<RotinaState>()(
           if (JSON.stringify(day.plan) === JSON.stringify(plan)) return
           set({ logs: { ...get().logs, [date]: { ...day, plan } } })
         },
+
+        setCompanionKind: (kind) => set({ companion: { ...get().companion, kind } }),
+        setCompanionName: (name) => set({ companion: { ...get().companion, name } }),
+        equip: (slot, id) => {
+          const equipped = { ...get().companion.equipped }
+          if (id) equipped[slot] = id
+          else delete equipped[slot]
+          set({ companion: { ...get().companion, equipped } })
+        },
+        updateProgress: (patch) => set({ petProgress: { ...get().petProgress, ...patch } }),
       }
     },
-    { name: 'rotina-app', version: 1 },
+    {
+      name: 'rotina-app',
+      version: 2,
+      migrate: (persisted, version) => migrate(persisted as Partial<RotinaState>, version),
+    },
   ),
 )
+
+/**
+ * v1 → v2: mantém tudo e completa `areaId`/`type` dos registros antigos,
+ * buscando o bloco na lista congelada do dia ou, sem ela, nas rotinas atuais.
+ */
+function migrate(state: Partial<RotinaState>, version: number) {
+  if (version < 2) {
+    const fromRoutines = new Map<string, Block>()
+    for (const r of state.routines ?? []) for (const b of r.blocks) fromRoutines.set(b.id, b)
+
+    const logs: Record<string, DayLog> = {}
+    for (const [date, day] of Object.entries(state.logs ?? {})) {
+      const fromPlan = new Map((day.plan ?? []).map((p) => [p.block.id, p.block]))
+      const blocks: Record<string, BlockLog> = {}
+      for (const [id, log] of Object.entries(day.blocks ?? {})) {
+        const b = fromPlan.get(id) ?? fromRoutines.get(id)
+        blocks[id] = b ? { ...log, areaId: log.areaId ?? b.areaId, type: log.type ?? b.type } : log
+      }
+      logs[date] = { ...day, blocks }
+    }
+    state = { ...state, logs, companion: state.companion ?? DEFAULT_COMPANION, petProgress: state.petProgress ?? DEFAULT_PROGRESS }
+  }
+  return state as RotinaState
+}

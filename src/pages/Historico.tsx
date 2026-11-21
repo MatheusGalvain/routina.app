@@ -216,7 +216,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
               readOnly={!editing || isToday}
               onToggle={(i) => toggleDone(selected, i.block)}
               onInc={(i, dir) => increment(selected, i.block, dir * (i.block.step ?? 1))}
-              onSkip={(i) => toggleSkip(selected, i.block.id)}
+              onSkip={(i) => toggleSkip(selected, i.block)}
               empty={<p className="m-0 text-muted">Nada registrado neste dia.</p>}
             />
           </section>

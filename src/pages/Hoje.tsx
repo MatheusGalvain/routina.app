@@ -6,7 +6,8 @@ import { dayKey, formatLong } from '../lib/dates'
 import { Panel } from '../components/ui/ui'
 import { DayList } from '../components/day/DayList'
 import { Pet } from '../components/pets/Pet'
-import { PETS, PET_BY_STATE } from '../components/pets/pets'
+import { STATE_STYLE, textColor } from '../components/pets/pets'
+import { useShownPet } from '../store/useCompanion'
 import type { PetState, TodayItem } from '../types'
 
 export function Hoje({ goRoutines }: { goRoutines: () => void }) {
@@ -29,9 +30,11 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
     return () => window.clearTimeout(t)
   }, [flash])
 
-  const petState = flash ?? computePetState(items, activeId, now)
-  const pet = PETS[PET_BY_STATE[petState]]
-  const message = petMessage(petState, items, activeId, now)
+  const pet = useShownPet(flash ?? computePetState(items, activeId, now), !!flash)
+  const look = STATE_STYLE[pet.state]
+  const message = pet.sleeping
+    ? 'Zzz… tirei um cochilo. Quando você concluir um bloco, eu acordo animado.'
+    : petMessage(pet.state, items, activeId, now)
 
   const onToggle = (i: TodayItem) => toggleDone(date, i.block) && setFlash('concluido')
   const onInc = (i: TodayItem, dir: 1 | -1) => {
@@ -39,7 +42,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
     const reached = increment(date, i.block, dir * (i.block.step ?? 1))
     if (reached && !wasDone) setFlash('concluido')
   }
-  const onSkip = (i: TodayItem) => toggleSkip(date, i.block.id) && setFlash('pulado')
+  const onSkip = (i: TodayItem) => toggleSkip(date, i.block) && setFlash('pulado')
 
   const counters = items.filter((i) => i.block.type === 'contador')
 
@@ -80,12 +83,13 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
         <div className="flex min-w-0 flex-[1_1_340px] flex-col gap-5">
           <section className="flex flex-col items-center gap-4 rounded-[22px] border border-line bg-panel p-6">
             <div className="relative grid h-[220px] w-full place-items-center">
-              <div className="absolute h-[200px] w-[200px] rounded-full border" style={{ borderColor: `${pet.color}30` }} />
-              <div className="absolute h-[160px] w-[160px] rounded-full border" style={{ borderColor: `${pet.color}22` }} />
-              <Pet kind={pet.kind} size={140} />
+              <div className="absolute h-[200px] w-[200px] rounded-full border transition-colors duration-500" style={{ borderColor: `${look.color}30` }} />
+              <div className="absolute h-[160px] w-[160px] rounded-full border transition-colors duration-500" style={{ borderColor: `${look.color}22` }} />
+              <Pet kind={pet.kind} state={pet.state} sleeping={pet.sleeping} phase={pet.phase} accessories={pet.accessories} size={140} />
             </div>
-            <p className="m-0 font-mono text-xs tracking-[0.2em] uppercase" style={{ color: pet.color === '#F1F3F6' ? '#C9CED8' : pet.color }}>
-              {pet.label}
+            <p className="m-0 font-mono text-xs tracking-[0.2em] uppercase transition-colors duration-500" style={{ color: pet.sleeping ? '#C4B5FD' : textColor(look.color) }}>
+              {pet.name && pet.isCompanion ? `${pet.name} · ` : ''}
+              {pet.sleeping ? 'Dormindo' : look.label}
             </p>
             <AnimatePresence mode="wait">
               <motion.p

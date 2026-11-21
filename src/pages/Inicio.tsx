@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useRotina } from '../store/useRotina'
-import { getTodayItems } from '../lib/today'
+import { computePetState, getTodayItems } from '../lib/today'
 import { dayKey, greeting } from '../lib/dates'
 import { AREAS, WEEKDAYS } from '../data/areas'
 import { TEMPLATES } from '../data/templates'
@@ -9,6 +9,7 @@ import { Bar, Icon, Logo, Panel, ProgressRing } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
 import { PETS, PET_ORDER } from '../components/pets/pets'
 import { PetStory } from '../components/pets/PetStory'
+import { PetCorner } from '../components/pets/PetCorner'
 import type { PetKind } from '../types'
 
 const daysLabel = (days: number[]) =>
@@ -22,6 +23,8 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
   const completedTasks = useRotina((s) => s.completedTasks)
   const createRoutine = useRotina((s) => s.createRoutine)
   const addTemplate = useRotina((s) => s.addTemplate)
+  const activeId = useRotina((s) => s.activeBlockId)
+  const companion = useRotina((s) => s.companion)
   const [storyPet, setStoryPet] = useState<PetKind | null>(null)
 
   const items = useMemo(() => getTodayItems(routines, dayLog, completedTasks, now, date), [routines, dayLog, completedTasks, date])
@@ -35,7 +38,7 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
           <Logo />
           <div className="flex flex-col gap-1">
             <h1 className="m-0 text-[44px] leading-none font-extrabold tracking-tight">
-              rotina<span className="text-[#5AA7FF]">.app</span>
+              Nomo<span className="text-[#5AA7FF]">.app</span>
             </h1>
             <p className="m-0 text-muted">{greeting(now)}! Pronto para organizar o seu dia?</p>
           </div>
@@ -48,6 +51,10 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
           <Icon name="play" size={14} /> Continuar de onde parei
         </button>
       </header>
+
+      <Panel title={companion.kind ? `Cantinho ${companion.name ? `de ${companion.name}` : 'do seu pet'}` : 'Cantinho do pet'} icon="paw" color="#5AA7FF">
+        <PetCorner autoState={computePetState(items, activeId, now)} />
+      </Panel>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-5">
         <Panel title="Hoje" icon="trend">
@@ -153,8 +160,8 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
                 <span className="font-mono text-[10.5px] tracking-wider uppercase" style={{ color: PETS[k].color === '#F1F3F6' ? '#C9CED8' : PETS[k].color }}>
                   {PETS[k].label.split(' / ')[1]}
                 </span>
-                <button type="button" onClick={() => setStoryPet(k)} className="mt-0.5 rounded-full border border-line px-2.5 py-0.5 text-[11px] font-semibold text-muted hover:text-soft">
-                  📖 História
+                <button type="button" onClick={() => setStoryPet(k)} className="mt-0.5 flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-[11px] font-semibold text-muted hover:text-soft">
+                  <Icon name="book" size={12} /> História
                 </button>
               </div>
             ))}

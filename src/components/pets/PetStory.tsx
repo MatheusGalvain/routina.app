@@ -5,6 +5,7 @@ import { Icon } from '../ui/ui'
 import { Pet } from './Pet'
 import { PETS, type EyeStyle } from './pets'
 import { STORIES } from './stories'
+import { Deco } from './Deco'
 
 /** Posições dos enfeites ao redor do pet (em % do palco). */
 const DECO_SPOTS = [
@@ -79,7 +80,7 @@ export function PetStory({ kind, onClose }: { kind: PetKind; onClose: () => void
             <h2 className="m-0 truncate text-lg font-bold">{story.title}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Fechar história" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted hover:bg-panel-2 hover:text-soft">
-            <Icon name="plus" className="rotate-45" />
+            <Icon name="x" />
           </button>
         </header>
 
@@ -94,14 +95,14 @@ export function PetStory({ kind, onClose }: { kind: PetKind; onClose: () => void
               <motion.span
                 key={`${index}-${i}`}
                 aria-hidden="true"
-                className="absolute text-2xl select-none"
+                className="absolute select-none"
                 style={DECO_SPOTS[i % DECO_SPOTS.length]}
                 initial={{ opacity: 0, scale: 0.4 }}
                 animate={{ opacity: 0.9, scale: 1, y: [0, -6, 0] }}
                 exit={{ opacity: 0, scale: 0.4 }}
                 transition={{ y: { duration: 2.4 + i * 0.4, repeat: Infinity, ease: 'easeInOut' }, default: { duration: 0.35, delay: i * 0.08 } }}
               >
-                {d}
+                <Deco id={d} />
               </motion.span>
             ))}
           </AnimatePresence>
@@ -133,8 +134,14 @@ export function PetStory({ kind, onClose }: { kind: PetKind; onClose: () => void
           </AnimatePresence>
 
           {action.type === 'tap' && (
-            <p aria-live="polite" className="m-0 text-sm font-semibold" style={{ color: tapDone ? accent : undefined }}>
-              {tapDone ? action.done : `👆 ${action.hint} (${taps}/${action.times})`}
+            <p aria-live="polite" className="m-0 flex items-center gap-1.5 text-sm font-semibold" style={{ color: tapDone ? accent : undefined }}>
+              {tapDone ? (
+                action.done
+              ) : (
+                <>
+                  <Icon name="hand" size={16} /> {action.hint} ({taps}/{action.times})
+                </>
+              )}
             </p>
           )}
 
