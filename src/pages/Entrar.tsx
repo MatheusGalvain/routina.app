@@ -6,25 +6,41 @@ import { Pet } from '../components/pets/Pet'
 import { Privacidade } from './Privacidade'
 import { Footer } from '../components/ui/Footer'
 
+/** Intervalo mínimo entre e-mails para o mesmo endereço (padrão do Supabase). */
 const RESEND_SECONDS = 60
 
-/** Erro que volta na URL quando o link mágico expirou ou já foi usado. */
+/**
+ * Lê o que voltou na URL ao abrir o link do e-mail sem conseguir entrar:
+ * link expirado/usado, ou link aberto em OUTRO aparelho (o acesso fica preso ao
+ * navegador que pediu; nesse caso, o código de 6 dígitos resolve).
+ */
 function readUrlError() {
-  const params = new URLSearchParams(window.location.hash.slice(1) || window.location.search)
-  const code = params.get('error_code')
-  if (!params.get('error') && !code) return null
-  // Limpa a URL para o erro não reaparecer ao recarregar.
+  const hash = new URLSearchParams(window.location.hash.slice(1))
+  const query = new URLSearchParams(window.location.search)
+  const errorCode = hash.get('error_code') ?? query.get('error_code')
+  const hasError = !!(errorCode || hash.get('error') || query.get('error'))
+  const strayCode = query.has('code')
+  if (!hasError && !strayCode) return null
+  // Limpa a URL para a mensagem não reaparecer ao recarregar.
   window.history.replaceState(null, '', window.location.pathname)
-  if (code === 'otp_expired') return 'Esse link expirou ou já foi usado. Peça um novo abaixo.'
+  if (errorCode === 'otp_expired') return 'Esse link expirou ou já foi usado. Peça um novo abaixo.'
+  if (strayCode)
+    return 'Esse link foi aberto em um aparelho diferente de onde você pediu o acesso. No outro aparelho, digite o código de 6 dígitos do e-mail. Ou peça um acesso novo aqui.'
   return 'Não deu para entrar com esse link. Tente pedir outro.'
 }
 
-function friendly(message: string) {
+/** Traduz o erro do Supabase. `wait` = segundos que o servidor pede para esperar. */
+function friendly(message: string): { text: string; wait?: number } {
   const m = message.toLowerCase()
-  if (m.includes('rate limit') || m.includes('security purposes')) return 'Muitos pedidos seguidos. Espere um minutinho e tente de novo.'
-  if (m.includes('invalid') && m.includes('email')) return 'Esse e-mail não parece válido. Confere?'
-  if (m.includes('provider is not enabled')) return 'O login com Google ainda não está ativado.'
-  return 'Não foi possível enviar agora. Verifique sua conexão e tente de novo.'
+  const secs = m.match(/after (\d+) second/)
+  if (secs) return { text: 'Por segurança, existe um intervalo entre um e-mail e outro.', wait: Number(secs[1]) }
+  if (m.includes('rate limit'))
+    return {
+      text: 'O limite de e-mails por hora foi atingido. Se você já recebeu um e-mail nosso, use o código que está nele. Se não, tente de novo mais tarde.',
+    }
+  if (m.includes('invalid') && m.includes('email')) return { text: 'Esse e-mail não parece válido. Confere?' }
+  if (m.includes('provider is not enabled')) return { text: 'O login com Google ainda não está ativado.' }
+  return { text: 'Não foi possível enviar agora. Verifique sua conexão e tente de novo.' }
 }
 
 /** Tela de entrada: link mágico no e-mail e, se ativado, Google. */
@@ -35,6 +51,8 @@ export function Entrar() {
   const [error, setError] = useState<string | null>(() => readUrlError())
   const [cooldown, setCooldown] = useState(0)
   const [privacy, setPrivacy] = useState(false)
+  const [code, setCode] = useState('')
+  const [verifying, setVerifying] = useState(false)
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -50,15 +68,34 @@ export function Entrar() {
     setError(null)
     const { error } = await supabase.auth.signInWithOtp({ email: target, options: { emailRedirectTo: redirectTo() } })
     setSending(false)
-    if (error) return setError(friendly(error.message))
+    if (error) {
+      const f = friendly(error.message)
+      setError(f.text)
+      if (f.wait) setCooldown(f.wait)
+      return
+    }
     setSentTo(target)
+    setCode('')
     setCooldown(RESEND_SECONDS)
+  }
+
+  // Código de 6 dígitos do e-mail: funciona em qualquer aparelho (lê no celular, digita no PC).
+  const verifyCode = async (e: FormEvent) => {
+    e.preventDefault()
+    const token = code.replace(/\D/g, '')
+    if (!sentTo || token.length < 6 || verifying) return
+    setVerifying(true)
+    setError(null)
+    const { error } = await supabase.auth.verifyOtp({ email: sentTo, token, type: 'email' })
+    setVerifying(false)
+    if (error)
+      setError(error.message.toLowerCase().includes('expired') ? 'Esse código expirou. Peça um novo e-mail.' : 'Código incorreto. Confira os números e tente de novo.')
   }
 
   const google = async () => {
     setError(null)
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectTo() } })
-    if (error) setError(friendly(error.message))
+    if (error) setError(friendly(error.message).text)
   }
 
   if (privacy)
@@ -109,8 +146,30 @@ export function Entrar() {
             <div className="flex w-full flex-col gap-3 text-center">
               <h2 className="m-0 text-lg font-bold">Confira seu e-mail</h2>
               <p className="m-0 text-sm text-muted">
-                Enviamos um link de acesso para <strong className="text-soft">{sentTo}</strong>. Abra o link neste mesmo navegador para entrar.
+                Enviamos um e-mail para <strong className="text-soft">{sentTo}</strong>. Abra o link <strong className="text-soft">neste aparelho</strong>{' '}
+                ou digite aqui o código de 6 dígitos. Dá para ler o e-mail no celular e digitar o código no computador.
               </p>
+              <form onSubmit={verifyCode} className="flex flex-col items-center gap-2">
+                <label htmlFor="otp" className="sr-only">
+                  Código de 6 dígitos do e-mail
+                </label>
+                <input
+                  id="otp"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="000000"
+                  className="w-[200px] rounded-xl border border-line bg-[#0B0E15] px-3 py-3 text-center font-mono text-2xl tracking-[0.35em] text-soft placeholder:text-[#3A4256]"
+                />
+                <button
+                  type="submit"
+                  disabled={code.length < 6 || verifying}
+                  className="rounded-full bg-foco-strong px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(30,136,255,.35)] disabled:opacity-40 disabled:shadow-none"
+                >
+                  {verifying ? 'Entrando…' : 'Entrar com o código'}
+                </button>
+              </form>
               <div className="flex flex-wrap justify-center gap-2">
                 <button
                   type="button"
@@ -118,13 +177,14 @@ export function Entrar() {
                   disabled={sending || cooldown > 0}
                   className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-soft hover:bg-panel-2 disabled:opacity-50"
                 >
-                  {cooldown > 0 ? `Reenviar em ${cooldown}s` : sending ? 'Enviando…' : 'Reenviar link'}
+                  {cooldown > 0 ? `Reenviar em ${cooldown}s` : sending ? 'Enviando…' : 'Reenviar e-mail'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setSentTo(null)
                     setError(null)
+                    setCode('')
                   }}
                   className="rounded-full px-4 py-2 text-sm font-semibold text-muted hover:text-soft"
                 >
@@ -135,7 +195,7 @@ export function Entrar() {
           ) : (
             <form onSubmit={sendLink} className="flex w-full flex-col gap-3">
               <label htmlFor="email" className="text-sm text-muted">
-                Entre com seu e-mail. Você recebe um link, sem senha.
+                Entre com seu e-mail. Você recebe um link e um código, sem senha.
               </label>
               <input
                 id="email"
