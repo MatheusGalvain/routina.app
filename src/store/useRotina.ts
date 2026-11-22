@@ -4,7 +4,7 @@ import type { AccessoryId, Area, AreaId, Block, DefaultAreaKey, UserTemplate, Bl
 import type { TrophyId } from '../data/trophies'
 import { EMPTY_SLOTS } from '../lib/corner'
 import { TEMPLATES } from '../data/templates'
-import { AREA_NAME_MAX, AREA_PALETTE, DEFAULT_AREAS, MAX_AREAS, ROUTINE_COLORS, normalizeAreas, removedDefaults, sameName } from '../data/areas'
+import { AREA_ALLOWED, AREA_NAME_MAX, AREA_PALETTE, DEFAULT_AREAS, MAX_AREAS, ROUTINE_COLORS, normalizeAreas, pastelArea, pastelRoutine, removedDefaults, sameName } from '../data/areas'
 import { APP_KEY } from '../lib/storageKeys'
 import { nowInTz } from '../lib/dates'
 
@@ -147,7 +147,7 @@ export const useRotina = create<RotinaState>()(
           const areas = get().areas
           if (areas.length >= MAX_AREAS) return null
           const clean = name.trim().slice(0, AREA_NAME_MAX) || 'Nova área'
-          const safeColor = AREA_PALETTE.includes(color) ? color : AREA_PALETTE[areas.length % AREA_PALETTE.length]
+          const safeColor = AREA_ALLOWED.includes(color) ? color : AREA_PALETTE[areas.length % AREA_PALETTE.length]
           // Mesmo nome de uma área padrão excluída: volta a ser ela (com o histórico e o troféu).
           const original = removedDefaults(areas).find((d) => sameName(d.name, clean))
           const id = original?.id ?? uid()
@@ -157,7 +157,7 @@ export const useRotina = create<RotinaState>()(
         updateArea: (id, patch) => {
           const clean = { ...patch }
           if (clean.name !== undefined) clean.name = clean.name.slice(0, AREA_NAME_MAX)
-          if (clean.color !== undefined && !AREA_PALETTE.includes(clean.color)) delete clean.color
+          if (clean.color !== undefined && !AREA_ALLOWED.includes(clean.color)) delete clean.color
           set({ areas: get().areas.map((a) => (a.id === id ? { ...a, ...clean } : a)) })
         },
         moveArea: (id, dir) => {
@@ -317,7 +317,7 @@ export const useRotina = create<RotinaState>()(
           const routines = get().routines
           const quick = routines.find((r) => !r.dev && r.name === QUICK_ROUTINE)
           if (quick) set({ routines: mapRoutine(routines, quick.id, (r) => ({ ...r, blocks: [...r.blocks, block] })) })
-          else set({ routines: [...routines, { id: uid(), name: QUICK_ROUTINE, color: '#2DD4BF', days: [0, 1, 2, 3, 4, 5, 6], blocks: [block] }] })
+          else set({ routines: [...routines, { id: uid(), name: QUICK_ROUTINE, color: '#A6E3DA', days: [0, 1, 2, 3, 4, 5, 6], blocks: [block] }] })
           return block.id
         },
         setNote: (date, note) => {
@@ -352,7 +352,7 @@ export const useRotina = create<RotinaState>()(
     },
     {
       name: LEGACY_KEY,
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => scopedStorage),
       // Só carrega o cache depois do login, quando já se sabe de quem são os dados.
       skipHydration: true,
@@ -388,7 +388,28 @@ export function migrate(state: Partial<RotinaState>, version: number) {
   if (version < 4) state = { ...state, areas: state.areas?.length ? state.areas : DEFAULT_AREAS }
   // v4 → v5: modelos de rotina da pessoa.
   if (version < 5) state = { ...state, templates: state.templates ?? [] }
+  // v5 → v6: nova identidade (pastel) nas cores salvas de áreas, rotinas e modelos.
+  if (version < 6) state = withPastelColors(state)
   return state as RotinaState
+}
+
+/** Troca as cores vivas antigas pelas pastel (áreas, rotinas, modelos e as rotinas congeladas no histórico). */
+export function withPastelColors<T extends Partial<Pick<RotinaState, 'areas' | 'routines' | 'templates' | 'logs'>>>(s: T): T {
+  const logs = s.logs
+    ? Object.fromEntries(
+        Object.entries(s.logs).map(([d, day]) => [
+          d,
+          day.plan ? { ...day, plan: day.plan.map((p) => ({ ...p, routine: { ...p.routine, color: pastelRoutine(p.routine.color) } })) } : day,
+        ]),
+      )
+    : s.logs
+  return {
+    ...s,
+    areas: s.areas?.map((a) => ({ ...a, color: pastelArea(a.color) })),
+    routines: s.routines?.map((r) => ({ ...r, color: pastelRoutine(r.color) })),
+    templates: s.templates?.map((t) => ({ ...t, color: pastelRoutine(t.color) })),
+    logs,
+  }
 }
 
 /** Áreas da vida da pessoa, em ordem. */

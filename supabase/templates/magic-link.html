@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+    <title>Seu acesso ao Habbit Do</title>
+  </head>
+  <!--
+    Habbit Do · e-mail de acesso (Supabase → Authentication → Emails → Templates).
+    Use em "Magic Link" e também em "Confirm signup" (primeiro acesso).
+    Paleta: fundo #141414, card #1C1C1C, borda #2C2C2C, texto #F2F0ED, secundário #A3A09B,
+    botão #A9BFFF com texto #141414. Estilos inline e tabelas, para funcionar no Gmail e no Outlook.
+  -->
+  <body style="margin:0; padding:0; background-color:#141414;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#141414;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px; background-color:#1C1C1C; border:1px solid #2C2C2C; border-radius:20px;">
+            <tr>
+              <td style="padding:32px 28px 8px 28px; font-family:Inter, Arial, Helvetica, sans-serif;">
+                <p style="margin:0; font-size:22px; line-height:28px; font-weight:800; color:#F2F0ED;">
+                  Habbit <span style="color:#A9BFFF;">Do</span>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 28px 0 28px; font-family:Inter, Arial, Helvetica, sans-serif;">
+                <h1 style="margin:0 0 8px 0; font-size:20px; line-height:26px; font-weight:700; color:#F2F0ED;">Seu acesso chegou</h1>
+                <p style="margin:0; font-size:15px; line-height:22px; color:#A3A09B;">
+                  Toque no botão para entrar. Se preferir, digite o código de 6 dígitos na tela do app.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="left" style="padding:24px 28px 8px 28px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="border-radius:999px; background-color:#A9BFFF;">
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        style="display:inline-block; padding:14px 28px; font-family:Inter, Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; color:#141414; text-decoration:none; border-radius:999px;"
+                        >Entrar no Habbit Do</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 28px 0 28px; font-family:Inter, Arial, Helvetica, sans-serif;">
+                <p style="margin:0 0 8px 0; font-size:13px; line-height:18px; color:#A3A09B;">Ou use este código:</p>
+                <p
+                  style="margin:0; display:inline-block; padding:12px 18px; background-color:#232323; border:1px solid #2C2C2C; border-radius:12px; font-family:'JetBrains Mono', Consolas, 'Courier New', monospace; font-size:26px; line-height:30px; letter-spacing:6px; font-weight:700; color:#F2F0ED;"
+                >
+                  {{ .Token }}
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 28px 28px 28px; font-family:Inter, Arial, Helvetica, sans-serif;">
+                <p style="margin:0; font-size:13px; line-height:19px; color:#A3A09B;">
+                  O link e o código valem por pouco tempo e só uma vez. Se você não pediu este acesso, é só ignorar este e-mail.
+                </p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:16px 0 0 0; font-family:Inter, Arial, Helvetica, sans-serif; font-size:12px; line-height:18px; color:#A3A09B;">Habbit Do · rotinas com um pet que cresce com você</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -32,7 +32,7 @@ function Progress({ step }: { step: OnboardingStep }) {
     <div className="flex items-center gap-3">
       <div className="flex gap-1.5" aria-hidden="true">
         {[1, 2, 3].map((n) => (
-          <span key={n} className={`h-1.5 w-8 rounded-full transition-colors ${n <= step ? 'bg-[#5AA7FF]' : 'bg-[#232A38]'}`} />
+          <span key={n} className={`h-1.5 w-8 rounded-full transition-colors ${n <= step ? 'bg-accent' : 'bg-line'}`} />
         ))}
       </div>
       <span className="font-mono text-xs text-muted">{step} de 3</span>
@@ -67,7 +67,7 @@ function StepAdopt({ onNext }: { onNext: () => void }) {
               aria-pressed={kind === k}
               onClick={() => setKind(k)}
               className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl border px-1 pt-3 pb-2.5 transition-colors ${
-                kind === k ? 'border-[#5AA7FF] bg-[#12284A]' : 'border-line bg-panel-2 hover:border-[#2A3242]'
+                kind === k ? 'border-accent bg-accent/15' : 'border-line bg-panel-2 hover:border-line-2'
               }`}
             >
               <Pet kind={k} state={kind === k ? 'concluido' : 'neutro'} size={64} interactive={false} />
@@ -84,11 +84,11 @@ function StepAdopt({ onNext }: { onNext: () => void }) {
           maxLength={PET_NAME_MAX}
           onChange={(e) => setName(e.target.value)}
           placeholder={kind ? PETS[kind].name : 'Ex.: Pipoca'}
-          className="min-h-11 rounded-xl border border-line bg-[#0B0E15] px-3 text-soft placeholder:text-[#6F788A]"
+          className="min-h-11 rounded-xl border border-line bg-ink px-3 text-soft placeholder:text-muted"
         />
       </label>
 
-      <button type="submit" disabled={!kind} className="min-h-12 rounded-full bg-foco-strong px-6 text-[15px] font-bold text-white disabled:opacity-40 sm:self-start">
+      <button type="submit" disabled={!kind} className="min-h-12 rounded-full bg-accent px-6 text-[15px] font-bold text-ink disabled:opacity-40 sm:self-start">
         Adotar {kind ? (name.trim() || PETS[kind].name) : ''}
       </button>
     </form>
@@ -113,7 +113,7 @@ function StepStart({ onPicked }: { onPicked: (routineId: string) => void }) {
           type="button"
           aria-expanded={mode === 'modelo'}
           onClick={() => setMode(mode === 'modelo' ? null : 'modelo')}
-          className={`${option} ${mode === 'modelo' ? 'border-[#FFB020] bg-[#17140C]' : 'border-line bg-panel-2 hover:border-[#2A3242]'}`}
+          className={`${option} ${mode === 'modelo' ? 'border-alerta bg-alerta/5' : 'border-line bg-panel-2 hover:border-line-2'}`}
         >
           <span className="flex items-center gap-2 font-bold">
             <Icon name="box" size={16} /> Usar um modelo
@@ -127,7 +127,7 @@ function StepStart({ onPicked }: { onPicked: (routineId: string) => void }) {
             addBlock(id, water())
             onPicked(id)
           }}
-          className={`${option} border-line bg-panel-2 hover:border-[#2A3242]`}
+          className={`${option} border-line bg-panel-2 hover:border-line-2`}
         >
           <span className="flex items-center gap-2 font-bold">
             <Icon name="plus" size={16} /> Montar do zero
@@ -140,7 +140,7 @@ function StepStart({ onPicked }: { onPicked: (routineId: string) => void }) {
         <ul className="m-0 flex list-none flex-col gap-2 p-0" aria-label="Modelos">
           {templates.map((t) => (
             <li key={t.id}>
-              <button type="button" onClick={() => fromTemplate(t.id)} className="flex w-full flex-col gap-0.5 rounded-xl border border-[#24304A] bg-[#0D1422] px-4 py-3 text-left">
+              <button type="button" onClick={() => fromTemplate(t.id)} className="flex w-full flex-col gap-0.5 rounded-xl border border-accent/25 bg-accent/5 px-4 py-3 text-left">
                 <strong className="text-sm [overflow-wrap:anywhere]">{t.name}</strong>
                 <span className="text-[12.5px] text-muted">
                   Seu modelo · {t.blocks.length} {t.blocks.length === 1 ? 'bloco' : 'blocos'}
@@ -150,9 +150,9 @@ function StepStart({ onPicked }: { onPicked: (routineId: string) => void }) {
           ))}
           {TEMPLATES.map((t) => (
             <li key={t.key}>
-              <button type="button" onClick={() => fromTemplate(t.key)} className="flex w-full flex-col gap-0.5 rounded-xl border border-[#4A3A12] bg-[#17140C] px-4 py-3 text-left">
+              <button type="button" onClick={() => fromTemplate(t.key)} className="flex w-full flex-col gap-0.5 rounded-xl border border-alerta/30 bg-alerta/5 px-4 py-3 text-left">
                 <strong className="text-sm">{t.name}</strong>
-                <span className="text-[12.5px] text-[#B5AC96]">{t.description}</span>
+                <span className="text-[12.5px] text-muted">{t.description}</span>
               </button>
             </li>
           ))}
@@ -186,7 +186,7 @@ function StepFirstWin({ routineId, petKind, onDone }: { routineId: string | null
     <div className="flex flex-col items-center gap-5 text-center">
       <Pet kind={petKind} state={won ? 'concluido' : 'foco'} size={120} interactive={false} />
       <div className="flex w-full max-w-[420px] items-center gap-3 rounded-2xl border border-line bg-panel-2 px-4 py-3.5 text-left">
-        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 ${won ? 'border-ok bg-ok text-[#06210F]' : 'border-[#3A4254] text-transparent'}`} aria-hidden="true">
+        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 ${won ? 'border-ok bg-ok text-ink' : 'border-line-strong text-transparent'}`} aria-hidden="true">
           <Icon name="check" size={18} />
         </span>
         <span className="flex min-w-0 flex-col">
@@ -207,7 +207,7 @@ function StepFirstWin({ routineId, petKind, onDone }: { routineId: string | null
             useRotina.getState().toggleDone(dayKey(), block)
             setWon(true)
           }}
-          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-ok px-6 text-[15px] font-bold text-[#06210F]"
+          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-ok px-6 text-[15px] font-bold text-ink"
         >
           <Icon name="check" size={16} /> Marcar como feito
         </button>
@@ -261,7 +261,7 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="onb-title"
-          className="fixed inset-0 z-[90] overflow-y-auto bg-[#07090E]"
+          className="fixed inset-0 z-[90] overflow-y-auto bg-ink"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

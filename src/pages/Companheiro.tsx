@@ -24,7 +24,7 @@ export function Companheiro() {
 
       {view.kind && <PhaseCard />}
 
-      <Panel title="Escolha seu favorito" icon="paw" color="#FB7185" help="favorito">
+      <Panel title="Escolha seu favorito" icon="paw" color="var(--color-area-social)" help="favorito">
         <p className="m-0 text-sm text-muted">Ele vai te acompanhar em todos os estados do dia, mudando de cor e de expressão.</p>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-3">
           {ALL_PETS.map((k) => {
@@ -63,17 +63,17 @@ export function Companheiro() {
             onChange={(e) => setCompanionName(e.target.value.slice(0, 24))}
             placeholder={view.kind ? `Ex.: ${PETS[view.kind].name}` : 'Escolha um pet primeiro'}
             disabled={!companion.kind}
-            className="rounded-xl border border-line bg-[#0B0E15] px-3 py-2.5 text-soft placeholder:text-[#6F788A] disabled:opacity-50"
+            className="rounded-xl border border-line bg-ink px-3 py-2.5 text-soft placeholder:text-muted disabled:opacity-50"
           />
         </label>
       </Panel>
 
-      <Panel title="Cantinho" icon="sparkle" color="#C4B5FD" help="cantinho">
+      <Panel title="Cantinho" icon="sparkle" color="var(--color-noite)" help="cantinho">
         <PetCorner autoState="neutro" legend={false} />
       </Panel>
 
       <div id="colecao" className="scroll-mt-4">
-      <Panel title="Coleção" icon="box" color="#FFC24B" help="colecao">
+      <Panel title="Coleção" icon="box" color="var(--color-alerta)" help="colecao">
         <p className="m-0 text-sm text-muted">Cada troféu tem 4 níveis. Os que você conquista ficam para sempre, e você escolhe quais expor no cantinho.</p>
         <TrophyCollection />
       </Panel>
@@ -110,7 +110,7 @@ function PhaseCard() {
   return (
     <section className="flex flex-wrap items-center gap-6 rounded-[22px] border border-line bg-panel p-6">
       <div className="relative grid h-[170px] w-[170px] shrink-0 place-items-center">
-        <div className="absolute h-[160px] w-[160px] rounded-full border border-[#F1F3F622]" />
+        <div className="absolute h-[160px] w-[160px] rounded-full border border-fg/15" />
         <Pet kind={kind} state={view.forcedState && view.forcedState !== 'dormindo' ? view.forcedState : 'neutro'} phase={view.phase} sleeping={view.sleeping} accessories={view.accessories} size={130} />
       </div>
       <div className="flex min-w-[220px] flex-1 flex-col gap-3">
@@ -123,7 +123,7 @@ function PhaseCard() {
                 role="listitem"
                 aria-current={p.id === view.phase ? 'step' : undefined}
                 className="rounded-full border px-3 py-1 font-mono text-[11px] tracking-wider uppercase"
-                style={{ borderColor: reached ? '#22C55E66' : 'var(--color-line)', color: reached ? '#4ADE80' : 'var(--color-muted)', background: p.id === view.phase ? '#22C55E1A' : undefined }}
+                style={{ borderColor: reached ? 'color-mix(in srgb, var(--color-ok) 40%, transparent)' : 'var(--color-line)', color: reached ? 'var(--color-ok)' : 'var(--color-muted)', background: p.id === view.phase ? 'color-mix(in srgb, var(--color-ok) 10%, transparent)' : undefined }}
               >
                 {p.name}
               </span>
@@ -134,13 +134,13 @@ function PhaseCard() {
           <strong className="text-2xl font-extrabold">{view.activeDays} {view.activeDays === 1 ? 'dia ativo' : 'dias ativos'}</strong>
           <span className="text-sm text-muted">dias com pelo menos metade dos blocos feitos</span>
         </div>
-        <Bar pct={pct} color="#22C55E" />
+        <Bar pct={pct} color="var(--color-ok)" />
         <p className="m-0 text-sm text-soft">
           {next
             ? `Faltam ${next.remaining} ${next.remaining === 1 ? 'dia ativo' : 'dias ativos'} para virar ${next.name.toLowerCase()}.`
             : `Fase máxima! ${SPECIES[kind].name} adulto ganhou ${SPECIES[kind].adultDetail}.`}
         </p>
-        {view.sleeping && <p className="m-0 text-sm text-[#C4B5FD]">Está tirando um cochilo. Conclua um bloco hoje e ele acorda.</p>}
+        {view.sleeping && <p className="m-0 text-sm text-noite">Está tirando um cochilo. Conclua um bloco hoje e ele acorda.</p>}
         <p className="m-0 text-[12.5px] text-muted">Os dias ativos só aumentam: seu pet nunca volta de fase.</p>
       </div>
     </section>
@@ -156,7 +156,7 @@ function Accessories() {
   const u = unlockStats(view.stats, view.activeDays, !!view.kind)
 
   return (
-    <Panel title="Acessórios" icon="sparkle" color="#FFB020" help="acessorios">
+    <Panel title="Acessórios" icon="sparkle" color="var(--color-alerta)" help="acessorios">
       <p className="m-0 text-sm text-muted">
         {view.kind ? 'Um item por parte do corpo. Novos itens aparecem conforme você cuida da rotina.' : 'Escolha um favorito para ele poder usar os acessórios.'}
       </p>
@@ -169,7 +169,7 @@ function Accessories() {
             <li
               key={a.id}
               className="flex flex-col items-center gap-2 rounded-2xl border bg-panel-2 px-3 pt-3 pb-3.5 text-center"
-              style={{ borderColor: isOn ? '#FFB02088' : 'var(--color-line)' }}
+              style={{ borderColor: isOn ? 'color-mix(in srgb, var(--color-alerta) 55%, transparent)' : 'var(--color-line)' }}
             >
               <div className={`relative ${unlocked ? '' : 'opacity-40 grayscale'}`}>
                 <Pet kind={kind} state="neutro" accessories={[a.id]} size={78} interactive={false} float={false} />
@@ -187,7 +187,7 @@ function Accessories() {
                   disabled={!view.kind}
                   aria-pressed={isOn}
                   onClick={() => equip(a.slot, isOn ? null : a.id)}
-                  className={`mt-auto rounded-full px-3.5 py-1.5 text-[12.5px] font-bold disabled:opacity-40 ${isOn ? 'border border-[#FFB02088] text-[#FFC857]' : 'bg-alerta text-[#2A1A00]'}`}
+                  className={`mt-auto rounded-full px-3.5 py-1.5 text-[12.5px] font-bold disabled:opacity-40 ${isOn ? 'border border-alerta/55 text-alerta' : 'bg-alerta text-ink'}`}
                 >
                   {isOn ? 'Tirar' : 'Usar'}
                 </button>

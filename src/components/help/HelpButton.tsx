@@ -43,8 +43,8 @@ export function HelpContent({ entry, titleId }: { entry: HelpEntry; titleId: str
         {entry.examples && (
           <ul className="m-0 mt-1 flex list-none flex-col gap-1.5 p-0">
             {entry.examples.map((e) => (
-              <li key={e.type} className="rounded-xl bg-[#0B0E15] px-3 py-2 text-[13px] leading-snug">
-                <strong className="mr-1.5 font-mono text-[11px] tracking-wider text-[#9CC8FF] uppercase">{e.name}</strong>
+              <li key={e.type} className="rounded-xl bg-ink px-3 py-2 text-[13px] leading-snug">
+                <strong className="mr-1.5 font-mono text-[11px] tracking-wider text-accent uppercase">{e.name}</strong>
                 <span className="text-soft">{e.example}</span>
               </li>
             ))}
@@ -106,7 +106,7 @@ function HelpBubble({ entry, anchor, onClose }: { entry: HelpEntry; anchor: RefO
   const body = (
     <>
       <HelpContent entry={entry} titleId={titleId} />
-      <button type="button" onClick={onClose} className="min-h-11 self-end rounded-full bg-foco-strong px-5 text-sm font-bold text-white">
+      <button type="button" onClick={onClose} className="min-h-11 self-end rounded-full bg-accent px-5 text-sm font-bold text-ink">
         Entendi
       </button>
     </>
@@ -127,7 +127,7 @@ function HelpBubble({ entry, anchor, onClose }: { entry: HelpEntry; anchor: RefO
           exit={{ y: '100%' }}
           transition={{ type: 'spring', stiffness: 380, damping: 38 }}
         >
-          <div className="mx-auto h-1 w-10 rounded-full bg-[#2A3242]" aria-hidden="true" />
+          <div className="mx-auto h-1 w-10 rounded-full bg-line-2" aria-hidden="true" />
           {body}
         </motion.div>
       </motion.div>,
@@ -140,7 +140,7 @@ function HelpBubble({ entry, anchor, onClose }: { entry: HelpEntry; anchor: RefO
       role="dialog"
       aria-labelledby={titleId}
       tabIndex={-1}
-      className="fixed z-[80] flex flex-col gap-3 rounded-2xl border border-[#2A3242] bg-panel-2 p-4 shadow-[0_16px_48px_rgba(0,0,0,.55)] outline-none"
+      className="fixed z-[80] flex flex-col gap-3 rounded-2xl border border-line-2 bg-panel-2 p-4 shadow-[0_16px_48px_rgba(0,0,0,.55)] outline-none"
       style={{ width: Math.min(WIDTH, window.innerWidth - 32), top: pos?.top ?? -9999, left: pos?.left ?? 0 }}
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -171,7 +171,7 @@ export function HelpButton({ k, className = '' }: { k: HelpKey; className?: stri
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => (open ? close() : setOpen(true))}
-        className={`relative inline-grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#2A3242] text-[12px] font-bold text-muted transition-colors before:absolute before:-inset-2.5 before:content-[''] hover:border-[#5AA7FF] hover:text-[#9CC8FF] ${open ? 'border-[#5AA7FF] text-[#9CC8FF]' : ''} ${className}`}
+        className={`relative inline-grid h-6 w-6 shrink-0 place-items-center rounded-full border border-line-2 text-[12px] font-bold text-muted transition-colors before:absolute before:-inset-2.5 before:content-[''] hover:border-accent hover:text-accent ${open ? 'border-accent text-accent' : ''} ${className}`}
       >
         ?
       </button>

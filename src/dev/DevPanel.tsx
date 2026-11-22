@@ -81,7 +81,7 @@ export default function DevPanel() {
         onClick={() => setOpen((o) => !o)}
         aria-label="Abrir painel de desenvolvimento (Shift + D)"
         aria-expanded={open}
-        className="fixed right-3 bottom-3 z-[60] rounded-full border border-[#3B2A6B] bg-[#1A1430] px-3 py-1.5 font-mono text-[11px] font-bold tracking-wider text-[#C4B5FD] shadow-[0_0_18px_rgba(139,92,246,.35)]"
+        className="fixed right-3 bottom-3 z-[60] rounded-full border border-noite/40 bg-panel px-3 py-1.5 font-mono text-[11px] font-bold tracking-wider text-noite shadow-[0_0_18px_color-mix(in_srgb,var(--color-noite)_30%,transparent)]"
       >
         DEV
       </button>
@@ -89,7 +89,7 @@ export default function DevPanel() {
         {open && (
           <motion.aside
             aria-label="Painel de desenvolvimento"
-            className="fixed top-0 right-0 bottom-0 z-[70] flex w-[min(400px,100vw)] flex-col border-l border-line bg-[#0B0E15]/97 shadow-[-20px_0_40px_rgba(0,0,0,.5)] backdrop-blur"
+            className="fixed top-0 right-0 bottom-0 z-[70] flex w-[min(400px,100vw)] flex-col border-l border-line bg-ink/97 shadow-[-20px_0_40px_rgba(0,0,0,.5)] backdrop-blur"
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
@@ -97,7 +97,7 @@ export default function DevPanel() {
           >
             <header className="flex items-center justify-between border-b border-line px-4 py-3">
               <div>
-                <p className="m-0 font-mono text-[10.5px] tracking-[0.2em] text-[#C4B5FD] uppercase">Modo dev · Shift + D</p>
+                <p className="m-0 font-mono text-[10.5px] tracking-[0.2em] text-noite uppercase">Modo dev · Shift + D</p>
                 <h2 className="m-0 text-base font-bold">Painel de desenvolvimento</h2>
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Fechar painel" className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-panel-2 hover:text-soft">
@@ -139,10 +139,10 @@ function Btn({ children, onClick, tone = 'default', disabled, pressed }: { child
       aria-pressed={pressed}
       className={`rounded-lg border px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-40 ${
         tone === 'danger'
-          ? 'border-[#5A1C2A] bg-[#2A0F16] text-[#FDA4AF] hover:bg-[#3A1420]'
+          ? 'border-erro/40 bg-erro/10 text-erro hover:bg-erro/15'
           : pressed
-            ? 'border-[#5AA7FF] bg-[#10233F] text-white'
-            : 'border-line bg-panel-2 text-soft hover:bg-[#1C2436]'
+            ? 'border-accent bg-accent/15 text-fg'
+            : 'border-line bg-panel-2 text-soft hover:bg-line'
       }`}
     >
       {children}
@@ -476,7 +476,7 @@ function Safety({ onStatus }: { onStatus: (s: string) => void }) {
           </Btn>
         ) : (
           <>
-            <span className="text-[12px] text-[#FDA4AF]">Apagar o cache local do app? A conta não é afetada.</span>
+            <span className="text-[12px] text-erro">Apagar o cache local do app? A conta não é afetada.</span>
             <Btn
               tone="danger"
               onClick={async () => {

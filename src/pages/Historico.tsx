@@ -22,8 +22,11 @@ interface DayCell {
 /** Verde proporcional à conclusão; cinza para dias com registro e nada feito. */
 function cellStyle(c: DayCell) {
   if (c.future || !c.recorded || c.total === 0) return undefined
-  if (c.done === 0) return { background: '#1A1F2B' }
-  return { background: `rgba(34, 197, 94, ${0.18 + 0.72 * c.pct})`, color: c.pct >= 0.6 ? '#06210F' : undefined }
+  if (c.done === 0) return { background: 'var(--color-panel-2)' }
+  // Dois trechos para o número do dia passar 4.5:1: abaixo de 50% o verde fica escuro (número claro);
+  // a partir de 50% ele clareia de uma vez (número escuro).
+  const strength = c.pct < 0.5 ? 0.14 + 0.52 * c.pct : 0.55 + 0.9 * (c.pct - 0.5)
+  return { background: `color-mix(in srgb, var(--color-ok) ${Math.round(strength * 100)}%, var(--color-panel-2))`, color: c.pct >= 0.5 ? 'var(--color-ink)' : undefined }
 }
 
 export function Historico({ goToday }: { goToday: () => void }) {
@@ -90,7 +93,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
           <h1 className="m-0 mt-1 text-3xl font-extrabold tracking-tight">{formatMonth(month)}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => changeMonth(-1)} aria-label="Mês anterior" className="grid h-10 w-10 place-items-center rounded-full border border-line bg-panel text-soft hover:text-white">
+          <button type="button" onClick={() => changeMonth(-1)} aria-label="Mês anterior" className="grid h-10 w-10 place-items-center rounded-full border border-line bg-panel text-soft hover:text-fg">
             <Icon name="chevron-left" size={16} />
           </button>
           {!isCurrentMonth && (
@@ -100,7 +103,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
                 setMonth(new Date(today.getFullYear(), today.getMonth(), 1))
                 select(todayKey)
               }}
-              className="rounded-full border border-line bg-panel px-4 py-2 text-sm font-semibold text-soft hover:text-white"
+              className="rounded-full border border-line bg-panel px-4 py-2 text-sm font-semibold text-soft hover:text-fg"
             >
               Mês atual
             </button>
@@ -110,7 +113,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
             onClick={() => changeMonth(1)}
             disabled={isCurrentMonth}
             aria-label="Próximo mês"
-            className="grid h-10 w-10 place-items-center rounded-full border border-line bg-panel text-soft hover:text-white disabled:opacity-30"
+            className="grid h-10 w-10 place-items-center rounded-full border border-line bg-panel text-soft hover:text-fg disabled:opacity-30"
           >
             <Icon name="chevron-right" size={16} />
           </button>
@@ -152,11 +155,11 @@ export function Historico({ goToday }: { goToday: () => void }) {
                     title={label}
                     style={cellStyle(c)}
                     className={`relative grid aspect-square place-items-center rounded-lg border font-mono text-sm transition-shadow disabled:cursor-default disabled:opacity-25 ${
-                      isSel ? 'border-white shadow-[0_0_0_2px_rgba(255,255,255,.25)]' : 'border-line'
+                      isSel ? 'border-fg shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-fg)_25%,transparent)]' : 'border-line'
                     } ${c.recorded && c.total ? '' : 'text-muted'}`}
                   >
                     {c.date.getDate()}
-                    {c.key === todayKey && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-foco" aria-hidden="true" />}
+                    {c.key === todayKey && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-accent" aria-hidden="true" />}
                   </button>
                 )
               })}
@@ -167,12 +170,12 @@ export function Historico({ goToday }: { goToday: () => void }) {
                 <span className="h-3 w-3 rounded-[3px] border border-line" /> sem registro
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-[3px] bg-[#1A1F2B]" /> nada feito
+                <span className="h-3 w-3 rounded-[3px] bg-panel-2" /> nada feito
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-[3px]" style={{ background: 'rgba(34,197,94,.3)' }} />
-                <span className="h-3 w-3 rounded-[3px]" style={{ background: 'rgba(34,197,94,.6)' }} />
-                <span className="h-3 w-3 rounded-[3px]" style={{ background: 'rgba(34,197,94,.9)' }} /> mais completo
+                <span className="h-3 w-3 rounded-[3px]" style={{ background: 'color-mix(in srgb, var(--color-ok) 30%, var(--color-panel-2))' }} />
+                <span className="h-3 w-3 rounded-[3px]" style={{ background: 'color-mix(in srgb, var(--color-ok) 60%, var(--color-panel-2))' }} />
+                <span className="h-3 w-3 rounded-[3px]" style={{ background: 'color-mix(in srgb, var(--color-ok) 90%, var(--color-panel-2))' }} /> mais completo
               </span>
             </div>
           </Panel>
@@ -180,10 +183,10 @@ export function Historico({ goToday }: { goToday: () => void }) {
 
         {/* Detalhe do dia selecionado */}
         <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-5">
-          <section className="overflow-hidden rounded-[22px] border border-line bg-[#0B0E15]">
+          <section className="overflow-hidden rounded-[22px] border border-line bg-ink">
             <header className="flex flex-wrap items-center justify-between gap-4 border-b border-line px-5 py-4">
               <div className="flex items-center gap-4">
-                <ProgressRing pct={sel.pct} size={56} stroke={5} color="#22C55E">
+                <ProgressRing pct={sel.pct} size={56} stroke={5} color="var(--color-ok)">
                   <span className="text-xs">{Math.round(sel.pct * 100)}%</span>
                 </ProgressRing>
                 <div className="flex flex-col">
@@ -194,7 +197,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
                 </div>
               </div>
               {isToday ? (
-                <button type="button" onClick={goToday} className="rounded-full bg-foco-strong px-4 py-2 text-xs font-bold text-white">
+                <button type="button" onClick={goToday} className="rounded-full bg-accent px-4 py-2 text-xs font-bold text-ink">
                   Abrir no Hoje
                 </button>
               ) : (
@@ -203,7 +206,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
                     type="button"
                     onClick={() => setEditing(!editing)}
                     aria-pressed={editing}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold ${editing ? 'bg-ok text-[#06210F]' : 'bg-panel-2 text-soft'}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold ${editing ? 'bg-ok text-ink' : 'bg-panel-2 text-soft'}`}
                   >
                     <Icon name={editing ? 'check' : 'edit'} size={12} /> {editing ? 'Concluir edição' : 'Corrigir dia'}
                   </button>
@@ -222,7 +225,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
           </section>
 
           {(selNote || editing) && (
-            <Panel title="Revisão da noite" icon="note" color="#A78BFA" help="revisao">
+            <Panel title="Revisão da noite" icon="note" color="var(--color-noite)" help="revisao">
               {editing ? (
                 <textarea
                   value={selNote ?? ''}
@@ -230,7 +233,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
                   rows={4}
                   aria-label="Nota do dia"
                   placeholder="Como foi esse dia?"
-                  className="resize-y rounded-xl border border-line bg-[#0B0E15] p-3 font-mono text-sm text-soft placeholder:text-[#6F788A]"
+                  className="resize-y rounded-xl border border-line bg-ink p-3 font-mono text-sm text-soft placeholder:text-muted"
                 />
               ) : (
                 <p className="m-0 font-mono text-sm whitespace-pre-wrap text-soft">{selNote}</p>

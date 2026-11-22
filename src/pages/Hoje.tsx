@@ -64,7 +64,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
 
       <div className="flex flex-wrap items-start gap-5">
         {/* Lista do dia, na ordem das rotinas */}
-        <section className="min-w-0 flex-[999_1_560px] overflow-hidden rounded-[22px] border border-line bg-[#0B0E15]">
+        <section className="min-w-0 flex-[999_1_560px] overflow-hidden rounded-[22px] border border-line bg-ink">
           <DayList
             items={items}
             activeId={activeId}
@@ -75,7 +75,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
             empty={
               <>
                 <p className="m-0 text-muted">Nenhum bloco para hoje.</p>
-                <button type="button" onClick={goRoutines} className="rounded-full bg-ok px-4 py-2 text-sm font-bold text-[#06210F]">
+                <button type="button" onClick={goRoutines} className="rounded-full bg-ok px-4 py-2 text-sm font-bold text-ink">
                   Criar uma rotina
                 </button>
               </>
@@ -91,7 +91,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
               <div className="absolute h-[160px] w-[160px] rounded-full border transition-colors duration-500" style={{ borderColor: `${look.color}22` }} />
               <Pet kind={pet.kind} state={pet.state} sleeping={pet.sleeping} phase={pet.phase} accessories={pet.accessories} size={140} />
             </div>
-            <p className="m-0 font-mono text-xs tracking-[0.2em] uppercase transition-colors duration-500" style={{ color: pet.sleeping ? '#C4B5FD' : textColor(look.color) }}>
+            <p className="m-0 font-mono text-xs tracking-[0.2em] uppercase transition-colors duration-500" style={{ color: pet.sleeping ? 'var(--color-noite)' : textColor(look.color) }}>
               {pet.name && pet.isCompanion ? `${pet.name} · ` : ''}
               {pet.sleeping ? 'Dormindo' : look.label}
             </p>
@@ -101,7 +101,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="m-0 w-full rounded-2xl border border-[#2A3242] bg-panel-2 px-4 py-3 text-sm text-soft"
+                className="m-0 w-full rounded-2xl border border-line-2 bg-panel-2 px-4 py-3 text-sm text-soft"
                 aria-live="polite"
               >
                 {message}
@@ -113,9 +113,9 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
             <Panel title="Painel do dia" icon="gauge" help="painel-do-dia">
               <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
                 {counters.map((c) => (
-                  <div key={c.block.id} className="flex flex-col gap-1 rounded-xl border border-dashed border-[#2B3A55] bg-[#0F1520] p-3">
+                  <div key={c.block.id} className="flex flex-col gap-1 rounded-xl border border-dashed border-line-2 bg-ink p-3">
                     <span className="truncate font-mono text-[11px] text-muted">{c.block.name}</span>
-                    <span className={`text-2xl font-extrabold ${c.done ? 'text-ok' : 'text-[#5AA7FF]'}`}>
+                    <span className={`text-2xl font-extrabold ${c.done ? 'text-ok' : 'text-accent'}`}>
                       {c.log.value ?? 0}
                       <span className="text-sm font-semibold text-muted">/{c.block.target}</span>
                     </span>
@@ -126,7 +126,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
             </Panel>
           )}
 
-          <Panel title="Revisão da noite" icon="note" color="#A78BFA" help="revisao">
+          <Panel title="Revisão da noite" icon="note" color="var(--color-noite)" help="revisao">
             <label htmlFor="nota" className="text-sm text-muted">
               Como foi o seu dia?
             </label>
@@ -136,7 +136,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
               onChange={(e) => setNote(date, e.target.value)}
               rows={4}
               placeholder="O que funcionou, o que travou, o que mudar amanhã…"
-              className="resize-y rounded-xl border border-line bg-[#0B0E15] p-3 font-mono text-sm text-soft placeholder:text-[#6F788A]"
+              className="resize-y rounded-xl border border-line bg-ink p-3 font-mono text-sm text-soft placeholder:text-muted"
             />
           </Panel>
         </div>

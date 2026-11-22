@@ -91,7 +91,7 @@ export function Privacidade({ onBack }: { onBack: () => void }) {
       {CONTATO && (
         <Section title="Fale com a gente">
           <p className="m-0">
-            Dúvidas sobre privacidade: <a href={`mailto:${CONTATO}`} className="font-semibold text-[#5AA7FF] underline">{CONTATO}</a>
+            Dúvidas sobre privacidade: <a href={`mailto:${CONTATO}`} className="font-semibold text-accent underline">{CONTATO}</a>
           </p>
         </Section>
       )}

@@ -35,16 +35,16 @@ export function SyncNotice() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
-          className="fixed bottom-3 left-3 z-[55] flex max-w-[min(420px,calc(100vw-90px))] items-center gap-3 rounded-2xl border border-[#4A3A12] bg-[#17140C]/95 px-3.5 py-2.5 text-[12.5px] text-[#F5DFA6] shadow-[0_8px_24px_rgba(0,0,0,.4)] backdrop-blur"
+          className="fixed bottom-3 left-3 z-[55] flex max-w-[min(420px,calc(100vw-90px))] items-center gap-3 rounded-2xl border border-alerta/30 bg-panel-2/95 px-3.5 py-2.5 text-[12.5px] text-alerta shadow-[0_8px_24px_rgba(0,0,0,.4)] backdrop-blur"
         >
           <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-alerta" />
           <span className="flex-1">{text}</span>
           {state === 'retrying' || (offline && pending > 0) ? (
-            <button type="button" onClick={() => void flushNow()} className="shrink-0 rounded-full border border-[#6B5420] px-2.5 py-1 font-semibold hover:bg-[#2A2210]">
+            <button type="button" onClick={() => void flushNow()} className="shrink-0 rounded-full border border-alerta/40 px-2.5 py-1 font-semibold hover:bg-alerta/10">
               Tentar agora
             </button>
           ) : dropped > hideDropped ? (
-            <button type="button" onClick={() => setHideDropped(dropped)} className="shrink-0 rounded-full border border-[#6B5420] px-2.5 py-1 font-semibold hover:bg-[#2A2210]">
+            <button type="button" onClick={() => setHideDropped(dropped)} className="shrink-0 rounded-full border border-alerta/40 px-2.5 py-1 font-semibold hover:bg-alerta/10">
               Ok
             </button>
           ) : null}

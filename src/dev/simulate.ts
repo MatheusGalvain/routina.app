@@ -27,7 +27,7 @@ export function testRoutine(areas: Area[] = DEFAULT_AREAS): Routine {
       }
     }),
   )
-  return { id: uid(), name: 'Rotina de teste (dev)', color: '#2DD4BF', days: [0, 1, 2, 3, 4, 5, 6], blocks, dev: true }
+  return { id: uid(), name: 'Rotina de teste (dev)', color: '#A6E3DA', days: [0, 1, 2, 3, 4, 5, 6], blocks, dev: true }
 }
 
 const ref = (r: Routine) => ({ id: r.id, name: r.name, color: r.color })

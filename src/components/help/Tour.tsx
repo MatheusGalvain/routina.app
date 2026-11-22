@@ -99,14 +99,14 @@ export function Tour() {
       {rect && (
         <motion.div
           aria-hidden="true"
-          className="pointer-events-none absolute rounded-full ring-2 ring-[#5AA7FF]"
+          className="pointer-events-none absolute rounded-full ring-2 ring-accent"
           initial={false}
           animate={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
           transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-          style={{ boxShadow: '0 0 0 9999px rgba(3, 5, 10, 0.62)' }}
+          style={{ boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.62)' }}
         />
       )}
-      {!rect && <div aria-hidden="true" className="absolute inset-0 bg-[rgba(3,5,10,0.62)]" />}
+      {!rect && <div aria-hidden="true" className="absolute inset-0 bg-black/60" />}
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -116,7 +116,7 @@ export function Tour() {
           aria-modal="true"
           aria-labelledby={titleId}
           tabIndex={-1}
-          className={`absolute flex flex-col gap-3 border border-[#2A3242] bg-panel-2 p-4 shadow-[0_16px_48px_rgba(0,0,0,.55)] outline-none ${
+          className={`absolute flex flex-col gap-3 border border-line-2 bg-panel-2 p-4 shadow-[0_16px_48px_rgba(0,0,0,.55)] outline-none ${
             mobile ? 'inset-x-0 bottom-0 rounded-t-[24px] border-b-0 pb-6' : 'rounded-2xl'
           }`}
           style={mobile ? undefined : { ...cardStyle, ...(rect ? {} : { top: -9999 }) }}
@@ -131,7 +131,7 @@ export function Tour() {
               {/* O pet apontando para o "?". */}
               <motion.span
                 aria-hidden="true"
-                className="absolute -right-2 text-[#9CC8FF]"
+                className="absolute -right-2 text-accent"
                 style={{ [pointUp ? 'top' : 'bottom']: -6, rotate: pointUp ? 0 : 180 }}
                 animate={{ y: pointUp ? [0, -4, 0] : [0, 4, 0] }}
                 transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
@@ -159,7 +159,7 @@ export function Tour() {
                   Voltar
                 </button>
               )}
-              <button type="button" onClick={() => (last ? stop() : go(index + 1))} className="min-h-11 rounded-full bg-foco-strong px-5 text-sm font-bold text-white">
+              <button type="button" onClick={() => (last ? stop() : go(index + 1))} className="min-h-11 rounded-full bg-accent px-5 text-sm font-bold text-ink">
                 {last ? 'Concluir' : 'Próximo'}
               </button>
             </div>

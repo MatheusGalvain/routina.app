@@ -58,22 +58,22 @@ export function CornerSky({ areas, days, aura, shadows = [] }: { areas: Area[]; 
     <>
       <defs>
         <linearGradient id={`sky-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#0B0F1C" />
-          <stop offset="1" stopColor="#0E1320" />
+          <stop offset="0" style={{ stopColor: 'var(--color-ink)' }} />
+          <stop offset="1" style={{ stopColor: 'var(--color-panel)' }} />
         </linearGradient>
         <radialGradient id={`halo-${id}`}>
           <stop offset="0" stopOpacity=".2" style={{ stopColor: aura, transition: 'stop-color .6s ease' }} />
           <stop offset="1" stopOpacity="0" style={{ stopColor: aura, transition: 'stop-color .6s ease' }} />
         </radialGradient>
         <radialGradient id={`shadow-${id}`}>
-          <stop offset="0" stopColor="#000" stopOpacity=".6" />
-          <stop offset="1" stopColor="#000" stopOpacity="0" />
+          <stop offset="0" stopColor="black" stopOpacity=".6" />
+          <stop offset="1" stopColor="black" stopOpacity="0" />
         </radialGradient>
       </defs>
 
       <rect width={W} height={H} fill={`url(#sky-${id})`} />
       {DUST.map((d, i) => (
-        <circle key={i} cx={d.x} cy={d.y} r={d.r} fill="#D5DAE3" opacity={d.o} />
+        <circle key={i} cx={d.x} cy={d.y} r={d.r} style={{ fill: 'var(--color-fg)' }} opacity={d.o} />
       ))}
       <ellipse cx="200" cy="140" rx="118" ry="88" fill={`url(#halo-${id})`} />
 
@@ -105,7 +105,7 @@ export function CornerSky({ areas, days, aura, shadows = [] }: { areas: Area[]; 
                 <g key={s} className="twinkle" style={{ animationDelay: `${(s * 0.9 + i * 0.6) % 4}s` }}>
                   <circle cx={x} cy={y} r={4.5} fill={color} opacity={0.18} />
                   <circle cx={x} cy={y} r={1.9} fill={color} />
-                  <circle cx={x} cy={y} r={0.8} fill="#FFFFFF" opacity={0.85} />
+                  <circle cx={x} cy={y} r={0.8} style={{ fill: 'var(--color-fg)' }} opacity={0.85} />
                 </g>
               ) : (
                 <circle key={s} cx={x} cy={y} r={1.4} fill={color} opacity={0.12} />
@@ -116,7 +116,7 @@ export function CornerSky({ areas, days, aura, shadows = [] }: { areas: Area[]; 
       })}
 
       {/* Chão: só uma linha fina e a sombra do pet. */}
-      <path d={`M0,${FLOOR} H${W}`} stroke="#1C2230" strokeWidth="1" />
+      <path d={`M0,${FLOOR} H${W}`} style={{ stroke: 'var(--color-line-2)' }} strokeWidth="1" />
       <ellipse cx="200" cy={FLOOR + 1} rx="44" ry="5" fill={`url(#shadow-${id})`} />
       {shadows.map((x) => (
         <ellipse key={x} cx={x} cy={FLOOR + 1} rx="17" ry="3" fill={`url(#shadow-${id})`} />

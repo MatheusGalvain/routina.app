@@ -78,12 +78,12 @@ function QuickTask({ onClose }: { onClose: () => void }) {
             maxLength={200}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ex.: Ligar para a vó, pagar a conta de luz"
-            className="min-h-11 w-full rounded-lg border border-line bg-[#0B0E15] px-3 text-sm text-soft placeholder:text-[#6F788A]"
+            className="min-h-11 w-full rounded-lg border border-line bg-ink px-3 text-sm text-soft placeholder:text-muted"
           />
         </label>
         <label className="flex flex-col gap-1.5 text-xs text-muted">
           Área da vida
-          <select value={areaId} onChange={(e) => setAreaId(e.target.value)} className="min-h-11 w-full rounded-lg border border-line bg-[#0B0E15] px-3 text-sm text-soft">
+          <select value={areaId} onChange={(e) => setAreaId(e.target.value)} className="min-h-11 w-full rounded-lg border border-line bg-ink px-3 text-sm text-soft">
             {areas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -91,7 +91,7 @@ function QuickTask({ onClose }: { onClose: () => void }) {
             ))}
           </select>
         </label>
-        <button type="submit" disabled={!name.trim()} className="min-h-11 rounded-full bg-ok px-5 text-sm font-bold text-[#06210F] disabled:opacity-40 sm:self-start">
+        <button type="submit" disabled={!name.trim()} className="min-h-11 rounded-full bg-ok px-5 text-sm font-bold text-ink disabled:opacity-40 sm:self-start">
           + Adicionar para hoje
         </button>
       </form>
@@ -138,9 +138,9 @@ function DaySummary({ items, onClose, openToday }: { items: TodayItem[]; onClose
           })}
         </ul>
       )}
-      {note && <blockquote className="m-0 rounded-xl border-l-2 border-[#A78BFA] bg-panel-2 px-4 py-3 text-sm text-soft [overflow-wrap:anywhere]">{note}</blockquote>}
+      {note && <blockquote className="m-0 rounded-xl border-l-2 border-noite bg-panel-2 px-4 py-3 text-sm text-soft [overflow-wrap:anywhere]">{note}</blockquote>}
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onClose} className="min-h-11 rounded-full bg-foco-strong px-5 text-sm font-bold text-white">
+        <button type="button" onClick={onClose} className="min-h-11 rounded-full bg-accent px-5 text-sm font-bold text-ink">
           Fechar
         </button>
         <button
@@ -225,7 +225,7 @@ export function PrimaryActionButton({ items, goToday }: { items: TodayItem[]; go
 
   return (
     <div className="flex w-full flex-col items-stretch gap-2.5 sm:w-auto sm:max-w-[380px] sm:items-end">
-      <div className="relative flex items-center gap-2.5 rounded-2xl border border-[#2A3242] bg-panel-2 py-2 pr-4 pl-2">
+      <div className="relative flex items-center gap-2.5 rounded-2xl border border-line-2 bg-panel-2 py-2 pr-4 pl-2">
         <motion.span
           className="shrink-0"
           animate={waking ? { y: [0, -10, 0, -4, 0], rotate: [0, -8, 8, 0] } : { y: 0, rotate: 0 }}
@@ -247,13 +247,13 @@ export function PrimaryActionButton({ items, goToday }: { items: TodayItem[]; go
           </motion.p>
         </AnimatePresence>
         {/* Biquinho do balão, apontando para o botão. */}
-        <span aria-hidden="true" className="absolute -bottom-[7px] right-10 h-3 w-3 rotate-45 border-r border-b border-[#2A3242] bg-panel-2" />
+        <span aria-hidden="true" className="absolute -bottom-[7px] right-10 h-3 w-3 rotate-45 border-r border-b border-line-2 bg-panel-2" />
       </div>
       <button
         type="button"
         disabled={waking}
         onClick={() => run(primary.action)}
-        className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full bg-foco-strong px-5 py-3.5 text-[15px] font-bold text-white shadow-[0_0_24px_rgba(30,136,255,.35)] disabled:opacity-70"
+        className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-full bg-accent px-5 py-3.5 text-[15px] font-bold text-ink shadow-[0_0_24px_color-mix(in_srgb,var(--color-accent)_30%,transparent)] disabled:opacity-70"
       >
         <Icon name="play" size={14} /> <span className="min-w-0 truncate">{primary.label}</span>
       </button>

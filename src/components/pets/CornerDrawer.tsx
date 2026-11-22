@@ -43,7 +43,7 @@ export function CornerDrawer() {
             transition={{ type: 'spring', stiffness: 380, damping: 38 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-[#2A3242]" aria-hidden="true" />
+            <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-line-2" aria-hidden="true" />
             <header className="flex items-center justify-between gap-3 px-5 pt-3 pb-2">
               <div>
                 <p className="m-0 font-mono text-[11px] tracking-wider text-muted uppercase">Espaço {SIDE[slot]}</p>

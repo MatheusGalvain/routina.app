@@ -17,7 +17,7 @@ const PARTICLES = Array.from({ length: 18 }, (_, i) => {
   return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist, size: 5 + (i % 4) * 2, star: i % 3 === 0, delay: (i % 5) * 0.04 }
 })
 
-const COLORS = ['#FFD34D', '#22C55E', '#5AA7FF', '#FB7185', '#C4B5FD']
+const COLORS = ['var(--color-alerta)', 'var(--color-ok)', 'var(--color-accent)', 'var(--color-area-social)', 'var(--color-noite)']
 
 /** Comemorações do companheiro: nova fase e acessório desbloqueado. Uma por vez, da fila. */
 export function PetCelebration() {
@@ -101,8 +101,8 @@ function TrophyArrival({ trophy, tier, onClose }: { trophy: TrophyId; tier: Trop
               writeSlots(exposeTrophy(currentSlots(), trophy, tier))
               onClose()
             }}
-            className="min-h-11 rounded-full px-5 py-2.5 text-sm font-bold text-[#1A1405]"
-            style={{ background: tier === 4 ? '#DCCBFF' : color }}
+            className="min-h-11 rounded-full px-5 py-2.5 text-sm font-bold text-ink"
+            style={{ background: tier === 4 ? 'var(--color-noite)' : color }}
           >
             Expor no cantinho
           </button>
@@ -121,7 +121,7 @@ const DUST = Array.from({ length: 16 }, (_, i) => {
   const dist = 80 + (i % 4) * 22
   return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist * 0.8, size: 2.5 + (i % 3) * 1.5, star: i % 2 === 0, delay: (i % 6) * 0.06 }
 })
-const DUST_COLORS = ['#FFFFFF', '#E4D6FF', '#CDE9FF', '#FFD9EC']
+const DUST_COLORS = ['var(--color-fg)', 'var(--color-area-mente)', 'var(--color-accent)', 'var(--color-area-social)']
 
 /**
  * Chegada do coelho: a silhueta acende, a poeira de estrela se espalha e ele dá um pulinho.
@@ -205,7 +205,7 @@ function SecretArrival({ onClose }: { onClose: () => void }) {
           <h2 id="secret-title" className="m-0 text-xl font-extrabold">
             Alguém novo apareceu no seu cantinho.
           </h2>
-          <p className="m-0 w-full rounded-2xl border border-[#2A3242] bg-panel-2 px-4 py-3 text-sm text-soft">
+          <p className="m-0 w-full rounded-2xl border border-line-2 bg-panel-2 px-4 py-3 text-sm text-soft">
             Um coelho veio fazer companhia. Ele fica por aqui, e você pode escolhê-lo como favorito quando quiser.
           </p>
           <div className="mt-1 flex flex-wrap justify-center gap-2">
@@ -216,7 +216,7 @@ function SecretArrival({ onClose }: { onClose: () => void }) {
                 chooseFavorite('coelho')
                 onClose()
               }}
-              className="rounded-full bg-[#DCCBFF] px-5 py-2.5 text-sm font-bold text-[#1E1640]"
+              className="rounded-full bg-noite px-5 py-2.5 text-sm font-bold text-ink"
             >
               {hasCompanion ? 'Trocar para o coelho' : 'Escolher como favorito'}
             </button>
@@ -301,7 +301,7 @@ function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'pha
           <motion.div
             aria-hidden="true"
             className="absolute h-[170px] w-[170px] rounded-full border-2"
-            style={{ borderColor: '#FFD34D66' }}
+            style={{ borderColor: 'color-mix(in srgb, var(--color-alerta) 40%, transparent)' }}
             initial={{ scale: 0.4, opacity: 1 }}
             animate={{ scale: 1.6, opacity: 0 }}
             transition={{ duration: 1.2, ease: 'easeOut', repeat: 2, repeatDelay: 0.6 }}
@@ -328,13 +328,13 @@ function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'pha
           </motion.div>
         </div>
 
-        <p className="m-0 font-mono text-[11px] tracking-[0.2em] uppercase" style={{ color: textColor('#FFD34D') }}>
+        <p className="m-0 font-mono text-[11px] tracking-[0.2em] uppercase" style={{ color: 'var(--color-alerta)' }}>
           {kicker}
         </p>
         <h2 id="celebration-title" className="m-0 text-xl font-extrabold">
           {title}
         </h2>
-        <p className="m-0 w-full rounded-2xl border border-[#2A3242] bg-panel-2 px-4 py-3 text-sm text-soft">{message}</p>
+        <p className="m-0 w-full rounded-2xl border border-line-2 bg-panel-2 px-4 py-3 text-sm text-soft">{message}</p>
 
         <div className="mt-1 flex flex-wrap justify-center gap-2">
           {item && view.kind ? (
@@ -346,7 +346,7 @@ function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'pha
                   useRotina.getState().equip(item.slot, item.id)
                   onClose()
                 }}
-                className="rounded-full bg-ok px-5 py-2.5 text-sm font-bold text-[#06210F]"
+                className="rounded-full bg-ok px-5 py-2.5 text-sm font-bold text-ink"
               >
                 Usar agora
               </button>
@@ -355,7 +355,7 @@ function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'pha
               </button>
             </>
           ) : (
-            <button type="button" autoFocus onClick={onClose} className="rounded-full bg-ok px-5 py-2.5 text-sm font-bold text-[#06210F]">
+            <button type="button" autoFocus onClick={onClose} className="rounded-full bg-ok px-5 py-2.5 text-sm font-bold text-ink">
               Oba!
             </button>
           )}

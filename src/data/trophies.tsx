@@ -24,7 +24,7 @@ export const TIERS: Record<TrophyTier, { name: string; color: string }> = {
 }
 export const TIER_LIST: TrophyTier[] = [1, 2, 3, 4]
 
-export const NEUTRAL = '#2A3142'
+export const NEUTRAL = '#3A3A3A'
 
 /** O que os troféus consultam (tudo vem de src/lib/stats.ts). */
 export type TrophyStats = Pick<Stats, 'bestStreak' | 'blocksDone' | 'activeWeeks' | 'areaDaysTotal'>

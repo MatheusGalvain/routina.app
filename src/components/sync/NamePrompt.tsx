@@ -49,11 +49,11 @@ export function NamePrompt() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder={fallback}
                 autoComplete="nickname"
-                className="min-h-11 rounded-xl border border-line bg-[#0B0E15] px-3 text-soft placeholder:text-[#6F788A]"
+                className="min-h-11 rounded-xl border border-line bg-ink px-3 text-soft placeholder:text-muted"
               />
             </label>
             <div className="flex w-full flex-wrap justify-center gap-2">
-              <button type="submit" disabled={!name.trim()} className="min-h-11 rounded-full bg-foco-strong px-5 text-sm font-bold text-white disabled:opacity-40">
+              <button type="submit" disabled={!name.trim()} className="min-h-11 rounded-full bg-accent px-5 text-sm font-bold text-ink disabled:opacity-40">
                 Salvar
               </button>
               <button type="button" onClick={() => setDisplayName('')} className="min-h-11 rounded-full border border-line px-5 text-sm font-semibold text-soft hover:bg-panel-2">

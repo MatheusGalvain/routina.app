@@ -1,7 +1,7 @@
 import type { AccessoryId, Area, Block, UserTemplate, BlockLog, Companion, CornerSlot, CornerSlots, DayLog, PetProgress, PetPhase, Routine, Slot, TrophyMap, UnlockId } from '../types'
 import { TROPHY_BY_ID, type TrophyId, type TrophyTier } from '../data/trophies'
 import { EMPTY_SLOTS } from '../lib/corner'
-import { AREA_NAME_MAX, DEFAULT_AREAS, normalizeAreas } from '../data/areas'
+import { AREA_NAME_MAX, DEFAULT_AREAS, normalizeAreas, pastelArea, pastelRoutine } from '../data/areas'
 
 /**
  * Conversão entre o store (formato do app) e as linhas das tabelas do Supabase.
@@ -175,13 +175,14 @@ export function toStore(r: RemoteData) {
 
   const routines: Routine[] = [...r.routines]
     .sort((a, c) => Number(a.position) - Number(c.position))
-    .map((x) => ({ id: String(x.id), name: String(x.name), color: String(x.color), days: (x.days as number[]).map(Number), blocks: byRoutine.get(String(x.id)) ?? [] }))
+    .map((x) => ({ id: String(x.id), name: String(x.name), color: pastelRoutine(String(x.color)), days: (x.days as number[]).map(Number), blocks: byRoutine.get(String(x.id)) ?? [] }))
 
   const logs: Record<string, DayLog> = {}
   for (const d of r.dayLogs) {
     const day: DayLog = { blocks: {} }
     if (d.note !== null) day.note = String(d.note)
-    if (d.plan !== null) day.plan = d.plan as DayLog['plan']
+    if (d.plan !== null)
+      day.plan = (d.plan as NonNullable<DayLog['plan']>).map((p) => ({ ...p, routine: { ...p.routine, color: pastelRoutine(p.routine.color) } }))
     logs[String(d.date)] = day
   }
   for (const l of r.blockLogs) {
@@ -219,7 +220,7 @@ export function toStore(r: RemoteData) {
       .map((t) => ({
         id: String(t.id),
         name: String(t.name),
-        color: String(t.color),
+        color: pastelRoutine(String(t.color)),
         days: (t.days as number[]).map(Number),
         blocks: ((t.blocks as Row[] | null) ?? []).map(blockFromRow),
       }))
@@ -230,7 +231,7 @@ export function toStore(r: RemoteData) {
           r.areas.map((a) => ({
             id: String(a.id),
             name: String(a.name),
-            color: String(a.color),
+            color: pastelArea(String(a.color)),
             ...(a.icon ? { icon: String(a.icon) } : {}),
             position: Number(a.position),
             isDefault: !!a.is_default,

@@ -54,7 +54,7 @@ export function LocalImportPrompt() {
                   autoFocus
                   disabled={step === 'sending'}
                   onClick={accept}
-                  className="rounded-full bg-ok px-5 py-2.5 text-sm font-bold text-[#06210F] disabled:opacity-60"
+                  className="rounded-full bg-ok px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-60"
                 >
                   {step === 'sending' ? 'Enviando…' : 'Levar para a minha conta'}
                 </button>
@@ -81,7 +81,7 @@ export function LocalImportPrompt() {
                   ? 'Agora suas rotinas aparecem em qualquer aparelho em que você entrar.'
                   : 'Seus dados já estão no app e vão subir para a conta assim que a conexão voltar.'}
               </p>
-              <button type="button" autoFocus onClick={() => setClosed(true)} className="rounded-full bg-ok px-5 py-2.5 text-sm font-bold text-[#06210F]">
+              <button type="button" autoFocus onClick={() => setClosed(true)} className="rounded-full bg-ok px-5 py-2.5 text-sm font-bold text-ink">
                 Continuar
               </button>
             </>

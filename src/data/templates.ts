@@ -14,7 +14,7 @@ export const TEMPLATES: Template[] = [
     key: 'manha',
     name: 'Rotina da manhã',
     description: 'Água, cama arrumada, alongamento e o plano do dia',
-    color: '#FFB020',
+    color: '#FFD59E',
     days: ALL,
     blocks: [
       { name: 'Beber água', type: 'contador', areaId: 'corpo', target: 8, unit: 'copos', step: 1 },
@@ -27,7 +27,7 @@ export const TEMPLATES: Template[] = [
     key: 'home-office',
     name: 'Dia de home office',
     description: 'Blocos de foco, pausas e fechamento do dia',
-    color: '#1E88FF',
+    color: '#A9BFFF',
     days: WEEK,
     blocks: [
       { name: 'Foco profundo', type: 'contador', areaId: 'foco', target: 4, unit: 'pomodoros', step: 1, minutes: 100 },
@@ -40,7 +40,7 @@ export const TEMPLATES: Template[] = [
     key: 'noite',
     name: 'Noite tranquila',
     description: 'Desligar telas, preparar o amanhã e dormir no horário',
-    color: '#8B5CF6',
+    color: '#CDB8FF',
     days: ALL,
     blocks: [
       { name: 'Anotar gastos do dia', type: 'habito', areaId: 'financas', minutes: 5 },

@@ -8,7 +8,7 @@ import { AreaManager } from '../components/areas/AreaManager'
 import { TEMPLATES } from '../data/templates'
 import { Bar, Icon, Logo, Panel, ProgressRing } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
-import { PETS, PET_ORDER } from '../components/pets/pets'
+import { PETS, PET_ORDER, textColor } from '../components/pets/pets'
 import { PetStory } from '../components/pets/PetStory'
 import { PetCorner } from '../components/pets/PetCorner'
 import { PrimaryActionButton, type TodayTarget } from '../components/home/PrimaryAction'
@@ -21,8 +21,8 @@ const daysLabel = (days: number[]) =>
 type TemplateTab = 'sugestoes' | 'meus'
 
 const TEMPLATE_TABS: { id: TemplateTab; label: string; on: string }[] = [
-  { id: 'sugestoes', label: 'Sugestões', on: 'bg-[#FFB020]/15 text-[#FFC24B]' },
-  { id: 'meus', label: 'Meus modelos', on: 'bg-[#1E88FF]/15 text-[#9CC8FF]' },
+  { id: 'sugestoes', label: 'Sugestões', on: 'bg-alerta/15 text-alerta' },
+  { id: 'meus', label: 'Meus modelos', on: 'bg-accent/15 text-accent' },
 ]
 
 /**
@@ -59,7 +59,7 @@ function TemplatesPanel({ apply, openTemplate }: { apply: (keyOrId: string) => v
 
   return (
     <>
-      <div role="tablist" aria-label="Tipo de modelo" onKeyDown={onKeyDown} className="grid grid-cols-2 gap-1 rounded-full border border-line bg-[#0B0E15] p-1">
+      <div role="tablist" aria-label="Tipo de modelo" onKeyDown={onKeyDown} className="grid grid-cols-2 gap-1 rounded-full border border-line bg-ink p-1">
         {TEMPLATE_TABS.map((t) => {
           const selected = tab === t.id
           return (
@@ -103,10 +103,10 @@ function TemplatesPanel({ apply, openTemplate }: { apply: (keyOrId: string) => v
                   <button
                     type="button"
                     onClick={() => apply(t.key)}
-                    className="flex w-full flex-col gap-1 rounded-xl border border-[#4A3A12] bg-[#17140C] px-4 py-3.5 text-left hover:border-[#6B5418]"
+                    className="flex w-full flex-col gap-1 rounded-xl border border-alerta/30 bg-alerta/5 px-4 py-3.5 text-left hover:border-alerta/50"
                   >
                     <strong className="text-sm [overflow-wrap:anywhere]">{t.name}</strong>
-                    <span className="text-[12.5px] text-[#B5AC96]">{t.description}</span>
+                    <span className="text-[12.5px] text-muted">{t.description}</span>
                   </button>
                 </li>
               ))}
@@ -114,13 +114,13 @@ function TemplatesPanel({ apply, openTemplate }: { apply: (keyOrId: string) => v
           ) : (
             <>
               {templates.length === 0 ? (
-                <p className="m-0 rounded-xl border border-dashed border-[#24304A] px-4 py-3.5 text-[13px] text-muted">
+                <p className="m-0 rounded-xl border border-dashed border-line-2 px-4 py-3.5 text-[13px] text-muted">
                   Você ainda não tem modelos. Crie um do zero ou use "Salvar como modelo" no editor de uma rotina.
                 </p>
               ) : (
                 <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
                   {templates.map((t) => (
-                    <li key={t.id} className="flex items-stretch rounded-xl border border-[#24304A] bg-[#0D1422] hover:border-[#2E4166]">
+                    <li key={t.id} className="flex items-stretch rounded-xl border border-accent/25 bg-accent/5 hover:border-accent/50">
                       <button type="button" onClick={() => apply(t.id)} className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-3.5 text-left">
                         <span className="flex min-w-0 items-center gap-2">
                           <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} aria-hidden="true" />
@@ -134,7 +134,7 @@ function TemplatesPanel({ apply, openTemplate }: { apply: (keyOrId: string) => v
                         type="button"
                         onClick={() => openTemplate(t.id)}
                         aria-label={`Editar o modelo ${t.name}`}
-                        className="grid w-11 shrink-0 place-items-center rounded-r-xl border-l border-[#1A2336] text-muted hover:bg-[#16203A] hover:text-soft"
+                        className="grid w-11 shrink-0 place-items-center rounded-r-xl border-l border-accent/15 text-muted hover:bg-accent/10 hover:text-soft"
                       >
                         <Icon name="edit" size={16} />
                       </button>
@@ -193,7 +193,7 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2.5">
               <h1 className="m-0 text-[44px] leading-none font-extrabold tracking-tight">
-                Habbit <span className="text-[#5AA7FF]">Do</span>
+                Habbit <span className="text-accent">Do</span>
               </h1>
               <HelpButton k="inicio" />
             </div>
@@ -203,7 +203,7 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
         <PrimaryActionButton items={items} goToday={goToday} />
       </header>
 
-      <Panel title={companion.kind ? `Cantinho ${companion.name ? `de ${companion.name}` : 'do seu pet'}` : 'Cantinho do pet'} icon="paw" color="#5AA7FF" help="cantinho">
+      <Panel title={companion.kind ? `Cantinho ${companion.name ? `de ${companion.name}` : 'do seu pet'}` : 'Cantinho do pet'} icon="paw" color="var(--color-accent)" help="cantinho">
         <PetCorner autoState={computePetState(items, activeId, now)} />
       </Panel>
 
@@ -216,15 +216,15 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
                 {done} de {items.length} blocos
               </strong>
               <span className="text-sm text-muted">{next ? `Próximo: ${next.block.name}` : items.length ? 'Tudo feito por hoje' : 'Nenhum bloco para hoje'}</span>
-              {next && <span className="text-[13px] font-semibold text-[#5AA7FF]">{next.routine.name}</span>}
+              {next && <span className="text-[13px] font-semibold text-accent">{next.routine.name}</span>}
             </div>
           </div>
-          <button type="button" onClick={() => goToday()} className="mt-auto self-start rounded-full bg-foco-strong px-4 py-2 text-[13px] font-bold text-white">
+          <button type="button" onClick={() => goToday()} className="mt-auto self-start rounded-full bg-accent px-4 py-2 text-[13px] font-bold text-ink">
             Abrir o dia
           </button>
         </Panel>
 
-        <Panel title="Minhas rotinas" icon="calendar" color="#3EDC7E" help="minhas-rotinas">
+        <Panel title="Minhas rotinas" icon="calendar" color="var(--color-ok)" help="minhas-rotinas">
           {routines.length === 0 ? (
             <p className="m-0 text-sm text-muted">Você ainda não tem rotinas. Crie uma do zero ou comece por um modelo pronto.</p>
           ) : (
@@ -251,19 +251,19 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
           <button
             type="button"
             onClick={() => openRoutine(createRoutine())}
-            className="mt-auto self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-[#06210F]"
+            className="mt-auto self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-ink"
           >
             + Nova rotina
           </button>
         </Panel>
 
-        <Panel title="Os pets" icon="paw" color="#FB7185" help="os-pets">
+        <Panel title="Os pets" icon="paw" color="var(--color-area-social)" help="os-pets">
           <div className="grid grid-cols-3 gap-y-4">
             {PET_ORDER.map((k) => (
               <div key={k} className="flex flex-col items-center gap-1.5 text-center">
                 <Pet kind={k} size={64} onPoke={() => setStoryPet(k)} />
                 <span className="text-[13px] font-semibold">{PETS[k].name}</span>
-                <span className="font-mono text-[10.5px] tracking-wider uppercase" style={{ color: PETS[k].color === '#F1F3F6' ? '#C9CED8' : PETS[k].color }}>
+                <span className="font-mono text-[10.5px] tracking-wider uppercase" style={{ color: textColor(PETS[k].color) }}>
                   {PETS[k].label.split(' / ')[1]}
                 </span>
                 <button type="button" onClick={() => setStoryPet(k)} className="mt-0.5 flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-[11px] font-semibold text-muted hover:text-soft">
@@ -281,7 +281,7 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
           title="Áreas da vida"
           help="areas"
           icon="grid"
-          color="#A78BFA"
+          color="var(--color-noite)"
           className="min-w-0"
           action={
             <button
@@ -306,7 +306,7 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
                       {a.name}
                     </strong>
                     {list.length > 0 && ok === list.length && (
-                      <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-ok text-[#06210F]" aria-label="Concluído hoje">
+                      <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-ok text-ink" aria-label="Concluído hoje">
                         <Icon name="check" size={12} />
                       </span>
                     )}
@@ -319,7 +319,7 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
           </div>
         </Panel>
 
-        <Panel title="Rotinas prontas" icon="box" color="#FFB020" className="min-w-0" help="modelos">
+        <Panel title="Rotinas prontas" icon="box" color="var(--color-alerta)" className="min-w-0" help="modelos">
           <TemplatesPanel apply={applyTemplate} openTemplate={openTemplate} />
         </Panel>
       </div>

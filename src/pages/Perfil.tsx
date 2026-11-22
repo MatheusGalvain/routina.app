@@ -85,7 +85,7 @@ function Header() {
   const editBtn = useRef<HTMLButtonElement>(null)
 
   const look = STATE_STYLE[pet.state]
-  const aura = pet.sleeping ? '#8B5CF6' : look.color
+  const aura = pet.sleeping ? STATE_STYLE.descanso.color : look.color
   const since = profile ? new Date(profile.createdAt).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : null
 
   const close = () => {
@@ -131,11 +131,11 @@ function Header() {
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === 'Escape' && close()}
               autoComplete="nickname"
-              className="min-h-11 rounded-xl border border-line bg-[#0B0E15] px-3 text-soft"
+              className="min-h-11 rounded-xl border border-line bg-ink px-3 text-soft"
             />
           </label>
           <div className="flex justify-center gap-2">
-            <button type="submit" className="min-h-11 rounded-full bg-foco-strong px-5 text-sm font-bold text-white">
+            <button type="submit" className="min-h-11 rounded-full bg-accent px-5 text-sm font-bold text-ink">
               Salvar
             </button>
             <button type="button" onClick={close} className={btn}>
@@ -214,7 +214,7 @@ function Showcase({ openCollection }: { openCollection: () => void }) {
       ) : (
         <p className="m-0 text-sm text-muted">Seus troféus vão aparecer aqui.</p>
       )}
-      <button type="button" onClick={openCollection} className="min-h-11 self-start rounded-full px-1 text-sm font-semibold text-[#5AA7FF] hover:underline">
+      <button type="button" onClick={openCollection} className="min-h-11 self-start rounded-full px-1 text-sm font-semibold text-accent hover:underline">
         Ver coleção completa
       </button>
     </Card>
@@ -255,7 +255,7 @@ function Settings({ openPrivacy }: { openPrivacy: () => void }) {
         <select
           value={timezone}
           onChange={(e) => setProfileTimezone(e.target.value === AUTO ? device : e.target.value)}
-          className="min-h-11 w-full rounded-xl border border-line bg-[#0B0E15] px-3 text-soft"
+          className="min-h-11 w-full rounded-xl border border-line bg-ink px-3 text-soft"
         >
           <option value={AUTO}>Detectar automaticamente ({device.replace(/_/g, ' ')})</option>
           {options.map((t) => (
@@ -282,7 +282,7 @@ function Settings({ openPrivacy }: { openPrivacy: () => void }) {
           </button>
         </div>
         {error && (
-          <p role="alert" className="m-0 text-sm text-[#FDA4AF]">
+          <p role="alert" className="m-0 text-sm text-erro">
             {error}
           </p>
         )}
@@ -335,23 +335,23 @@ function DeleteAccount() {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="min-h-11 self-start rounded-full border border-[#5A1C2A] px-4 text-sm font-semibold text-[#FDA4AF] hover:bg-[#2A0F16]"
+          className="min-h-11 self-start rounded-full border border-erro/40 px-4 text-sm font-semibold text-erro hover:bg-erro/10"
         >
           Excluir minha conta
         </button>
       ) : (
-        <div className="flex flex-col gap-3 rounded-2xl border border-[#5A1C2A] bg-[#1A0B10] p-4">
-          <p className="m-0 text-sm text-[#FECDD3]">
+        <div className="flex flex-col gap-3 rounded-2xl border border-erro/40 bg-erro/10 p-4">
+          <p className="m-0 text-sm text-soft">
             Isso apaga <strong>para sempre</strong> sua conta, rotinas, registros, notas, troféus e seu pet, em todos os aparelhos. Não dá para desfazer. Se
             quiser guardar uma cópia, baixe seus dados antes.
           </p>
-          <label className="flex flex-col gap-1.5 text-sm text-[#FECDD3]">
+          <label className="flex flex-col gap-1.5 text-sm text-soft">
             Para confirmar, digite EXCLUIR
             <input
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               autoComplete="off"
-              className="min-h-11 max-w-[220px] rounded-xl border border-[#5A1C2A] bg-[#0B0E15] px-3 font-mono text-soft"
+              className="min-h-11 max-w-[220px] rounded-xl border border-erro/40 bg-ink px-3 font-mono text-soft"
             />
           </label>
           <div className="flex flex-wrap gap-2">
@@ -359,7 +359,7 @@ function DeleteAccount() {
               type="button"
               disabled={typed.trim().toUpperCase() !== 'EXCLUIR' || deleting}
               onClick={remove}
-              className="min-h-11 rounded-full bg-[#E11D48] px-4 text-sm font-bold text-white disabled:opacity-40"
+              className="min-h-11 rounded-full bg-erro px-4 text-sm font-bold text-ink disabled:opacity-40"
             >
               {deleting ? 'Excluindo…' : 'Excluir tudo'}
             </button>
@@ -376,7 +376,7 @@ function DeleteAccount() {
             </button>
           </div>
           {error && (
-            <p role="alert" className="m-0 text-sm text-[#FDA4AF]">
+            <p role="alert" className="m-0 text-sm text-erro">
               {error}
             </p>
           )}

@@ -278,5 +278,8 @@ export const PETS = Object.fromEntries(
   }),
 ) as Record<PetKind, { kind: PetKind; name: string; color: string; label: string; title: string; description: string }>
 
-/** Cor legível para texto (o branco do neutro fica um pouco mais suave). */
-export const textColor = (c: string) => (c === '#F1F3F6' ? '#C9CED8' : c)
+/**
+ * Cor legível para TEXTO sobre o fundo escuro (o pet e a aura continuam com a cor viva):
+ * o branco do neutro fica um pouco mais suave e o roxo do descanso (4.0:1) vira lilás (10:1).
+ */
+export const textColor = (c: string) => (c === '#F1F3F6' ? '#C9CED8' : c === '#8B5CF6' ? '#C4B5FD' : c)

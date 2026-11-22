@@ -42,7 +42,7 @@ export function Icon({ name, size = 18, className = '' }: { name: keyof typeof P
 export function Panel({
   title,
   icon,
-  color = '#5AA7FF',
+  color = 'var(--color-accent)',
   action,
   help,
   className = '',
@@ -62,7 +62,7 @@ export function Panel({
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <h2 className="m-0 flex min-w-0 items-center gap-3 text-lg font-bold">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px]" style={{ background: `${color}22`, color }}>
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px]" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
               <Icon name={icon} />
             </span>
             <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
@@ -76,25 +76,24 @@ export function Panel({
   )
 }
 
-export function ProgressRing({ pct, size = 104, stroke = 8, color = '#1E88FF', children }: { pct: number; size?: number; stroke?: number; color?: string; children?: ReactNode }) {
+export function ProgressRing({ pct, size = 104, stroke = 8, color = 'var(--color-accent)', children }: { pct: number; size?: number; stroke?: number; color?: string; children?: ReactNode }) {
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1F2635" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} style={{ stroke: 'var(--color-line)' }} />
         <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={color}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - Math.min(1, pct))}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          style={{ transition: 'stroke-dashoffset .5s ease' }}
+          style={{ stroke: color, transition: 'stroke-dashoffset .5s ease' }}
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center text-xl font-extrabold">{children}</div>
@@ -104,21 +103,21 @@ export function ProgressRing({ pct, size = 104, stroke = 8, color = '#1E88FF', c
 
 export function Bar({ pct, color }: { pct: number; color: string }) {
   return (
-    <div className="h-[5px] overflow-hidden rounded-full bg-[#232A38]">
+    <div className="h-[5px] overflow-hidden rounded-full bg-line">
       <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(pct * 100)}%`, background: color }} />
     </div>
   )
 }
 
 export function Logo({ size = 56 }: { size?: number }) {
-  const segs = ['#FFB020', '#1E88FF', '#22C55E', '#8B5CF6']
+  const segs = ['var(--color-alerta)', 'var(--color-accent)', 'var(--color-ok)', 'var(--color-noite)']
   return (
-    <div className="grid place-items-center rounded-[22px] border border-[#1E2533] bg-[#121722]" style={{ width: size + 20, height: size + 20 }}>
+    <div className="grid place-items-center rounded-[22px] border border-line bg-panel" style={{ width: size + 20, height: size + 20 }}>
       <svg width={size} height={size} viewBox="0 0 56 56" role="img" aria-label="Habbit Do">
         {segs.map((c, i) => (
-          <circle key={c} cx="28" cy="28" r="22" fill="none" stroke={c} strokeWidth="6" strokeLinecap="round" strokeDasharray="26 112.2" strokeDashoffset={-34.5 * i} transform="rotate(-90 28 28)" />
+          <circle key={c} cx="28" cy="28" r="22" fill="none" style={{ stroke: c }} strokeWidth="6" strokeLinecap="round" strokeDasharray="26 112.2" strokeDashoffset={-34.5 * i} transform="rotate(-90 28 28)" />
         ))}
-        <path d="M19 28.5 L25.5 35 L37.5 22" fill="none" stroke="#F1F3F6" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M19 28.5 L25.5 35 L37.5 22" fill="none" style={{ stroke: 'var(--color-fg)' }} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </div>
   )

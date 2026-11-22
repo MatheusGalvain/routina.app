@@ -1,20 +1,41 @@
 @import "tailwindcss";
-.background{
-  background-color: #0c0d13;
-}
+
+/*
+ * Identidade do Habbit Do: preto neutro (sem base azulada) com tons pastel.
+ * Toda cor da interface vem daqui. Os pets mantêm as próprias cores vivas (src/components/pets).
+ * Contraste conferido (WCAG): texto ≥ 4.5:1 e elementos de interface ≥ 3:1 nos três fundos.
+ */
 @theme {
-  --color-ink: #0c0d13;
-  --color-panel: #10141d;
-  --color-panel-2: #151a25;
-  --color-line: #1c2230;
-  --color-muted: #9aa3b5;
-  --color-soft: #d5dae3;
-  --color-foco: #1e88ff;
-  --color-foco-strong: #1668e3;
-  --color-ok: #22c55e;
-  --color-alerta: #ffb020;
-  --color-erro: #f43f5e;
-  --color-noite: #8b5cf6;
+  /* Fundos e bordas */
+  --color-ink: #141414; /* fundo da página; também o texto sobre botões pastel */
+  --color-panel: #1c1c1c; /* card */
+  --color-panel-2: #232323; /* card interno e campos */
+  --color-line: #2c2c2c; /* borda dos cards (só separa, não identifica controle) */
+  --color-line-2: #3a3a3a; /* borda de destaque discreto: balões, hover */
+  --color-line-strong: #6d6d6d; /* contorno de campos e caixas de marcar: 3:1 até sobre #232323 */
+
+  /* Texto */
+  --color-fg: #f2f0ed;
+  --color-soft: #f2f0ed;
+  --color-muted: #a3a09b;
+
+  /* Destaque e estados */
+  --color-accent: #a9bfff; /* botões, foco, links, anel de progresso */
+  --color-ok: #a8e6b8; /* concluído */
+  --color-alerta: #ffd59e; /* atenção */
+  --color-erro: #f4b4b4; /* pulado e ações de excluir */
+  --color-noite: #cdb8ff; /* descanso */
+
+  /* Áreas da vida (as 8 padrão; o mesmo valor fica em src/data/areas.ts, que vai para o banco) */
+  --color-area-sono: #cdb8ff;
+  --color-area-corpo: #f4b4b4;
+  --color-area-foco: #a9bfff;
+  --color-area-casa: #ffc9a8;
+  --color-area-financas: #a8e6b8;
+  --color-area-estudo: #a6e3da;
+  --color-area-mente: #d9c9ff;
+  --color-area-social: #f7b8d6;
+
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -22,13 +43,12 @@
 html,
 body {
   background: var(--color-ink);
-  color: #f1f3f6;
+  color: var(--color-fg);
   font-family: var(--font-sans);
 }
 
 body {
   min-height: 100vh;
-  background: radial-gradient(1200px 600px at 50% -10%, #111827 0%, var(--color-ink) 60%) fixed;
 }
 
 /* Estrelas acesas do cantinho piscando devagar. */
@@ -44,6 +64,6 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-foco);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }

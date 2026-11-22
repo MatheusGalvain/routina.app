@@ -1,12 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { useAreas, useRotina } from '../../store/useRotina'
-import { AREA_COLORS, AREA_NAME_MAX, MAX_AREAS, removedDefaults, sameName } from '../../data/areas'
+import { AREA_COLORS, AREA_NAME_MAX, DEFAULT_AREAS, MAX_AREAS, removedDefaults, sameName } from '../../data/areas'
 import { trophyNameForArea } from '../../data/trophies'
 import { Icon } from '../ui/ui'
 import type { Area, AreaId, DefaultAreaKey } from '../../types'
 
-const colorName = (c: string) => AREA_COLORS.find((x) => x.color === c)?.name ?? c
+// Nome da cor para leitores de tela: da paleta, ou a cor original de uma área padrão.
+const colorName = (c: string) => AREA_COLORS.find((x) => x.color === c)?.name ?? (DEFAULT_AREAS.find((a) => a.color === c) ? `cor original de ${DEFAULT_AREAS.find((a) => a.color === c)!.name}` : c)
 
 /** Quantos blocos de rotinas e de modelos usam cada área (rotinas do painel dev ficam de fora). */
 function useBlockCounts() {
@@ -60,7 +61,7 @@ function AreaRow({ area, index, total, blocks, others }: { area: Area; index: nu
           aria-expanded={palette}
           aria-controls={paletteId}
           onClick={() => setPalette((v) => !v)}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-[#232A38]"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-line"
         >
           <span className="h-5 w-5 rounded-full" style={{ background: area.color }} />
         </button>
@@ -73,7 +74,7 @@ function AreaRow({ area, index, total, blocks, others }: { area: Area; index: nu
             if (e.target.value.trim()) updateArea(area.id, { name: e.target.value.trim() })
           }}
           onBlur={() => setName(area.name)}
-          className="min-h-11 min-w-0 flex-1 rounded-lg border border-line bg-[#0B0E15] px-3 text-sm font-semibold text-soft"
+          className="min-h-11 min-w-0 flex-1 rounded-lg border border-line bg-ink px-3 text-sm font-semibold text-soft"
         />
         <div className="flex shrink-0 items-center">
           <button
@@ -114,14 +115,14 @@ function AreaRow({ area, index, total, blocks, others }: { area: Area; index: nu
       )}
 
       {confirm && (
-        <div role="group" aria-label={`Excluir ${area.name}`} className="flex flex-col gap-3 rounded-xl border border-[#4A1A26] bg-[#1A0F14] p-3">
+        <div role="group" aria-label={`Excluir ${area.name}`} className="flex flex-col gap-3 rounded-xl border border-erro/40 bg-erro/10 p-3">
           {blocks > 0 ? (
             <label className="flex flex-col gap-1.5 text-sm text-soft">
               {blocks === 1 ? '1 bloco usa' : `${blocks} blocos usam`} {area.name}. Para qual área {blocks === 1 ? 'ele vai' : 'eles vão'}?
               <select
                 value={target}
                 onChange={(e) => setMoveTo(e.target.value)}
-                className="min-h-11 rounded-lg border border-line bg-[#0B0E15] px-3 text-sm text-soft"
+                className="min-h-11 rounded-lg border border-line bg-ink px-3 text-sm text-soft"
               >
                 {others.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -145,7 +146,7 @@ function AreaRow({ area, index, total, blocks, others }: { area: Area; index: nu
             <button
               type="button"
               onClick={() => deleteArea(area.id, blocks > 0 ? target : null)}
-              className="min-h-11 rounded-full bg-[#F43F5E] px-4 text-sm font-bold text-white"
+              className="min-h-11 rounded-full bg-erro px-4 text-sm font-bold text-ink"
             >
               {blocks > 0 ? 'Mover e excluir' : 'Excluir'}
             </button>
@@ -179,7 +180,7 @@ function NewArea({ areas }: { areas: Area[] }) {
   if (full) return <p className="m-0 rounded-xl bg-panel-2 px-4 py-3 text-sm text-muted">Você chegou ao limite de {MAX_AREAS} áreas. Exclua uma para criar outra.</p>
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 rounded-2xl border border-[#24304A] bg-[#0D1422] p-3 sm:p-4">
+    <form onSubmit={submit} className="flex flex-col gap-3 rounded-2xl border border-accent/25 bg-accent/5 p-3 sm:p-4">
       <label className="flex flex-col gap-1.5 text-xs text-muted">
         Nova área
         <input
@@ -187,11 +188,11 @@ function NewArea({ areas }: { areas: Area[] }) {
           maxLength={AREA_NAME_MAX}
           onChange={(e) => setName(e.target.value)}
           placeholder="Ex.: Família, Música, Projetos"
-          className="min-h-11 w-full rounded-lg border border-line bg-[#0B0E15] px-3 text-sm text-soft placeholder:text-[#6F788A]"
+          className="min-h-11 w-full rounded-lg border border-line bg-ink px-3 text-sm text-soft placeholder:text-muted"
         />
       </label>
       {original && (
-        <p className="m-0 text-[12.5px] text-[#9CC8FF]" aria-live="polite">
+        <p className="m-0 text-[12.5px] text-accent" aria-live="polite">
           {original.name} volta como a área original, com o histórico{trophy ? ` e o progresso do troféu ${trophy}` : ''}.
         </p>
       )}
@@ -200,7 +201,7 @@ function NewArea({ areas }: { areas: Area[] }) {
         <span className="font-mono text-[11.5px] text-muted">
           {areas.length}/{MAX_AREAS} áreas
         </span>
-        <button type="submit" disabled={!name.trim()} className="min-h-11 rounded-full bg-ok px-4 text-sm font-bold text-[#06210F] disabled:opacity-40">
+        <button type="submit" disabled={!name.trim()} className="min-h-11 rounded-full bg-ok px-4 text-sm font-bold text-ink disabled:opacity-40">
           + Adicionar área
         </button>
       </div>

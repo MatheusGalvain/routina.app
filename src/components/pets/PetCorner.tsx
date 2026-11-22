@@ -71,7 +71,7 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
   // Ao sair da tela, sai do modo edição.
   useEffect(() => () => setEdit({ editing: false, slot: null }), [])
 
-  const aura = pet.sleeping ? '#8B5CF6' : STATE_STYLE[pet.state].color
+  const aura = pet.sleeping ? STATE_STYLE.descanso.color : STATE_STYLE[pet.state].color
   const days = Object.fromEntries(areas.map((a) => [a.id, forced[a.id] ?? pet.stats.areaDays7[a.id] ?? 0])) as Record<AreaId, number>
   const shown = topAreas(areas, days)
   const petName = pet.isCompanion ? pet.name || SPECIES[pet.kind].name : 'seu pet'
@@ -88,7 +88,7 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
           <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full" role="img" aria-label={`Cantinho de ${petName}`}>
             <CornerSky areas={shown} days={days} aura={aura} shadows={SLOT_X.filter((_, i) => slots[i])} />
             {!hasTrophies && !editing && (
-              <g fill="#9AA3B5" fillOpacity=".55" fontSize="8.5" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
+              <g style={{ fill: 'var(--color-muted)' }} fontSize="8.5" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
                 <text x="93" y={FLOOR + 18}>
                   Seus troféus aparecem aqui.
                 </text>
@@ -130,7 +130,7 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
                   key={`${i}-${s?.trophyId ?? 'vazio'}`}
                   type="button"
                   aria-label={s ? `${trophyTitle(s.trophyId, s.tier)}: trocar ou arrastar` : 'Espaço vazio: escolher troféu'}
-                  className="absolute z-10 flex touch-none items-end justify-center rounded-xl border border-dashed border-[#9AA3B5]/45 bg-white/[0.03]"
+                  className="absolute z-10 flex touch-none items-end justify-center rounded-xl border border-dashed border-muted/45 bg-fg/[0.03]"
                   style={{ ...style, marginBottom: -3 }}
                   drag={!!s}
                   dragSnapToOrigin
@@ -163,7 +163,7 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <p className="m-0 min-w-[200px] flex-1 rounded-2xl border border-[#2A3242] bg-panel-2 px-4 py-3 text-sm text-soft">
+          <p className="m-0 min-w-[200px] flex-1 rounded-2xl border border-line-2 bg-panel-2 px-4 py-3 text-sm text-soft">
             {editing
               ? 'Toque num espaço para escolher o troféu. Arraste um troféu para trocar de lugar.'
               : shown.length
@@ -173,7 +173,7 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
           <button
             type="button"
             onClick={() => setEdit({ editing: !editing, slot: null })}
-            className={`min-h-11 rounded-full px-5 text-sm font-bold ${editing ? 'bg-ok text-[#06210F]' : 'border border-line text-soft hover:bg-panel-2'}`}
+            className={`min-h-11 rounded-full px-5 text-sm font-bold ${editing ? 'bg-ok text-ink' : 'border border-line text-soft hover:bg-panel-2'}`}
           >
             {editing ? 'Pronto' : 'Editar cantinho'}
           </button>

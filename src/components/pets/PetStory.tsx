@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { BasePetKind } from '../../types'
 import { Icon } from '../ui/ui'
 import { Pet } from './Pet'
-import { PETS, type EyeStyle } from './pets'
+import { PETS, textColor, type EyeStyle } from './pets'
 import { STORIES } from './stories'
 import { Deco } from './Deco'
 
@@ -22,7 +22,7 @@ const DECO_SPOTS = [
 export function PetStory({ kind, onClose }: { kind: BasePetKind; onClose: () => void }) {
   const pet = PETS[kind]
   const story = STORIES[kind]
-  const accent = pet.color === '#F1F3F6' ? '#C9CED8' : pet.color
+  const accent = textColor(pet.color)
 
   const [index, setIndex] = useState(0)
   const [taps, setTaps] = useState(0)
@@ -112,7 +112,7 @@ export function PetStory({ kind, onClose }: { kind: BasePetKind; onClose: () => 
           {action.type === 'tap' && (
             <div className="absolute bottom-3 flex gap-1.5" aria-hidden="true">
               {Array.from({ length: action.times }, (_, i) => (
-                <span key={i} className="h-2 w-2 rounded-full transition-colors" style={{ background: i < taps ? accent : '#ffffff30' }} />
+                <span key={i} className="h-2 w-2 rounded-full transition-colors" style={{ background: i < taps ? accent : 'color-mix(in srgb, var(--color-fg) 20%, transparent)' }} />
               ))}
             </div>
           )}
@@ -185,7 +185,7 @@ export function PetStory({ kind, onClose }: { kind: BasePetKind; onClose: () => 
           <div className="mt-auto flex items-center justify-between gap-3 pt-2">
             <div className="flex gap-1.5" aria-label={`Cena ${index + 1} de ${story.scenes.length}`}>
               {story.scenes.map((_, i) => (
-                <span key={i} className="h-1.5 rounded-full transition-all" style={{ width: i === index ? 18 : 6, background: i <= index ? accent : '#2A3244' }} />
+                <span key={i} className="h-1.5 rounded-full transition-all" style={{ width: i === index ? 18 : 6, background: i <= index ? accent : 'var(--color-line-2)' }} />
               ))}
             </div>
             <div className="flex gap-2">
@@ -203,7 +203,7 @@ export function PetStory({ kind, onClose }: { kind: BasePetKind; onClose: () => 
                   type="button"
                   disabled={!canContinue}
                   onClick={() => go(index + 1)}
-                  className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold text-[#0A0D14] transition-opacity disabled:opacity-30"
+                  className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold text-ink transition-opacity disabled:opacity-30"
                   style={{ background: accent }}
                 >
                   {action.type === 'next' && action.label ? action.label : 'Continuar'}

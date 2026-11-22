@@ -30,7 +30,7 @@ export function TrophyCollection() {
                   return (
                     <div key={tier} className="flex min-w-0 flex-col items-center gap-1 text-center">
                       <Trophy id={t.id} tier={tier} size={44} />
-                      <span className="text-[11.5px] font-semibold capitalize" style={{ color: tier === 4 ? '#DCCBFF' : TIERS[tier].color }}>
+                      <span className="text-[11.5px] font-semibold capitalize" style={{ color: tier === 4 ? 'var(--color-noite)' : TIERS[tier].color }}>
                         {TIERS[tier].name}
                       </span>
                       <span className="font-mono text-[10px] text-muted">{date(u.unlockedAt)}</span>
@@ -50,7 +50,7 @@ export function TrophyCollection() {
                     <span className="text-[11.5px] text-muted capitalize">{TIERS[tier].name}</span>
                     <span className="text-[10.5px] leading-tight text-soft">{r.text}</span>
                     <div className="w-full max-w-[56px]">
-                      <Bar pct={r.pct} color="#5A6478" />
+                      <Bar pct={r.pct} color="var(--color-line-strong)" />
                     </div>
                   </div>
                 )

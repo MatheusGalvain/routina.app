@@ -38,10 +38,10 @@ export function DayList({ items, readOnly = false, activeId = null, onToggle, on
             )}
             <div
               className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-l-2 px-4 py-3 transition-colors sm:px-5 ${
-                active ? 'border-foco bg-[#0F1C33]' : 'border-transparent'
+                active ? 'border-accent bg-accent/10' : 'border-transparent'
               } ${i.skipped ? 'opacity-50' : ''}`}
             >
-              <span className="hidden w-6 shrink-0 text-right font-mono text-xs text-[#6F788A] sm:block">{idx + 1}</span>
+              <span className="hidden w-6 shrink-0 text-right font-mono text-xs text-muted sm:block">{idx + 1}</span>
 
               {readOnly ? (
                 <StatusBadge item={i} />
@@ -63,7 +63,7 @@ export function DayList({ items, readOnly = false, activeId = null, onToggle, on
                   onClick={() => onToggle?.(i)}
                   aria-pressed={i.done}
                   aria-label={`${i.done ? 'Desmarcar' : 'Marcar'} ${i.block.name}`}
-                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 sm:h-8 sm:w-8 ${i.done ? 'border-ok bg-ok text-[#06210F]' : 'border-[#3A4254] text-transparent'}`}
+                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 sm:h-8 sm:w-8 ${i.done ? 'border-ok bg-ok text-ink' : 'border-line-strong text-transparent'}`}
                 >
                   <Icon name="check" size={16} />
                 </button>
@@ -90,7 +90,7 @@ export function DayList({ items, readOnly = false, activeId = null, onToggle, on
                     <button
                       type="button"
                       onClick={() => onStart(i, active)}
-                      className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-xs font-bold sm:min-h-0 sm:px-3 sm:py-1.5 ${active ? 'bg-[#1A2B4A] text-[#9CC8FF]' : 'bg-foco-strong text-white'}`}
+                      className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-xs font-bold sm:min-h-0 sm:px-3 sm:py-1.5 ${active ? 'bg-accent/15 text-accent' : 'bg-accent text-ink'}`}
                     >
                       <Icon name="play" size={11} /> {active ? 'Em andamento' : 'Começar'}
                     </button>
@@ -116,7 +116,7 @@ export function DayList({ items, readOnly = false, activeId = null, onToggle, on
 function StatusBadge({ item }: { item: TodayItem }) {
   if (item.done)
     return (
-      <span className="grid h-8 w-8 place-items-center rounded-full bg-ok text-[#06210F]" aria-label="Feito">
+      <span className="grid h-8 w-8 place-items-center rounded-full bg-ok text-ink" aria-label="Feito">
         <Icon name="check" size={16} />
       </span>
     )
@@ -126,5 +126,5 @@ function StatusBadge({ item }: { item: TodayItem }) {
         <Icon name="skip" size={14} />
       </span>
     )
-  return <span className="h-8 w-8 rounded-full border-2 border-dashed border-[#3A4254]" aria-label="Não feito" />
+  return <span className="h-8 w-8 rounded-full border-2 border-dashed border-line-strong" aria-label="Não feito" />
 }

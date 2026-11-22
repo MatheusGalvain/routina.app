@@ -6,7 +6,7 @@ import { Icon, Panel } from '../components/ui/ui'
 import { HelpButton } from '../components/help/HelpButton'
 import type { AreaId, Block, BlockType, Routine, UserTemplate } from '../types'
 
-const inputCls = 'w-full rounded-lg border border-line bg-[#0B0E15] px-3 py-2.5 text-sm text-soft placeholder:text-[#6F788A]'
+const inputCls = 'w-full rounded-lg border border-line bg-ink px-3 py-2.5 text-sm text-soft placeholder:text-muted'
 
 type Draft = { name: string; type: BlockType; areaId: AreaId; minutes: string; target: string; unit: string; step: string }
 const emptyDraft: Draft = { name: '', type: 'habito', areaId: 'foco', minutes: '', target: '', unit: '', step: '1' }
@@ -41,7 +41,7 @@ function BlockForm({ initial, onSave, onCancel }: { initial?: Block; onSave: (b:
 
   return (
     <form
-      className="flex flex-col gap-3 rounded-2xl border border-[#24304A] bg-[#0D1422] p-3 sm:p-4"
+      className="flex flex-col gap-3 rounded-2xl border border-accent/25 bg-accent/5 p-3 sm:p-4"
       onSubmit={(e) => {
         e.preventDefault()
         if (!valid) return
@@ -66,7 +66,7 @@ function BlockForm({ initial, onSave, onCancel }: { initial?: Block; onSave: (b:
               aria-pressed={d.type === t.id}
               onClick={() => set({ type: t.id })}
               className={`flex min-w-0 flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left sm:px-3 ${
-                d.type === t.id ? 'border-foco bg-[#12284A]' : 'border-line bg-panel-2'
+                d.type === t.id ? 'border-accent bg-accent/15' : 'border-line bg-panel-2'
               }`}
             >
               <span className="text-sm font-semibold">{t.name}</span>
@@ -111,7 +111,7 @@ function BlockForm({ initial, onSave, onCancel }: { initial?: Block; onSave: (b:
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="submit" disabled={!valid} className="rounded-full bg-ok px-4 py-2 text-sm font-bold text-[#06210F] disabled:opacity-40">
+        <button type="submit" disabled={!valid} className="rounded-full bg-ok px-4 py-2 text-sm font-bold text-ink disabled:opacity-40">
           {initial ? 'Salvar bloco' : '+ Adicionar bloco'}
         </button>
         {onCancel && (
@@ -161,11 +161,11 @@ function BlockRow({ target, block, index }: { target: EditorTarget; block: Block
             type="button"
             onPointerDown={(e) => controls.start(e)}
             aria-label={`Arrastar ${block.name}`}
-            className="cursor-grab touch-none text-[#6F788A] active:cursor-grabbing"
+            className="cursor-grab touch-none text-muted active:cursor-grabbing"
           >
             <Icon name="grip" />
           </button>
-          <span className="w-5 font-mono text-xs text-[#6F788A]">{index + 1}</span>
+          <span className="w-5 font-mono text-xs text-muted">{index + 1}</span>
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-sm font-semibold">{block.name}</span>
             <span className="font-mono text-[11.5px] text-muted">
@@ -200,7 +200,7 @@ function Editor({ target, footer }: { target: EditorTarget; footer: ReactNode })
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-4 rounded-[22px] border border-line bg-panel p-4 sm:p-6">
         {isTemplate && (
-          <p className="m-0 flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider text-[#FFB020] uppercase">
+          <p className="m-0 flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider text-alerta uppercase">
             <Icon name="box" size={14} /> Modelo
             <span className="font-sans text-[12.5px] tracking-normal text-muted normal-case">Mudar o modelo não altera as rotinas já criadas com ele.</span>
           </p>
@@ -222,7 +222,7 @@ function Editor({ target, footer }: { target: EditorTarget; footer: ReactNode })
                   aria-label={w.long}
                   onClick={() => toggleDay(d)}
                   className={`grid aspect-square w-full max-w-10 place-items-center rounded-full text-sm font-bold sm:h-10 sm:w-10 ${
-                    v.days.includes(d) ? 'bg-foco-strong text-white' : 'bg-panel-2 text-muted'
+                    v.days.includes(d) ? 'bg-accent text-ink' : 'bg-panel-2 text-muted'
                   }`}
                 >
                   {w.short}
@@ -269,7 +269,7 @@ function Editor({ target, footer }: { target: EditorTarget; footer: ReactNode })
 }
 
 const ghostBtn = 'min-h-11 rounded-full border border-line px-4 text-sm font-semibold text-soft hover:bg-panel-2'
-const dangerBtn = 'min-h-11 rounded-full border border-[#4A1A26] px-4 text-sm font-semibold text-[#FB7185]'
+const dangerBtn = 'min-h-11 rounded-full border border-erro/40 px-4 text-sm font-semibold text-erro'
 
 function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine; onDeleted: () => void; openTemplate: (id: string) => void }) {
   const { updateRoutine, deleteRoutine, setBlocks, saveAsTemplate } = useRotina.getState()
@@ -305,7 +305,7 @@ function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine;
             {saved && (
               <>
                 Modelo salvo em Rotinas prontas.{' '}
-                <button type="button" onClick={() => openTemplate(saved)} className="font-semibold text-[#9CC8FF] underline underline-offset-2">
+                <button type="button" onClick={() => openTemplate(saved)} className="font-semibold text-accent underline underline-offset-2">
                   Editar o modelo
                 </button>
               </>
@@ -337,7 +337,7 @@ function TemplateEditor({ template, onDeleted, onUsed }: { template: UserTemplat
               const id = addTemplate(template.id)
               if (id) onUsed(id)
             }}
-            className="min-h-11 rounded-full bg-ok px-4 text-sm font-bold text-[#06210F]"
+            className="min-h-11 rounded-full bg-ok px-4 text-sm font-bold text-ink"
           >
             Usar este modelo
           </button>
@@ -368,7 +368,7 @@ function SideItem({ name, color, count, current, onClick }: { name: string; colo
       type="button"
       onClick={onClick}
       aria-current={current ? 'true' : undefined}
-      className={`flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${current ? 'bg-[#16203A]' : 'hover:bg-panel-2'}`}
+      className={`flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${current ? 'bg-accent/15' : 'hover:bg-panel-2'}`}
     >
       <span className="flex min-w-0 items-center gap-2.5">
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
@@ -401,7 +401,7 @@ export function Rotinas({ selected, select }: { selected: Selection; select: (s:
           {routines.map((r) => (
             <SideItem key={r.id} name={r.name} color={r.color} count={r.blocks.length} current={routine?.id === r.id} onClick={() => select({ kind: 'routine', id: r.id })} />
           ))}
-          <button type="button" onClick={() => select({ kind: 'routine', id: createRoutine() })} className="mt-1 self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-[#06210F]">
+          <button type="button" onClick={() => select({ kind: 'routine', id: createRoutine() })} className="mt-1 self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-ink">
             + Nova rotina
           </button>
         </nav>

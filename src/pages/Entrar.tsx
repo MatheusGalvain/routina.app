@@ -124,7 +124,7 @@ export function Entrar() {
         <div className="flex items-center gap-3">
           <Logo size={40} />
           <h1 className="m-0 text-[34px] leading-none font-extrabold tracking-tight">
-            Habbit <span className="text-[#5AA7FF]">Do</span>
+            Habbit <span className="text-accent">Do</span>
           </h1>
         </div>
 
@@ -137,15 +137,15 @@ export function Entrar() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="relative m-0 rounded-2xl border border-[#2A3242] bg-panel-2 px-4 py-2.5 text-center text-sm text-soft"
+                className="relative m-0 rounded-2xl border border-line-2 bg-panel-2 px-4 py-2.5 text-center text-sm text-soft"
                 aria-live="polite"
               >
                 {bubble}
-                <span aria-hidden="true" className="absolute -bottom-[7px] left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-r border-b border-[#2A3242] bg-panel-2" />
+                <span aria-hidden="true" className="absolute -bottom-[7px] left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-r border-b border-line-2 bg-panel-2" />
               </motion.p>
             </AnimatePresence>
             <div className="relative grid h-[150px] w-[150px] place-items-center">
-              <div className="absolute h-[140px] w-[140px] rounded-full border border-[#F1F3F622]" />
+              <div className="absolute h-[140px] w-[140px] rounded-full border border-fg/15" />
               <Pet kind="gatinho" state={sentTo ? 'concluido' : 'neutro'} size={120} label="Gatinho dando boas-vindas" />
             </div>
           </div>
@@ -168,12 +168,12 @@ export function Entrar() {
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   placeholder="000000"
-                  className="w-[200px] rounded-xl border border-line bg-[#0B0E15] px-3 py-3 text-center font-mono text-2xl tracking-[0.35em] text-soft placeholder:text-[#3A4256]"
+                  className="w-[200px] rounded-xl border border-line bg-ink px-3 py-3 text-center font-mono text-2xl tracking-[0.35em] text-soft placeholder:text-muted"
                 />
                 <button
                   type="submit"
                   disabled={code.length < 6 || verifying}
-                  className="rounded-full bg-foco-strong px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(30,136,255,.35)] disabled:opacity-40 disabled:shadow-none"
+                  className="rounded-full bg-accent px-6 py-2.5 text-sm font-bold text-ink shadow-[0_0_24px_color-mix(in_srgb,var(--color-accent)_30%,transparent)] disabled:opacity-40 disabled:shadow-none"
                 >
                   {verifying ? 'Entrando…' : 'Entrar com o código'}
                 </button>
@@ -214,12 +214,12 @@ export function Entrar() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="voce@email.com"
-                className="rounded-xl border border-line bg-[#0B0E15] px-3.5 py-3 text-soft placeholder:text-[#6F788A]"
+                className="rounded-xl border border-line bg-ink px-3.5 py-3 text-soft placeholder:text-muted"
               />
               <button
                 type="submit"
                 disabled={sending || cooldown > 0}
-                className="rounded-full bg-foco-strong px-5 py-3 text-[15px] font-bold text-white shadow-[0_0_24px_rgba(30,136,255,.35)] disabled:opacity-60"
+                className="rounded-full bg-accent px-5 py-3 text-[15px] font-bold text-ink shadow-[0_0_24px_color-mix(in_srgb,var(--color-accent)_30%,transparent)] disabled:opacity-60"
               >
                 {sending ? 'Enviando…' : cooldown > 0 ? `Aguarde ${cooldown}s` : 'Receber link de acesso'}
               </button>
@@ -232,7 +232,7 @@ export function Entrar() {
                   <button
                     type="button"
                     onClick={google}
-                    className="flex items-center justify-center gap-2.5 rounded-full border border-line bg-panel-2 px-5 py-3 text-[15px] font-semibold text-soft hover:bg-[#1C2436]"
+                    className="flex items-center justify-center gap-2.5 rounded-full border border-line bg-panel-2 px-5 py-3 text-[15px] font-semibold text-soft hover:bg-line"
                   >
                     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
                       <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
@@ -248,7 +248,7 @@ export function Entrar() {
           )}
 
           {error && (
-            <p role="alert" className="m-0 w-full rounded-xl border border-[#5A1C2A] bg-[#2A0F16] px-3.5 py-2.5 text-sm text-[#FDA4AF]">
+            <p role="alert" className="m-0 w-full rounded-xl border border-erro/40 bg-erro/10 px-3.5 py-2.5 text-sm text-erro">
               {error}
             </p>
           )}

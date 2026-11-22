@@ -180,7 +180,7 @@ function SectionNav({ page, onSelect }: { page: Page; onSelect: (p: Page) => voi
     }
   }, [open])
 
-  const tabClass = (active: boolean) => (active ? 'bg-[#1C2436] text-white' : 'text-muted hover:text-soft')
+  const tabClass = (active: boolean) => (active ? 'bg-accent/15 text-fg' : 'text-muted hover:text-soft')
 
   return (
     <>
@@ -267,7 +267,7 @@ function ProfileButton({ current, onClick }: { current: boolean; onClick: () => 
           aria-label="Perfil"
           aria-current={current ? 'page' : undefined}
           onClick={onClick}
-          className={`grid h-11 w-11 shrink-0 place-items-center rounded-full cursor-pointer border bg-panel ${current ? 'border-[#5AA7FF]' : 'border-line hover:border-[#2A3242]'}`}
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-full cursor-pointer border bg-panel ${current ? 'border-accent' : 'border-line hover:border-line-2'}`}
         >
       <Pet kind={pet.kind} phase={pet.phase} accessories={pet.accessories} sleeping={pet.sleeping} size={32} interactive={false} float={false} />
     </button>
