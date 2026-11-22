@@ -7,6 +7,7 @@ import type { DayLog } from '../types'
 import { toStore, type RemoteData, type Row } from './rows'
 import { diff } from './diff'
 import { markLegacyImported, mergeLegacy, type LegacyData } from './legacy'
+import { APP_KEY } from '../lib/storageKeys'
 import { enqueue, flushNow, hasPending, startOutbox, stopOutbox } from './outbox'
 
 /**
@@ -49,8 +50,18 @@ async function fetchAll(table: string, uid: string): Promise<Row[]> {
   }
 }
 
+/** Lê uma tabela nova sem derrubar o resto: se ela ainda não existir no servidor, devolve null. */
+async function fetchOptional(table: string, uid: string): Promise<Row[] | null> {
+  try {
+    return await fetchAll(table, uid)
+  } catch (e) {
+    console.warn(`[sync] não deu para ler ${table} (a migration foi aplicada?)`, e)
+    return null
+  }
+}
+
 async function loadRemote(uid: string): Promise<RemoteData> {
-  const [profile, routines, blocks, dayLogs, blockLogs, tasks, companion] = await Promise.all([
+  const [profile, routines, blocks, dayLogs, blockLogs, tasks, companion, trophies, slots] = await Promise.all([
     supabase.from('profiles').select('timezone, local_import_answered, created_at, updated_at').eq('user_id', uid).maybeSingle(),
     fetchAll('routines', uid),
     fetchAll('blocks', uid),
@@ -58,10 +69,12 @@ async function loadRemote(uid: string): Promise<RemoteData> {
     fetchAll('block_logs', uid),
     fetchAll('completed_tasks', uid),
     supabase.from('companion').select('*').eq('user_id', uid).maybeSingle(),
+    fetchOptional('user_trophies', uid),
+    fetchOptional('corner_slots', uid),
   ])
   if (profile.error) throw profile.error
   if (companion.error) throw companion.error
-  return { profile: profile.data, routines, blocks, dayLogs, blockLogs, tasks, companion: companion.data }
+  return { profile: profile.data, routines, blocks, dayLogs, blockLogs, tasks, companion: companion.data, trophies, slots }
 }
 
 /** Troca o store pelos dados da conta, mantendo as simulações locais do painel dev. */
@@ -237,7 +250,7 @@ export async function exportMyData() {
   const strip = (rows: Row[]) => rows.map(({ user_id: _u, ...rest }) => rest)
   const data = {
     exportado_em: new Date().toISOString(),
-    app: 'rotina.app',
+    app: 'Habbit Do',
     conta: { email, ...(remote.profile ?? {}) },
     rotinas: strip(remote.routines),
     blocos: strip(remote.blocks),
@@ -245,11 +258,13 @@ export async function exportMyData() {
     registros_dos_blocos: strip(remote.blockLogs),
     tarefas_concluidas: strip(remote.tasks),
     pet: remote.companion ? strip([remote.companion])[0] : null,
+    trofeus: remote.trophies ? strip(remote.trophies) : [],
+    cantinho: remote.slots ? strip(remote.slots) : [],
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = `rotina-app-meus-dados-${new Date().toISOString().slice(0, 10)}.json`
+  a.download = `habbit-do-meus-dados-${new Date().toISOString().slice(0, 10)}.json`
   document.body.appendChild(a)
   a.click()
   a.remove()
@@ -266,6 +281,6 @@ export async function deleteAccount() {
   const { error } = await supabase.functions.invoke('delete-account', { body: { confirm: 'EXCLUIR' } })
   if (error) throw error
   endSession()
-  for (const key of [`rotina-app:${uid}`, `rotina-app-outbox:${uid}`]) localStorage.removeItem(key)
+  for (const key of [`${APP_KEY}:${uid}`, `${APP_KEY}-outbox:${uid}`]) localStorage.removeItem(key)
   await supabase.auth.signOut({ scope: 'local' })
 }

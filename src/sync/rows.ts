@@ -1,11 +1,13 @@
-import type { AccessoryId, Block, BlockLog, Companion, DayLog, PetProgress, PetPhase, Routine, Slot } from '../types'
+import type { AccessoryId, Block, BlockLog, Companion, CornerSlot, CornerSlots, DayLog, PetProgress, PetPhase, Routine, Slot, TrophyMap, UnlockId } from '../types'
+import { TROPHY_BY_ID, type TrophyId, type TrophyTier } from '../data/trophies'
+import { EMPTY_SLOTS } from '../lib/corner'
 
 /**
  * Conversão entre o store (formato do app) e as linhas das tabelas do Supabase.
  * Tudo puro: recebe dados e devolve dados.
  */
 
-export type Table = 'profiles' | 'routines' | 'blocks' | 'day_logs' | 'block_logs' | 'completed_tasks' | 'companion'
+export type Table = 'profiles' | 'routines' | 'blocks' | 'day_logs' | 'block_logs' | 'completed_tasks' | 'companion' | 'user_trophies' | 'corner_slots'
 export type Row = Record<string, unknown>
 
 const clip = (s: string | undefined | null, max: number) => (s ?? '').slice(0, max)
@@ -65,6 +67,17 @@ export const companionRow = (uid: string, c: Companion, p: PetProgress, withProg
     : {}),
 })
 
+/** Um registro por nível de troféu conquistado, com a chave "id|nível". */
+export function trophyRows(uid: string, map: TrophyMap) {
+  const out = new Map<string, Row>()
+  for (const [id, list] of Object.entries(map)) {
+    for (const u of list ?? []) out.set(`${id}|${u.tier}`, { user_id: uid, trophy_id: id, tier: u.tier, unlocked_at: u.unlockedAt })
+  }
+  return out
+}
+
+export const slotRow = (uid: string, slot: number, s: CornerSlot): Row => ({ user_id: uid, slot, trophy_id: s.trophyId, tier: s.tier })
+
 /** Rotinas e blocos (com a ordem) a partir do store. Rotinas do painel dev ficam de fora. */
 export function structureRows(uid: string, routines: Routine[]) {
   const routinesOut = new Map<string, Row>()
@@ -90,6 +103,9 @@ export interface RemoteData {
   blockLogs: Row[]
   tasks: Row[]
   companion: Row | null
+  /** `null` = não deu para ler (ex.: migration 003 ainda não aplicada): o store mantém o que tem. */
+  trophies: Row[] | null
+  slots: Row[] | null
 }
 
 const num = (v: unknown) => (v === null || v === undefined ? undefined : Number(v))
@@ -141,9 +157,30 @@ export function toStore(r: RemoteData) {
         initialized: !!c.progress_initialized,
         peakActiveDays: Number(c.peak_active_days ?? 0),
         seenPhase: (c.seen_phase as PetPhase) ?? 'filhote',
-        unlocked: (c.unlocked as AccessoryId[]) ?? [],
+        unlocked: (c.unlocked as UnlockId[]) ?? [],
       }
     : { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
 
-  return { routines, logs, completedTasks, companion, petProgress }
+  // Troféus de ids que o app não conhece mais são ignorados.
+  const extra: { trophies?: TrophyMap; cornerSlots?: CornerSlots } = {}
+  if (r.trophies) {
+    const trophies: TrophyMap = {}
+    for (const t of r.trophies) {
+      const id = String(t.trophy_id) as TrophyId
+      if (!TROPHY_BY_ID[id]) continue
+      trophies[id] = [...(trophies[id] ?? []), { tier: Number(t.tier) as TrophyTier, unlockedAt: String(t.unlocked_at) }].sort((a, b) => a.tier - b.tier)
+    }
+    extra.trophies = trophies
+  }
+  if (r.slots) {
+    const slots = [...EMPTY_SLOTS] as CornerSlots
+    for (const s of r.slots) {
+      const i = Number(s.slot)
+      const id = String(s.trophy_id) as TrophyId
+      if (i >= 0 && i < 4 && TROPHY_BY_ID[id]) slots[i] = { trophyId: id, tier: Number(s.tier) as TrophyTier }
+    }
+    extra.cornerSlots = slots
+  }
+
+  return { routines, logs, completedTasks, companion, petProgress, ...extra }
 }

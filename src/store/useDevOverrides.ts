@@ -1,17 +1,23 @@
 import { create } from 'zustand'
-import type { AreaId, PetKind, PetPhase, PetState } from '../types'
+import type { AreaId, CornerSlots, PetKind, PetPhase, PetState, TrophyMap } from '../types'
 
 export type ForcedState = PetState | 'dormindo'
-export type CornerStage = 0 | 1 | 2 | 3
 
 interface DevOverrides {
   phase: PetPhase | null
   state: ForcedState | null
   species: PetKind | null
   unlockAll: boolean
-  corner: Partial<Record<AreaId, CornerStage>>
+  /** Mostra o coelho como desbloqueado (só visual, não grava nada). */
+  secretPet: boolean
+  /** Troféus de mentira (só neste aparelho). `null` = os reais. */
+  trophies: TrophyMap | null
+  /** Espaços do cantinho de mentira. `null` = os reais. */
+  slots: CornerSlots | null
+  /** Dias (0–7) por área no céu do cantinho. */
+  corner: Partial<Record<AreaId, number>>
   set: (patch: Partial<Omit<DevOverrides, 'set' | 'setCorner'>>) => void
-  setCorner: (area: AreaId, stage: CornerStage | null) => void
+  setCorner: (area: AreaId, days: number | null) => void
 }
 
 /**
@@ -23,12 +29,15 @@ export const useDevOverrides = create<DevOverrides>()((set, get) => ({
   state: null,
   species: null,
   unlockAll: false,
+  secretPet: false,
+  trophies: null,
+  slots: null,
   corner: {},
   set: (patch) => set(patch),
-  setCorner: (area, stage) => {
+  setCorner: (area, days) => {
     const corner = { ...get().corner }
-    if (stage === null) delete corner[area]
-    else corner[area] = stage
+    if (days === null) delete corner[area]
+    else corner[area] = days
     set({ corner })
   },
 }))

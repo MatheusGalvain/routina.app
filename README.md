@@ -1,6 +1,6 @@
-# rotina.app
+# Habbit Do
 
-App de organização de rotina com pets animados.
+App de hábitos e organização de rotina com pets animados.
 
 ## Rodar
 

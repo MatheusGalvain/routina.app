@@ -7,10 +7,12 @@ import { deviceTimeZone } from '../lib/dates'
 import { useCompanionView } from '../store/useCompanion'
 import { Bar, Icon, Panel } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
-import { PETS, PET_ORDER, SPECIES, textColor as light } from '../components/pets/pets'
+import { ALL_PETS, PETS, SECRET_PET, SPECIES, textColor as light } from '../components/pets/pets'
 import { PHASES, nextPhase, phaseIndex } from '../lib/companion'
 import { ACCESSORIES, SLOT_NAMES } from '../data/accessories'
 import { unlockStats } from '../store/useCompanion'
+import { PetCorner } from '../components/pets/PetCorner'
+import { TrophyCollection } from '../components/pets/TrophyCollection'
 
 /** Aba "Pet": escolher o favorito, dar um nome e cuidar dos acessórios. */
 export function Companheiro({ openPrivacy }: { openPrivacy: () => void }) {
@@ -30,7 +32,8 @@ export function Companheiro({ openPrivacy }: { openPrivacy: () => void }) {
       <Panel title="Escolha seu favorito" icon="paw" color="#FB7185">
         <p className="m-0 text-sm text-muted">Ele vai te acompanhar em todos os estados do dia, mudando de cor e de expressão.</p>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-3">
-          {PET_ORDER.map((k) => {
+          {ALL_PETS.map((k) => {
+            if (k === SECRET_PET && !view.secretUnlocked) return <UnknownPet key={k} />
             const selected = companion.kind === k
             return (
               <button
@@ -69,8 +72,31 @@ export function Companheiro({ openPrivacy }: { openPrivacy: () => void }) {
         </label>
       </Panel>
 
+      <Panel title="Cantinho" icon="sparkle" color="#C4B5FD">
+        <PetCorner autoState="neutro" legend={false} />
+      </Panel>
+
+      <Panel title="Coleção" icon="box" color="#FFC24B">
+        <p className="m-0 text-sm text-muted">Cada troféu tem 4 níveis. Os que você conquista ficam para sempre, e você escolhe quais expor no cantinho.</p>
+        <TrophyCollection />
+      </Panel>
+
       <Accessories />
       <Account openPrivacy={openPrivacy} />
+    </div>
+  )
+}
+
+/** Alguém que ainda não apareceu: só a silhueta e "???". Sem nome e sem dica. */
+function UnknownPet() {
+  return (
+    <div role="img" aria-label="???" className="flex flex-col items-center gap-2 rounded-2xl border border-line bg-panel-2 px-3 pt-3 pb-3.5 text-center">
+      <Pet kind={SECRET_PET} size={72} interactive={false} float={false} silhouette />
+      <span className="text-sm font-semibold text-muted">???</span>
+      {/* Mantém a mesma altura dos outros cartões. */}
+      <span aria-hidden="true" className="invisible font-mono text-[10.5px] tracking-wider uppercase">
+        ?
+      </span>
     </div>
   )
 }

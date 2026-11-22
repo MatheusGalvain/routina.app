@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { PetKind, PetState } from '../../types'
+import type { BasePetKind, PetKind, PetState, SecretPetKind } from '../../types'
 import type { Anchor } from '../../data/accessories'
+import { BunnyBody, Stardust } from './Bunny'
 
 /** `meh` = sem graça (olhos meio fechados, sem sobrancelha). `angry` só aparece nas historinhas. */
 export type EyeStyle = 'open' | 'happy' | 'closed' | 'angry' | 'squint' | 'meh'
@@ -103,6 +104,12 @@ export interface SpeciesDef {
   adultDetail: string
   /** Desenho do corpo. `adult` liga o detalhe da fase adulto. */
   body: (c: PetColors, adult: boolean) => ReactNode
+  /** Camada atrás do corpo (ex.: partículas). Some na silhueta. */
+  behind?: () => ReactNode
+  /** Brilho em forma de estrela nas pupilas. */
+  starEyes?: boolean
+  /** Animação parada: flutuar (padrão) ou pulinhos de vez em quando. */
+  idle?: 'float' | 'hop'
 }
 
 /** Preenchimento com transição suave de cor quando o estado muda. */
@@ -232,9 +239,22 @@ export const SPECIES: Record<PetKind, SpeciesDef> = {
       </>
     ),
   },
+  coelho: {
+    kind: 'coelho',
+    colors: { color: '#DCCBFF', detail: '#FFC4E1', accent: '#F59BC4' },
+    name: 'Coelho',
+    homeState: 'neutro',
+    eyes: [[48, 63], [72, 63]],
+    anchors: { head: { x: 60, y: 40, w: 30 }, eyes: { x: 60, y: 63, w: 24 }, neck: { x: 60, y: 97, w: 52 }, hand: { x: 96, y: 86, w: 0 } },
+    adultDetail: 'uma florzinha na orelha',
+    body: (_c, adult) => <BunnyBody adult={adult} />,
+    behind: () => <Stardust />,
+    starEyes: true,
+    idle: 'hop',
+  },
 }
 
-export const PET_BY_STATE: Record<PetState, PetKind> = {
+export const PET_BY_STATE: Record<PetState, BasePetKind> = {
   neutro: 'gatinho',
   concluido: 'sapinho',
   foco: 'polvinho',
@@ -243,11 +263,15 @@ export const PET_BY_STATE: Record<PetState, PetKind> = {
   descanso: 'corujinha',
 }
 
-export const PET_ORDER: PetKind[] = ['sapinho', 'ourico', 'gatinho', 'pintinho', 'polvinho', 'corujinha']
+export const PET_ORDER: BasePetKind[] = ['sapinho', 'ourico', 'gatinho', 'pintinho', 'polvinho', 'corujinha']
+
+/** O sétimo pet. Só aparece de verdade depois de desbloqueado. */
+export const SECRET_PET: SecretPetKind = 'coelho'
+export const ALL_PETS: PetKind[] = [...PET_ORDER, SECRET_PET]
 
 /** Cada espécie com a cor do corpo e o estado "da casa". */
 export const PETS = Object.fromEntries(
-  PET_ORDER.map((k) => {
+  ALL_PETS.map((k) => {
     const s = SPECIES[k]
     const st = STATE_STYLE[s.homeState]
     return [k, { kind: k, name: s.name, color: s.colors.color, label: st.label, title: st.title, description: st.description }]

@@ -1,15 +1,18 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
-import type { AccessoryId, Block, BlockLog, Companion, DayLog, PetKind, PetProgress, PlanEntry, Routine, Slot } from '../types'
+import type { AccessoryId, Block, BlockLog, Companion, CornerSlots, DayLog, PetKind, PetProgress, PlanEntry, Routine, Slot, TrophyMap, TrophyUnlock } from '../types'
+import type { TrophyId } from '../data/trophies'
+import { EMPTY_SLOTS } from '../lib/corner'
 import { TEMPLATES } from '../data/templates'
 import { ROUTINE_COLORS } from '../data/areas'
+import { APP_KEY } from '../lib/storageKeys'
 
 const uid = () => crypto.randomUUID()
 
 /** Chave antiga (antes das contas), usada só para oferecer a migração dos dados deste aparelho. */
-export const LEGACY_KEY = 'rotina-app'
+export const LEGACY_KEY = APP_KEY
 
-// O cache local é separado por usuário: "rotina-app:<id do usuário>". Sem usuário, nada é lido nem gravado.
+// O cache local é separado por usuário: "habbit-do:<id do usuário>". Sem usuário, nada é lido nem gravado.
 let storageUser: string | null = null
 export const setStorageUser = (uid: string | null) => {
   storageUser = uid
@@ -42,6 +45,10 @@ export interface RotinaState {
   activeBlockId: string | null
   companion: Companion
   petProgress: PetProgress
+  /** Troféus conquistados, com a data de cada nível. */
+  trophies: TrophyMap
+  /** Os 4 espaços de troféus do cantinho. */
+  cornerSlots: CornerSlots
 
   createRoutine: (name?: string) => string
   updateRoutine: (id: string, patch: Partial<Omit<Routine, 'id' | 'blocks'>>) => void
@@ -66,6 +73,9 @@ export interface RotinaState {
   /** Equipa um acessório no slot (ou tira, com `null`). */
   equip: (slot: Slot, id: AccessoryId | null) => void
   updateProgress: (patch: Partial<PetProgress>) => void
+  /** Acrescenta níveis conquistados (os que já existem ficam como estão). */
+  addTrophies: (list: { id: TrophyId; unlock: TrophyUnlock }[]) => void
+  setCornerSlots: (slots: CornerSlots) => void
 }
 
 const mapRoutine = (routines: Routine[], id: string, fn: (r: Routine) => Routine) =>
@@ -89,6 +99,8 @@ export const useRotina = create<RotinaState>()(
         activeBlockId: null,
         companion: DEFAULT_COMPANION,
         petProgress: DEFAULT_PROGRESS,
+        trophies: {},
+        cornerSlots: EMPTY_SLOTS,
 
         createRoutine: (name = 'Nova rotina') => {
           const id = uid()
@@ -188,11 +200,20 @@ export const useRotina = create<RotinaState>()(
           set({ companion: { ...get().companion, equipped } })
         },
         updateProgress: (patch) => set({ petProgress: { ...get().petProgress, ...patch } }),
+        addTrophies: (list) => {
+          const trophies = { ...get().trophies }
+          for (const { id, unlock } of list) {
+            const have = trophies[id] ?? []
+            if (!have.some((u) => u.tier === unlock.tier)) trophies[id] = [...have, unlock].sort((a, b) => a.tier - b.tier)
+          }
+          set({ trophies })
+        },
+        setCornerSlots: (cornerSlots) => set({ cornerSlots }),
       }
     },
     {
       name: LEGACY_KEY,
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => scopedStorage),
       // Só carrega o cache depois do login, quando já se sabe de quem são os dados.
       skipHydration: true,
@@ -222,5 +243,7 @@ export function migrate(state: Partial<RotinaState>, version: number) {
     }
     state = { ...state, logs, companion: state.companion ?? DEFAULT_COMPANION, petProgress: state.petProgress ?? DEFAULT_PROGRESS }
   }
+  // v2 → v3: troféus e espaços do cantinho.
+  if (version < 3) state = { ...state, trophies: state.trophies ?? {}, cornerSlots: state.cornerSlots ?? EMPTY_SLOTS }
   return state as RotinaState
 }

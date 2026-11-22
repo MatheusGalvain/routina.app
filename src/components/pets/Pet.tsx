@@ -6,7 +6,19 @@ import { SPECIES, STATE_STYLE, type EyeStyle } from './pets'
 
 const INK = '#0A0D14'
 
-function Eye({ cx, cy, style, side, blink, scale }: { cx: number; cy: number; style: EyeStyle; side: number; blink: boolean; scale: number }) {
+/** Brilho da pupila: bolinha branca ou, com `star`, uma estrelinha de 4 pontas e um pontinho de luz embaixo. */
+function Shine({ x, y, star, bottom }: { x: number; y: number; star: boolean; bottom: number }) {
+  if (!star) return <circle cx={x} cy={y} r={1.7} fill="#fff" />
+  const r = 2.9
+  return (
+    <>
+      <path d={`M${x},${y - r} Q${x},${y} ${x + r},${y} Q${x},${y} ${x},${y + r} Q${x},${y} ${x - r},${y} Q${x},${y} ${x},${y - r} Z`} fill="#fff" />
+      <circle cx={x - 2.4} cy={bottom} r={0.9} fill="#E9DDFF" opacity={0.9} />
+    </>
+  )
+}
+
+function Eye({ cx, cy, style, side, blink, scale, star = false }: { cx: number; cy: number; style: EyeStyle; side: number; blink: boolean; scale: number; star?: boolean }) {
   let shape
   if (style === 'happy') shape = <path d={`M${cx - 7},${cy + 3} Q${cx},${cy - 6} ${cx + 7},${cy + 3}`} fill="none" stroke={INK} strokeWidth={3.5} strokeLinecap="round" />
   else if (style === 'closed') shape = <path d={`M${cx - 6},${cy} Q${cx},${cy + 5} ${cx + 6},${cy}`} fill="none" stroke={INK} strokeWidth={3.5} strokeLinecap="round" />
@@ -16,7 +28,7 @@ function Eye({ cx, cy, style, side, blink, scale }: { cx: number; cy: number; st
       <g>
         <motion.g animate={{ scaleY: blink ? 0.1 : 1 }} transition={{ duration: 0.07 }}>
           <rect x={cx - 4.5} y={cy - 3} width={9} height={10} rx={4.5} fill={INK} />
-          <circle cx={cx + 1.4} cy={cy + 0.5} r={1.5} fill="#fff" />
+          {star ? <Shine x={cx + 1.2} y={cy + 1} star bottom={cy + 5} /> : <circle cx={cx + 1.4} cy={cy + 0.5} r={1.5} fill="#fff" />}
         </motion.g>
         <path d={`M${cx - 6.5},${cy - 3} H${cx + 6.5}`} stroke={INK} strokeWidth={3} strokeLinecap="round" />
       </g>
@@ -29,7 +41,7 @@ function Eye({ cx, cy, style, side, blink, scale }: { cx: number; cy: number; st
         {style === 'angry' && <path d={brow} stroke={INK} strokeWidth={4} strokeLinecap="round" />}
         <motion.g animate={{ scaleY: blink ? 0.1 : 1 }} transition={{ duration: 0.07 }}>
           <rect x={cx - 4.5} y={cy - h / 2} width={9} height={h} rx={4.5} fill={INK} />
-          <circle cx={cx + 1.4} cy={cy - h / 2 + 3.2} r={1.7} fill="#fff" />
+          <Shine x={cx + 1.4} y={cy - h / 2 + (star ? 3.8 : 3.2)} star={star} bottom={cy + h / 2 - 3.4} />
         </motion.g>
       </g>
     )
@@ -92,6 +104,8 @@ interface PetProps {
   interactive?: boolean
   /** Nome falado por leitores de tela. */
   label?: string
+  /** Só a forma escura, com um brilho leve em volta (pet ainda desconhecido). */
+  silhouette?: boolean
   className?: string
 }
 
@@ -114,6 +128,7 @@ export function Pet({
   onPoke,
   interactive = true,
   label,
+  silhouette = false,
   className = '',
 }: PetProps) {
   const species = SPECIES[kind]
@@ -122,6 +137,27 @@ export function Pet({
   const eyeStyle: EyeStyle = sleeping ? 'closed' : (mood ?? look.eyeStyle)
   const [blink, setBlink] = useState(false)
   const controls = useAnimationControls()
+  const hopControls = useAnimationControls()
+  const hops = species.idle === 'hop' && float && !sleeping && !silhouette
+
+  // Pulinho curto de vez em quando, no lugar do flutuar.
+  useEffect(() => {
+    if (!hops) return
+    let timer: number
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        void hopControls.start({
+          y: [0, 0, -size * 0.13, 0, -size * 0.035, 0],
+          scaleY: [1, 0.9, 1.06, 0.94, 1.02, 1],
+          scaleX: [1, 1.06, 0.95, 1.05, 0.99, 1],
+          transition: { duration: 0.85, times: [0, 0.14, 0.42, 0.66, 0.82, 1], ease: 'easeOut' },
+        })
+        schedule()
+      }, 2800 + Math.random() * 4200)
+    }
+    schedule()
+    return () => window.clearTimeout(timer)
+  }, [hops, size])
 
   useEffect(() => {
     let timer: number
@@ -186,12 +222,13 @@ export function Pet({
       <motion.div
         className="h-full w-full"
         style={{ transformOrigin: '50% 88%' }}
-        animate={{ y: float ? [0, -size * 0.05, 0] : 0, rotate: swaying ? [-3, 3, -3] : 0 }}
+        animate={{ y: float && !hops ? [0, -size * 0.05, 0] : 0, rotate: swaying ? [-3, 3, -3] : 0 }}
         transition={{
-          y: { duration: floatDuration, repeat: float ? Infinity : 0, ease: 'easeInOut' },
+          y: { duration: floatDuration, repeat: float && !hops ? Infinity : 0, ease: 'easeInOut' },
           rotate: swaying ? { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.5 },
         }}
       >
+       <motion.div className="h-full w-full" style={{ transformOrigin: '50% 90%' }} animate={hopControls}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.svg
             key={kind}
@@ -204,11 +241,18 @@ export function Pet({
             exit={{ scale: 0.5, opacity: 0, rotate: 10 }}
             transition={{ type: 'spring', stiffness: 320, damping: 18 }}
             // Aura: a cor do estado vai para o brilho, com transição suave.
-            style={{ overflow: 'visible', filter: `drop-shadow(0 0 ${Math.round(size * 0.12)}px ${look.glow})`, transition: 'filter .6s ease' }}
+            style={{
+              overflow: 'visible',
+              filter: silhouette
+                ? `brightness(0) drop-shadow(0 0 ${Math.max(3, Math.round(size * 0.07))}px rgba(196,181,253,.55))`
+                : `drop-shadow(0 0 ${Math.round(size * 0.12)}px ${look.glow})`,
+              transition: 'filter .6s ease',
+            }}
           >
             <motion.g animate={controls}>
               {/* Filhote: 80% do tamanho, apoiado na mesma base. */}
               <g transform={baby ? 'translate(12 21.6) scale(0.8)' : undefined}>
+                {!silhouette && species.behind?.()}
                 <motion.g
                   animate={{ scaleY: [1, resting ? 1.05 : 1.035, 1], scaleX: [1, 0.985, 1] }}
                   transition={{ duration: resting ? 4 : 2.6, repeat: Infinity, ease: 'easeInOut' }}
@@ -216,14 +260,14 @@ export function Pet({
                 >
                   {species.body(species.colors, adult)}
                   {species.eyes.map(([cx, cy], i) => (
-                    <Eye key={i} cx={cx} cy={cy} side={i} style={eyeStyle} blink={blink} scale={baby ? 1.3 : 1} />
+                    <Eye key={i} cx={cx} cy={cy} side={i} style={eyeStyle} blink={blink} scale={baby ? 1.3 : 1} star={species.starEyes} />
                   ))}
                   {items.map((it) => (
                     <g key={it.id}>{it.draw(anchorOf[it.slot], species.colors.color)}</g>
                   ))}
                 </motion.g>
                 <AnimatePresence>
-                  {bubble && <EmotionBubble key={bubble.id} x={head.x - 22} y={head.y - 30} emotion={bubble.emotion} ring={look.color} />}
+                  {bubble && !silhouette && <EmotionBubble key={bubble.id} x={head.x - 22} y={head.y - 30} emotion={bubble.emotion} ring={look.color} />}
                 </AnimatePresence>
               </g>
             </motion.g>
@@ -245,6 +289,7 @@ export function Pet({
               ))}
           </motion.svg>
         </AnimatePresence>
+       </motion.div>
       </motion.div>
     </Wrapper>
   )

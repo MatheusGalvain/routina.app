@@ -10,7 +10,7 @@ import { Pet } from '../components/pets/Pet'
 import { PETS, PET_ORDER } from '../components/pets/pets'
 import { PetStory } from '../components/pets/PetStory'
 import { PetCorner } from '../components/pets/PetCorner'
-import type { PetKind } from '../types'
+import type { BasePetKind } from '../types'
 
 const daysLabel = (days: number[]) =>
   days.length === 7 ? 'todo dia' : days.length === 0 ? 'nenhum dia' : days.map((d) => WEEKDAYS[d].long.slice(0, 3).toLowerCase()).join(' · ')
@@ -25,7 +25,7 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
   const addTemplate = useRotina((s) => s.addTemplate)
   const activeId = useRotina((s) => s.activeBlockId)
   const companion = useRotina((s) => s.companion)
-  const [storyPet, setStoryPet] = useState<PetKind | null>(null)
+  const [storyPet, setStoryPet] = useState<BasePetKind | null>(null)
 
   const items = useMemo(() => getTodayItems(routines, dayLog, completedTasks, now, date), [routines, dayLog, completedTasks, date])
   const done = items.filter((i) => i.done).length
@@ -38,7 +38,7 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
           <Logo />
           <div className="flex flex-col gap-1">
             <h1 className="m-0 text-[44px] leading-none font-extrabold tracking-tight">
-              Nomo<span className="text-[#5AA7FF]">.app</span>
+              Habbit <span className="text-[#5AA7FF]">Do</span>
             </h1>
             <p className="m-0 text-muted">{greeting(now)}! Pronto para organizar o seu dia?</p>
           </div>

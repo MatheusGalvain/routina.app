@@ -31,6 +31,18 @@ body {
   background: radial-gradient(1200px 600px at 50% -10%, #111827 0%, var(--color-ink) 60%) fixed;
 }
 
+/* Estrelas acesas do cantinho piscando devagar. */
+@keyframes twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.twinkle {
+  animation: twinkle 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .twinkle { animation: none; }
+}
+
 :focus-visible {
   outline: 2px solid var(--color-foco);
   outline-offset: 2px;

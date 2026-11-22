@@ -1,5 +1,5 @@
 -- =====================================================================
--- rotina.app · 001_init
+-- Habbit Do · 001_init
 -- Tabelas por usuário, com Row Level Security em TODAS elas.
 -- Cada linha pertence a um usuário (user_id → auth.users, ON DELETE CASCADE):
 -- apagar o usuário no Auth apaga todos os dados dele.

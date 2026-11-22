@@ -7,6 +7,7 @@ import { Companheiro } from './pages/Companheiro'
 import { Privacidade } from './pages/Privacidade'
 import { useSyncTodayPlan } from './store/useSyncTodayPlan'
 import { useCompanionProgress } from './store/useCompanion'
+import { useTrophyProgress } from './store/useTrophies'
 import { PetCelebration } from './components/pets/PetCelebration'
 import { Entrar } from './pages/Entrar'
 import { useAuth } from './store/useAuth'
@@ -52,6 +53,7 @@ export default function App() {
 function AppShell() {
   useSyncTodayPlan()
   useCompanionProgress()
+  useTrophyProgress()
   const [page, setPage] = useState<Page>('inicio')
   // A política abre por cima da página atual e o "Voltar" retorna para ela.
   const [beforePrivacy, setBeforePrivacy] = useState<Page>('inicio')

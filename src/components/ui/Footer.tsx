@@ -17,7 +17,7 @@ export function Footer({ onPrivacy }: { onPrivacy: () => void }) {
             </div>
             <div className="flex flex-col">
               <span className="text-lg leading-none font-extrabold tracking-tight">
-                rotina<span className="text-[#5AA7FF]">.app</span>
+                Habbit <span className="text-[#5AA7FF]">Do</span>
               </span>
               <span className="mt-1 text-[13px] text-muted">Organize o seu dia, um bloco de cada vez.</span>
             </div>

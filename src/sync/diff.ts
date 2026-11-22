@@ -1,6 +1,6 @@
 import type { RotinaState } from '../store/useRotina'
 import type { Row, Table } from './rows'
-import { blockLogRow, companionRow, dayRow, structureRows, taskRow } from './rows'
+import { blockLogRow, companionRow, dayRow, slotRow, structureRows, taskRow, trophyRows } from './rows'
 
 export type Emit = (table: Table, kind: 'upsert' | 'delete', row: Row) => void
 
@@ -55,5 +55,19 @@ export function diff(uid: string, prev: RotinaState, next: RotinaState, enqueue:
   if (prev.companion !== next.companion || prev.petProgress !== next.petProgress) {
     // Com simulação ativa, o progresso calculado é falso: sobe só espécie, nome e acessórios.
     enqueue('companion', 'upsert', companionRow(uid, next.companion, next.petProgress, !hasDevDays(next)))
+  }
+
+  // Troféus: só acrescenta (um nível conquistado nunca é perdido).
+  if (prev.trophies !== next.trophies) {
+    const a = trophyRows(uid, prev.trophies)
+    for (const [key, row] of trophyRows(uid, next.trophies)) if (!same(a.get(key), row)) enqueue('user_trophies', 'upsert', row)
+  }
+
+  if (prev.cornerSlots !== next.cornerSlots) {
+    next.cornerSlots.forEach((s, i) => {
+      if (same(prev.cornerSlots[i], s)) return
+      if (s) enqueue('corner_slots', 'upsert', slotRow(uid, i, s))
+      else enqueue('corner_slots', 'delete', { slot: i })
+    })
   }
 }

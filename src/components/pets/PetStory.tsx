@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import type { PetKind } from '../../types'
+import type { BasePetKind } from '../../types'
 import { Icon } from '../ui/ui'
 import { Pet } from './Pet'
 import { PETS, type EyeStyle } from './pets'
@@ -19,7 +19,7 @@ const DECO_SPOTS = [
  * Tela de historinha interativa de um pet: cenas com texto,
  * toques no pet e escolhas que mudam a reação dele.
  */
-export function PetStory({ kind, onClose }: { kind: PetKind; onClose: () => void }) {
+export function PetStory({ kind, onClose }: { kind: BasePetKind; onClose: () => void }) {
   const pet = PETS[kind]
   const story = STORIES[kind]
   const accent = pet.color === '#F1F3F6' ? '#C9CED8' : pet.color

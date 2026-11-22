@@ -26,7 +26,7 @@ export function Privacidade({ onBack }: { onBack: () => void }) {
       <header className="flex flex-col gap-1">
         <p className="m-0 font-mono text-xs tracking-wider text-muted uppercase">Atualizada em {UPDATED}</p>
         <h1 className="m-0 text-3xl font-extrabold tracking-tight">Política de privacidade</h1>
-        <p className="m-0 text-muted">O rotina.app guarda só o necessário para organizar o seu dia e manter tudo igual em todos os seus aparelhos.</p>
+        <p className="m-0 text-muted">O Habbit Do guarda só o necessário para organizar o seu dia e manter tudo igual em todos os seus aparelhos.</p>
       </header>
 
       <Section title="Quais dados guardamos">

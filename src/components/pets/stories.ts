@@ -1,4 +1,4 @@
-import type { PetKind } from '../../types'
+import type { BasePetKind } from '../../types'
 import type { EyeStyle } from './pets'
 import type { DecoId } from './Deco'
 
@@ -35,7 +35,7 @@ const SEA: [string, string] = ['#0B2A55', '#0A1020']
 const SUN: [string, string] = ['#4A3510', '#16130C']
 const EMBER: [string, string] = ['#4A1422', '#170C10']
 
-export const STORIES: Record<PetKind, PetStory> = {
+export const STORIES: Record<BasePetKind, PetStory> = {
   gatinho: {
     title: 'O Gatinho e o primeiro passo',
     scenes: [

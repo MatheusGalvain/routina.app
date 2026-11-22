@@ -4,11 +4,11 @@ import { phaseIndex } from '../lib/companion'
 import type { DayLog, Routine } from '../types'
 
 /**
- * Dados do formato antigo (antes das contas), salvos em localStorage['rotina-app'].
+ * Dados do formato antigo (antes das contas), salvos em localStorage['habbit-do'] (antes, 'rotina-app').
  * Depois de levados para uma conta, a chave é renomeada para não serem oferecidos de novo.
  */
 
-export const LEGACY_DONE_KEY = 'rotina-app-legacy-imported'
+export const LEGACY_DONE_KEY = `${LEGACY_KEY}-legacy-imported`
 
 export type LegacyData = Pick<RotinaState, 'routines' | 'logs' | 'completedTasks' | 'companion' | 'petProgress'>
 

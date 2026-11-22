@@ -103,7 +103,7 @@ export function Logo({ size = 56 }: { size?: number }) {
   const segs = ['#FFB020', '#1E88FF', '#22C55E', '#8B5CF6']
   return (
     <div className="grid place-items-center rounded-[22px] border border-[#1E2533] bg-[#121722]" style={{ width: size + 20, height: size + 20 }}>
-      <svg width={size} height={size} viewBox="0 0 56 56" role="img" aria-label="rotina.app">
+      <svg width={size} height={size} viewBox="0 0 56 56" role="img" aria-label="Habbit Do">
         {segs.map((c, i) => (
           <circle key={c} cx="28" cy="28" r="22" fill="none" stroke={c} strokeWidth="6" strokeLinecap="round" strokeDasharray="26 112.2" strokeDashoffset={-34.5 * i} transform="rotate(-90 28 28)" />
         ))}

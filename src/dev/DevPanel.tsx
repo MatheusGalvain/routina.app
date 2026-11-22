@@ -3,15 +3,19 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useRotina } from '../store/useRotina'
 import { reloadFromServer } from '../sync/session'
 import { flushNow } from '../sync/outbox'
-import { useDevOverrides, type CornerStage, type ForcedState } from '../store/useDevOverrides'
+import { useDevOverrides, type ForcedState } from '../store/useDevOverrides'
 import { usePetEvents } from '../store/usePetEvents'
 import { useStats } from '../store/useCompanion'
 import { AREAS } from '../data/areas'
 import { ACCESSORIES } from '../data/accessories'
-import { PETS, PET_ORDER } from '../components/pets/pets'
+import { ALL_PETS, PETS } from '../components/pets/pets'
 import { PHASES, phaseFor } from '../lib/companion'
 import { dayKey } from '../lib/dates'
 import { Icon } from '../components/ui/ui'
+import { APP_KEY } from '../lib/storageKeys'
+import { TIERS, TIER_LIST, TROPHIES, trophyTitle, type TrophyId, type TrophyTier } from '../data/trophies'
+import { EMPTY_SLOTS, tiersOf } from '../lib/corner'
+import type { CornerSlots, TrophyMap } from '../types'
 import type { AreaId } from '../types'
 import { clearDev, simulateActiveDays, simulateArea, simulateIdle, simulateStreak, testRoutine } from './simulate'
 
@@ -104,6 +108,7 @@ export default function DevPanel() {
               <StatsReadout />
               <Simulation onStatus={setStatus} />
               <Overrides />
+              <Trophies onStatus={setStatus} />
               <Safety onStatus={setStatus} />
             </div>
             <p aria-live="polite" className="m-0 min-h-[38px] border-t border-line px-4 py-2.5 font-mono text-[11.5px] text-soft">
@@ -278,32 +283,38 @@ function Overrides() {
   const dev = useDevOverrides()
   const push = usePetEvents((s) => s.push)
   const [acc, setAcc] = useState(ACCESSORIES[0].id)
-  const stages: { id: CornerStage; label: string }[] = [0, 1, 2, 3].map((n) => ({ id: n as CornerStage, label: String(n) }))
+  const skyDays = [0, 1, 3, 5, 7]
 
   return (
     <Section title="Atalhos de visualização (não mexem nos dados)">
       <Segmented label="Fase do pet" value={dev.phase} options={PHASES.map((p) => ({ id: p.id, label: p.name }))} onChange={(phase) => dev.set({ phase })} />
       <Segmented label="Estado" value={dev.state} options={STATES} onChange={(state) => dev.set({ state })} />
-      <Segmented label="Espécie do favorito" value={dev.species} options={PET_ORDER.map((k) => ({ id: k, label: PETS[k].name }))} onChange={(species) => dev.set({ species })} />
+      <Segmented label="Espécie do favorito" value={dev.species} options={ALL_PETS.map((k) => ({ id: k, label: PETS[k].name }))} onChange={(species) => dev.set({ species })} />
       <Row>
         <Btn pressed={dev.unlockAll} onClick={() => dev.set({ unlockAll: !dev.unlockAll })}>
           {dev.unlockAll ? 'Todos os acessórios liberados' : 'Desbloquear todos os acessórios'}
         </Btn>
       </Row>
+      <Row>
+        <Btn pressed={dev.secretPet} onClick={() => dev.set({ secretPet: !dev.secretPet })}>
+          {dev.secretPet ? 'Coelho desbloqueado (só visual)' : 'Desbloquear coelho'}
+        </Btn>
+        <Btn onClick={() => push({ type: 'secret' })}>Disparar chegada do coelho</Btn>
+      </Row>
       <div className="flex flex-col gap-1.5">
-        <span className="text-[12px] text-muted">Estágio do cantinho por área</span>
+        <span className="text-[12px] text-muted">Dias por área no céu do cantinho</span>
         {AREAS.map((a) => (
           <div key={a.id} className="flex items-center gap-2">
             <span className="w-16 text-[12px]" style={{ color: a.color }}>
               {a.name}
             </span>
-            <div className="flex flex-wrap gap-1" role="group" aria-label={`Estágio do cantinho: ${a.name}`}>
+            <div className="flex flex-wrap gap-1" role="group" aria-label={`Dias no céu: ${a.name}`}>
               <Btn pressed={dev.corner[a.id] === undefined} onClick={() => dev.setCorner(a.id, null)}>
                 Auto
               </Btn>
-              {stages.map((s) => (
-                <Btn key={s.id} pressed={dev.corner[a.id] === s.id} onClick={() => dev.setCorner(a.id, s.id)}>
-                  {s.label}
+              {skyDays.map((d) => (
+                <Btn key={d} pressed={dev.corner[a.id] === d} onClick={() => dev.setCorner(a.id, d)}>
+                  {d}
                 </Btn>
               ))}
             </div>
@@ -332,6 +343,119 @@ function Overrides() {
   )
 }
 
+/** Troféus que a tela mostra agora (os simulados, se houver; senão os reais). */
+const shownTrophies = (): TrophyMap => useDevOverrides.getState().trophies ?? useRotina.getState().trophies
+
+/** Acrescenta níveis aos troféus simulados (partindo dos reais na primeira vez). */
+function withTiers(base: TrophyMap, add: [TrophyId, TrophyTier][]): TrophyMap {
+  const out: TrophyMap = { ...base }
+  const at = new Date().toISOString()
+  for (const [id, tier] of add) if (!tiersOf(out, id).includes(tier)) out[id] = [...(out[id] ?? []), { tier, unlockedAt: at }].sort((a, b) => a.tier - b.tier)
+  return out
+}
+
+/**
+ * Troféus simulados: ficam só em useDevOverrides (sem persist, somem ao recarregar).
+ * Enquanto houver simulação, o cantinho e a coleção mostram e editam a cópia simulada.
+ */
+function Trophies({ onStatus }: { onStatus: (s: string) => void }) {
+  const dev = useDevOverrides()
+  const push = usePetEvents((s) => s.push)
+  const [id, setId] = useState<TrophyId>(TROPHIES[0].id)
+  const [tier, setTier] = useState<TrophyTier>(2)
+  const simulating = !!(dev.trophies || dev.slots)
+  const select = 'rounded-lg border border-line bg-panel px-2 py-1.5 text-[12.5px] text-soft'
+
+  return (
+    <Section title="Troféus (só neste aparelho)">
+      <p className="m-0 text-[11.5px] text-muted">
+        {simulating ? 'Simulando: o cantinho e a coleção mostram os troféus de teste. Nada disso vai para o Supabase.' : 'Mostrando os troféus reais.'}
+      </p>
+      <Row>
+        <Btn
+          onClick={() => {
+            dev.set({ trophies: withTiers({}, TROPHIES.flatMap((t) => TIER_LIST.map((n) => [t.id, n] as [TrophyId, TrophyTier]))) })
+            onStatus('Todos os troféus desbloqueados (simulado).')
+          }}
+        >
+          Desbloquear todos
+        </Btn>
+        <Btn
+          onClick={() => {
+            dev.set({ trophies: {}, slots: EMPTY_SLOTS })
+            onStatus('Troféus limpos (simulado).')
+          }}
+        >
+          Limpar troféus
+        </Btn>
+      </Row>
+      <Row>
+        <select aria-label="Troféu" value={id} onChange={(e) => setId(e.target.value as TrophyId)} className={select}>
+          {TROPHIES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        <select aria-label="Nível" value={tier} onChange={(e) => setTier(Number(e.target.value) as TrophyTier)} className={select}>
+          {TIER_LIST.map((n) => (
+            <option key={n} value={n}>
+              {TIERS[n].name}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <Row>
+        <Btn
+          onClick={() => {
+            dev.set({ trophies: withTiers(shownTrophies(), [[id, tier]]) })
+            onStatus(`${trophyTitle(id, tier)} desbloqueado (simulado).`)
+          }}
+        >
+          Desbloquear este nível
+        </Btn>
+        <Btn
+          onClick={() => {
+            // O aviso tem "Expor no cantinho": liga a simulação antes, para não gravar nos espaços reais.
+            dev.set({ trophies: withTiers(shownTrophies(), [[id, tier]]) })
+            push({ type: 'trophy', trophy: id, tier })
+          }}
+        >
+          Disparar aviso de troféu novo
+        </Btn>
+      </Row>
+      <Row>
+        <Btn
+          onClick={() => {
+            let map = shownTrophies()
+            if (!TROPHIES.some((t) => tiersOf(map, t.id).length)) map = withTiers({}, TROPHIES.flatMap((t) => TIER_LIST.map((n) => [t.id, n] as [TrophyId, TrophyTier])))
+            const owned = TROPHIES.filter((t) => tiersOf(map, t.id).length).sort(() => Math.random() - 0.5)
+            const slots = EMPTY_SLOTS.map((_, i) => {
+              const t = owned[i]
+              if (!t) return null
+              const tiers = tiersOf(map, t.id)
+              return { trophyId: t.id, tier: tiers[Math.floor(Math.random() * tiers.length)] }
+            }) as CornerSlots
+            dev.set({ trophies: map, slots })
+            onStatus('Espaços preenchidos com uma combinação aleatória (simulado).')
+          }}
+        >
+          Preencher os 4 espaços (aleatório)
+        </Btn>
+        <Btn
+          disabled={!simulating}
+          onClick={() => {
+            dev.set({ trophies: null, slots: null })
+            onStatus('De volta aos troféus reais.')
+          }}
+        >
+          Voltar aos reais
+        </Btn>
+      </Row>
+    </Section>
+  )
+}
+
 function Safety({ onStatus }: { onStatus: (s: string) => void }) {
   const [confirming, setConfirming] = useState(false)
 
@@ -354,7 +478,7 @@ function Safety({ onStatus }: { onStatus: (s: string) => void }) {
               onClick={async () => {
                 await flushNow() // não perde mudanças reais que ainda não subiram
                 Object.keys(localStorage)
-                  .filter((k) => k.startsWith('rotina-app'))
+                  .filter((k) => k.startsWith(APP_KEY))
                   .forEach((k) => localStorage.removeItem(k))
                 location.reload()
               }}

@@ -3,12 +3,12 @@ import { useRotina } from './useRotina'
 import { useDevOverrides } from './useDevOverrides'
 import { usePetEvents } from './usePetEvents'
 import { computeStats } from '../lib/stats'
-import { phaseFor, phaseIndex } from '../lib/companion'
+import { SECRET_DAYS, SECRET_UNLOCK, phaseFor, phaseIndex } from '../lib/companion'
 import { dayKey } from '../lib/dates'
 import { PET_BY_STATE } from '../components/pets/pets'
 import { ACCESSORIES, type UnlockStats } from '../data/accessories'
 import type { Stats } from '../lib/stats'
-import type { AccessoryId, PetState } from '../types'
+import type { AccessoryId, PetState, UnlockId } from '../types'
 
 /** Estatísticas atuais, recalculadas quando os registros mudam. */
 export function useStats() {
@@ -33,6 +33,7 @@ export function unlockStats(stats: Stats, activeDays: number, hasCompanion: bool
  * Mantém o progresso do companheiro (montado uma vez, no App):
  * guarda o maior número de dias ativos, libera acessórios (para sempre)
  * e enfileira as comemorações de nova fase e de acessório novo.
+ * O coelho chega com 30 dias ativos ou uma semana com todas as áreas concluídas.
  * Na primeira vez só registra o estado atual, sem comemorar o passado.
  */
 export function useCompanionProgress() {
@@ -45,7 +46,8 @@ export function useCompanionProgress() {
     const phase = phaseFor(peak)
     const u = unlockStats(stats, peak, hasCompanion)
     const fresh = ACCESSORIES.filter((a) => !p.unlocked.includes(a.id) && a.unlock(u)).map((a) => a.id)
-    const unlocked = [...p.unlocked, ...fresh]
+    const secret = !p.unlocked.includes(SECRET_UNLOCK) && (peak >= SECRET_DAYS || stats.allAreasWeek)
+    const unlocked: UnlockId[] = [...p.unlocked, ...fresh, ...(secret ? [SECRET_UNLOCK] : [])]
 
     if (!p.initialized) {
       updateProgress({ initialized: true, peakActiveDays: peak, seenPhase: phase, unlocked })
@@ -59,10 +61,9 @@ export function useCompanionProgress() {
       patch.seenPhase = phase
       if (hasCompanion) push({ type: 'phase', phase })
     }
-    if (fresh.length) {
-      patch.unlocked = unlocked
-      if (hasCompanion) fresh.forEach((accessory) => push({ type: 'unlock', accessory }))
-    }
+    if (fresh.length || secret) patch.unlocked = unlocked
+    if (fresh.length && hasCompanion) fresh.forEach((accessory) => push({ type: 'unlock', accessory }))
+    if (secret) push({ type: 'secret' })
     if (Object.keys(patch).length) updateProgress(patch)
   }, [stats, hasCompanion])
 }
@@ -83,9 +84,10 @@ export function useCompanionView() {
   const sleepy = stats.daysSinceLastActive !== null && stats.daysSinceLastActive >= 2 && stats.doneToday === 0
 
   const unlockedIds = dev.unlockAll ? ACCESSORIES.map((a) => a.id) : progress.unlocked
+  const secretUnlocked = dev.secretPet || progress.unlocked.includes(SECRET_UNLOCK)
   const sleeping = dev.state ? dev.state === 'dormindo' : sleepy
 
-  return { kind, name: companion.name, phase, activeDays, accessories, unlockedIds, sleepy, sleeping, stats, forcedState: dev.state }
+  return { kind, name: companion.name, phase, activeDays, accessories, unlockedIds, secretUnlocked, sleepy, sleeping, stats, forcedState: dev.state }
 }
 
 /**

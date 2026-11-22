@@ -6,6 +6,9 @@ import { useRotina } from '../../store/useRotina'
 import { ACCESSORY_BY_ID } from '../../data/accessories'
 import { PHASES } from '../../lib/companion'
 import { Pet } from './Pet'
+import { TIERS, Trophy, trophyTitle, type TrophyId, type TrophyTier } from '../../data/trophies'
+import { exposeTrophy } from '../../lib/corner'
+import { currentSlots, writeSlots } from '../../store/useTrophies'
 import { SPECIES, STATE_STYLE, textColor } from './pets'
 
 const PARTICLES = Array.from({ length: 18 }, (_, i) => {
@@ -20,10 +23,214 @@ const COLORS = ['#FFD34D', '#22C55E', '#5AA7FF', '#FB7185', '#C4B5FD']
 export function PetCelebration() {
   const event = usePetEvents((s) => s.queue[0])
   const shift = usePetEvents((s) => s.shift)
-  return <AnimatePresence>{event && <Celebration key={event.id} event={event} onClose={shift} />}</AnimatePresence>
+  return (
+    <AnimatePresence>
+      {event &&
+        (event.type === 'secret' ? (
+          <SecretArrival key={event.id} onClose={shift} />
+        ) : event.type === 'trophy' ? (
+          <TrophyArrival key={event.id} trophy={event.trophy} tier={event.tier} onClose={shift} />
+        ) : (
+          <Celebration key={event.id} event={event} onClose={shift} />
+        ))}
+    </AnimatePresence>
+  )
 }
 
-function Celebration({ event, onClose }: { event: PetEvent; onClose: () => void }) {
+/** Aviso de troféu novo: o troféu entra caindo devagar, com um brilho na cor do nível. */
+function TrophyArrival({ trophy, tier, onClose }: { trophy: TrophyId; tier: TrophyTier; onClose: () => void }) {
+  const color = TIERS[tier].color
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="trophy-title"
+        className="relative flex w-full max-w-[380px] flex-col items-center gap-3 overflow-hidden rounded-[26px] border border-line bg-panel px-6 pt-6 pb-6 text-center"
+        initial={{ scale: 0.9, y: 16 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.94, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative grid h-[170px] w-full place-items-center">
+          <motion.div
+            aria-hidden="true"
+            className="absolute h-[160px] w-[160px] rounded-full"
+            style={{ background: `radial-gradient(circle, ${color}40 0%, transparent 68%)` }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.35, ease: 'easeOut' }}
+          />
+          <motion.div
+            initial={{ y: -90, opacity: 0, rotate: -12, scale: 0.7 }}
+            animate={{ y: 0, opacity: 1, rotate: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 170, damping: 13, delay: 0.15 }}
+          >
+            <Trophy id={trophy} tier={tier} size={120} />
+          </motion.div>
+          <motion.div
+            aria-hidden="true"
+            className="absolute bottom-[14px] h-[8px] w-[90px] rounded-[50%] bg-black/50 blur-[3px]"
+            initial={{ scaleX: 0.3, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.35 }}
+          />
+        </div>
+        <h2 id="trophy-title" className="m-0 text-xl font-extrabold">
+          Novo troféu: {trophyTitle(trophy, tier)}
+        </h2>
+        <div className="mt-1 flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            autoFocus
+            onClick={() => {
+              writeSlots(exposeTrophy(currentSlots(), trophy, tier))
+              onClose()
+            }}
+            className="min-h-11 rounded-full px-5 py-2.5 text-sm font-bold text-[#1A1405]"
+            style={{ background: tier === 4 ? '#DCCBFF' : color }}
+          >
+            Expor no cantinho
+          </button>
+          <button type="button" onClick={onClose} className="min-h-11 rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-soft hover:bg-panel-2">
+            Depois
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// Poeira de estrela que se espalha devagar quando a silhueta acende.
+const DUST = Array.from({ length: 16 }, (_, i) => {
+  const angle = (i / 16) * Math.PI * 2 + (i % 3) * 0.15
+  const dist = 80 + (i % 4) * 22
+  return { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist * 0.8, size: 2.5 + (i % 3) * 1.5, star: i % 2 === 0, delay: (i % 6) * 0.06 }
+})
+const DUST_COLORS = ['#FFFFFF', '#E4D6FF', '#CDE9FF', '#FFD9EC']
+
+/**
+ * Chegada do coelho: a silhueta acende, a poeira de estrela se espalha e ele dá um pulinho.
+ * Tom calmo e sem rótulos ("raro", "lendário"...): a pessoa percebe sozinha.
+ */
+function SecretArrival({ onClose }: { onClose: () => void }) {
+  const hasCompanion = useRotina((s) => !!s.companion.kind)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[80] grid place-items-center bg-black/80 p-4 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.6 }}
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="secret-title"
+        className="relative flex w-full max-w-[400px] flex-col items-center gap-3 overflow-hidden rounded-[26px] border border-line bg-panel px-6 pt-6 pb-6 text-center"
+        initial={{ scale: 0.94, y: 12 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.96, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 26 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative grid h-[220px] w-full place-items-center">
+          <motion.div
+            aria-hidden="true"
+            className="absolute h-[210px] w-[210px] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(220,203,255,.38) 0%, rgba(199,227,255,.14) 45%, transparent 70%)' }}
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: [0, 0.35, 1], scale: [0.6, 0.8, 1] }}
+            transition={{ duration: 1.6, delay: 0.4, times: [0, 0.4, 1], ease: 'easeOut' }}
+          />
+          <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox="-175 -110 350 220">
+            {DUST.map((p, i) => (
+              <motion.path
+                key={i}
+                d={
+                  p.star
+                    ? `M0,${-p.size * 1.6} Q0,0 ${p.size * 1.6},0 Q0,0 0,${p.size * 1.6} Q0,0 ${-p.size * 1.6},0 Q0,0 0,${-p.size * 1.6} Z`
+                    : `M0,0 m${-p.size / 2},0 a${p.size / 2},${p.size / 2} 0 1,0 ${p.size},0 a${p.size / 2},${p.size / 2} 0 1,0 ${-p.size},0`
+                }
+                fill={DUST_COLORS[i % DUST_COLORS.length]}
+                style={{ filter: 'drop-shadow(0 0 3px rgba(228,214,255,.9))' }}
+                initial={{ x: 0, y: 0, opacity: 0, scale: 0.4 }}
+                animate={{ x: p.x, y: p.y - 10, opacity: [0, 1, 0.8, 0], scale: [0.4, 1, 0.9, 0.6] }}
+                transition={{ duration: 2.4, delay: 1.5 + p.delay, ease: 'easeOut' }}
+              />
+            ))}
+          </svg>
+          {/* A silhueta acende e, já iluminado, ele dá um pulinho. */}
+          <motion.div
+            initial={{ filter: 'brightness(0) drop-shadow(0 0 8px rgba(196,181,253,0.55))', y: 0, scaleY: 1 }}
+            animate={{
+              filter: ['brightness(0) drop-shadow(0 0 8px rgba(196,181,253,0.55))', 'brightness(1) drop-shadow(0 0 16px rgba(220,203,255,0.7))'],
+              y: [0, 0, 0, -26, 0, -7, 0],
+              scaleY: [1, 1, 0.9, 1.07, 0.94, 1.02, 1],
+            }}
+            transition={{
+              filter: { duration: 1.4, delay: 0.5, ease: 'easeInOut' },
+              y: { duration: 1, delay: 1.8, times: [0, 0.05, 0.15, 0.45, 0.7, 0.85, 1], ease: 'easeOut' },
+              scaleY: { duration: 1, delay: 1.8, times: [0, 0.05, 0.15, 0.45, 0.7, 0.85, 1], ease: 'easeOut' },
+            }}
+            style={{ transformOrigin: '50% 90%' }}
+          >
+            <Pet kind="coelho" size={150} interactive={false} float={false} />
+          </motion.div>
+        </div>
+
+        <motion.div className="flex w-full flex-col items-center gap-3" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 2.2 }}>
+          <h2 id="secret-title" className="m-0 text-xl font-extrabold">
+            Alguém novo apareceu no seu cantinho.
+          </h2>
+          <p className="m-0 w-full rounded-2xl border border-[#2A3242] bg-panel-2 px-4 py-3 text-sm text-soft">
+            Um coelho veio fazer companhia. Ele fica por aqui, e você pode escolhê-lo como favorito quando quiser.
+          </p>
+          <div className="mt-1 flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              autoFocus
+              onClick={() => {
+                useRotina.getState().setCompanionKind('coelho')
+                onClose()
+              }}
+              className="rounded-full bg-[#DCCBFF] px-5 py-2.5 text-sm font-bold text-[#1E1640]"
+            >
+              {hasCompanion ? 'Trocar para o coelho' : 'Escolher como favorito'}
+            </button>
+            <button type="button" onClick={onClose} className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-soft hover:bg-panel-2">
+              Depois
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'phase' | 'unlock' }>; onClose: () => void }) {
   const view = useCompanionView()
   const kind = view.kind ?? 'gatinho'
   const species = SPECIES[kind]

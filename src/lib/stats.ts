@@ -1,6 +1,6 @@
 import type { AreaId, Block, BlockLog, DayLog } from '../types'
 import { AREAS } from '../data/areas'
-import { addDays, dayKey, diffDays } from './dates'
+import { addDays, dayKey, diffDays, parseKey } from './dates'
 
 /**
  * Estatísticas do companheiro. Todas as funções são puras: recebem `logs`
@@ -74,6 +74,31 @@ export function currentStreak(logs: Logs, today = dayKey()) {
   return n
 }
 
+/** Maior sequência de dias ativos já alcançada em todo o histórico (não a atual). */
+export function bestStreak(logs: Logs, today = dayKey()) {
+  const days = pastKeys(logs, today)
+    .filter((k) => isActiveDay(logs[k]))
+    .sort()
+  let best = 0
+  let run = 0
+  days.forEach((k, i) => {
+    run = i > 0 && diffDays(k, days[i - 1]) === 1 ? run + 1 : 1
+    best = Math.max(best, run)
+  })
+  return best
+}
+
+/** Semanas (de domingo a sábado) com pelo menos `min` dias ativos. */
+export function activeWeeks(logs: Logs, min = 5, today = dayKey()) {
+  const perWeek = new Map<string, number>()
+  for (const k of pastKeys(logs, today)) {
+    if (!isActiveDay(logs[k])) continue
+    const week = addDays(k, -parseKey(k).getDay())
+    perWeek.set(week, (perWeek.get(week) ?? 0) + 1)
+  }
+  return [...perWeek.values()].filter((n) => n >= min).length
+}
+
 /** Total de blocos concluídos. */
 export function blocksDone(logs: Logs, today = dayKey()) {
   return pastKeys(logs, today).reduce((sum, k) => sum + summarizeDay(logs[k]).done, 0)
@@ -98,9 +123,30 @@ export function daysSinceLastActive(logs: Logs, today = dayKey()) {
   return last ? diffDays(today, last) : null
 }
 
+/**
+ * Houve 7 dias seguidos (uma semana) em que cada uma das áreas da vida
+ * teve pelo menos um bloco concluído? Vale qualquer janela de 7 dias do histórico.
+ */
+export function allAreasInAWeek(logs: Logs, today = dayKey()) {
+  const days = pastKeys(logs, today)
+    .sort()
+    .map((k) => ({ k, areas: Object.keys(summarizeDay(logs[k]).areas) }))
+    .filter((d) => d.areas.length > 0)
+  for (let i = 0; i < days.length; i++) {
+    const seen = new Set<string>()
+    for (let j = i; j < days.length && diffDays(days[j].k, days[i].k) < 7; j++) days[j].areas.forEach((a) => seen.add(a))
+    if (seen.size >= AREAS.length) return true
+  }
+  return false
+}
+
 export interface Stats {
   activeDays: number
   currentStreak: number
+  /** Maior sequência de dias ativos já alcançada. */
+  bestStreak: number
+  /** Semanas com pelo menos 5 dias ativos. */
+  activeWeeks: number
   blocksDone: number
   daysSinceLastActive: number | null
   /** Blocos concluídos hoje. */
@@ -111,6 +157,8 @@ export interface Stats {
   areaDaysTotal: Record<AreaId, number>
   /** Blocos concluídos por área, desde sempre. */
   areaBlocks: Record<AreaId, number>
+  /** Alguma semana com todas as áreas concluídas pelo menos uma vez. */
+  allAreasWeek: boolean
 }
 
 /** Todas as estatísticas de uma vez. */
@@ -119,11 +167,14 @@ export function computeStats(logs: Logs, today = dayKey()): Stats {
   return {
     activeDays: activeDays(logs, today),
     currentStreak: currentStreak(logs, today),
+    bestStreak: bestStreak(logs, today),
+    activeWeeks: activeWeeks(logs, 5, today),
     blocksDone: blocksDone(logs, today),
     daysSinceLastActive: daysSinceLastActive(logs, today),
     doneToday: summarizeDay(logs[today]).done,
     areaDays7: byArea((id) => areaDays(logs, id, 7, today)),
     areaDaysTotal: byArea((id) => areaDays(logs, id, Infinity, today)),
     areaBlocks: byArea((id) => areaBlocksDone(logs, id, today)),
+    allAreasWeek: allAreasInAWeek(logs, today),
   }
 }

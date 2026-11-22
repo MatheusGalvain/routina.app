@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import type { Row, Table } from './rows'
+import { APP_KEY } from '../lib/storageKeys'
 
 /**
  * Fila de gravações no Supabase (atualização otimista).
@@ -20,6 +21,8 @@ const PK: Record<Table, string[]> = {
   block_logs: ['date', 'block_id'],
   completed_tasks: ['block_id'],
   companion: [],
+  user_trophies: ['trophy_id', 'tier'],
+  corner_slots: ['slot'],
 }
 const CONFLICT: Record<Table, string> = {
   profiles: 'user_id',
@@ -29,10 +32,12 @@ const CONFLICT: Record<Table, string> = {
   block_logs: 'user_id,date,block_id',
   completed_tasks: 'user_id,block_id',
   companion: 'user_id',
+  user_trophies: 'user_id,trophy_id,tier',
+  corner_slots: 'user_id,slot',
 }
 // Pais antes dos filhos ao gravar; filhos antes dos pais ao apagar.
-const UPSERT_ORDER: Table[] = ['profiles', 'routines', 'blocks', 'day_logs', 'block_logs', 'completed_tasks', 'companion']
-const DELETE_ORDER: Table[] = ['block_logs', 'completed_tasks', 'blocks', 'day_logs', 'routines']
+const UPSERT_ORDER: Table[] = ['profiles', 'routines', 'blocks', 'day_logs', 'block_logs', 'completed_tasks', 'companion', 'user_trophies', 'corner_slots']
+const DELETE_ORDER: Table[] = ['block_logs', 'completed_tasks', 'blocks', 'day_logs', 'routines', 'corner_slots', 'user_trophies']
 
 const DEBOUNCE_MS = 600
 const BACKOFF_S = [2, 5, 10, 20, 30]
@@ -57,7 +62,7 @@ let timer: number | undefined
 let flushing: Promise<boolean> | null = null
 let attempt = 0
 
-const storageKey = () => `rotina-app-outbox:${uid}`
+const storageKey = () => `${APP_KEY}-outbox:${uid}`
 
 function save() {
   if (!uid) return
@@ -115,7 +120,8 @@ function schedule(ms: number) {
 export const hasPending = () => ops.size > 0
 
 /** Erro do próprio dado (não adianta tentar de novo): violação de regra, tipo inválido, permissão. */
-const isDataError = (code?: string) => !!code && (/^(22|23|42)/.test(code) || code === 'PGRST204')
+// PGRST205 = tabela inexistente (migration não aplicada): descarta em vez de travar a fila inteira.
+const isDataError = (code?: string) => !!code && (/^(22|23|42)/.test(code) || code === 'PGRST204' || code === 'PGRST205')
 
 type SupaError = { code?: string; message: string } | null
 
@@ -137,7 +143,14 @@ async function send(table: Table, kind: 'upsert' | 'delete', rows: Row[]): Promi
     }
     return null
   }
-  const col = table === 'day_logs' ? 'date' : table === 'completed_tasks' ? 'block_id' : 'id'
+  if (table === 'user_trophies') {
+    for (const r of rows) {
+      const { error } = await supabase.from(table).delete().eq('user_id', uid!).eq('trophy_id', String(r.trophy_id)).eq('tier', Number(r.tier))
+      if (error) return error
+    }
+    return null
+  }
+  const col = table === 'day_logs' ? 'date' : table === 'completed_tasks' ? 'block_id' : table === 'corner_slots' ? 'slot' : 'id'
   const { error } = await supabase.from(table).delete().eq('user_id', uid!).in(col, rows.map((r) => String(r[col])))
   return error
 }

@@ -1,4 +1,10 @@
-import type { PetPhase } from '../types'
+import type { PetPhase, PetUnlockId } from '../types'
+
+/** Marca do coelho na lista de desbloqueios (fica para sempre, como os acessórios). */
+export const SECRET_UNLOCK: PetUnlockId = 'pet:coelho'
+
+/** Dias ativos que trazem o coelho (ou uma semana com todas as áreas). */
+export const SECRET_DAYS = 30
 
 export const PHASES: { id: PetPhase; name: string; min: number }[] = [
   { id: 'filhote', name: 'Filhote', min: 0 },
