@@ -45,6 +45,9 @@ function friendly(message: string): { text: string; wait?: number } {
     }
   if (m.includes('invalid') && m.includes('email')) return { text: 'Esse e-mail não parece válido. Confere?' }
   if (m.includes('provider is not enabled')) return { text: 'O login com Google ainda não está ativado.' }
+  if (m.includes('error sending'))
+    return { text: 'O servidor não conseguiu enviar o e-mail agora. Tente de novo em alguns minutos.' }
+  console.error('[Entrar] erro do Supabase:', message)
   return { text: 'Não foi possível enviar agora. Verifique sua conexão e tente de novo.' }
 }
 

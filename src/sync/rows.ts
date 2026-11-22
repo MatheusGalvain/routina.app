@@ -96,7 +96,7 @@ export function structureRows(uid: string, routines: Routine[]) {
 // ---------------------------------------------------------------------
 
 export interface RemoteData {
-  profile: { timezone: string; local_import_answered: boolean; created_at: string; updated_at: string } | null
+  profile: { timezone: string; local_import_answered: boolean; display_name: string | null; created_at: string; updated_at: string } | null
   routines: Row[]
   blocks: Row[]
   dayLogs: Row[]

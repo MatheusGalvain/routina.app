@@ -8,7 +8,7 @@ import { dayKey } from '../lib/dates'
 import { PET_BY_STATE } from '../components/pets/pets'
 import { ACCESSORIES, type UnlockStats } from '../data/accessories'
 import type { Stats } from '../lib/stats'
-import type { AccessoryId, PetState, UnlockId } from '../types'
+import type { AccessoryId, PetKind, PetState, UnlockId } from '../types'
 
 /** Estatísticas atuais, recalculadas quando os registros mudam. */
 export function useStats() {
@@ -66,6 +66,25 @@ export function useCompanionProgress() {
     if (secret) push({ type: 'secret' })
     if (Object.keys(patch).length) updateProgress(patch)
   }, [stats, hasCompanion])
+}
+
+/**
+ * Escolhe (ou tira, com `null`) o favorito.
+ *  - Coelho liberado só pelo painel dev: vira sobrescrita visual, nada vai para o Supabase.
+ *  - Qualquer outra escolha limpa a sobrescrita de espécie do painel dev, para a escolha aparecer.
+ */
+export function chooseFavorite(kind: PetKind | null) {
+  const dev = useDevOverrides.getState()
+  const reallyUnlocked = useRotina.getState().petProgress.unlocked.includes(SECRET_UNLOCK)
+  if (kind === 'coelho' && !reallyUnlocked) {
+    dev.set({ species: 'coelho' })
+    return
+  }
+  if (dev.species) {
+    dev.set({ species: null })
+    if (kind === null) return // estava desmarcando o favorito simulado
+  }
+  useRotina.getState().setCompanionKind(kind)
 }
 
 /** O que mostrar do companheiro agora, já com as sobrescritas do painel dev. */

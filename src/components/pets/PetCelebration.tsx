@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect } from 'react'
 import { usePetEvents, type PetEvent } from '../../store/usePetEvents'
-import { useCompanionView } from '../../store/useCompanion'
+import { chooseFavorite, useCompanionView } from '../../store/useCompanion'
 import { useRotina } from '../../store/useRotina'
 import { ACCESSORY_BY_ID } from '../../data/accessories'
 import { PHASES } from '../../lib/companion'
@@ -213,7 +213,7 @@ function SecretArrival({ onClose }: { onClose: () => void }) {
               type="button"
               autoFocus
               onClick={() => {
-                useRotina.getState().setCompanionKind('coelho')
+                chooseFavorite('coelho')
                 onClose()
               }}
               className="rounded-full bg-[#DCCBFF] px-5 py-2.5 text-sm font-bold text-[#1E1640]"

@@ -107,7 +107,11 @@ const onHide = () => document.visibilityState === 'hidden' && void flushNow()
 export function enqueue(table: Table, kind: 'upsert' | 'delete', row: Row) {
   if (!uid) return
   const key = `${table}:${PK[table].map((k) => row[k]).join('|')}`
-  ops.set(key, { table, kind, row: { ...row, user_id: uid }, v: ++version })
+  // Gravação parcial da mesma linha (ex.: nome e depois fuso no perfil): junta com a pendente,
+  // para a segunda não apagar a primeira.
+  const prev = ops.get(key)
+  const merged = kind === 'upsert' && prev?.kind === 'upsert' ? { ...prev.row, ...row } : row
+  ops.set(key, { table, kind, row: { ...merged, user_id: uid }, v: ++version })
   save()
   schedule(DEBOUNCE_MS)
 }

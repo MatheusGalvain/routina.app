@@ -20,7 +20,17 @@ import { enqueue, flushNow, hasPending, startOutbox, stopOutbox } from './outbox
 export interface Profile {
   timezone: string
   localImportAnswered: boolean
+  /** Como a pessoa quer ser chamada. `null` = ainda não respondeu (o app pergunta). */
+  displayName: string | null
+  /** Quando a conta foi criada (ISO). */
+  createdAt: string
 }
+
+/** Limite do nome de exibição (igual ao da tabela profiles). */
+export const NAME_MAX = 30
+
+/** Nome padrão: a parte do e-mail antes do @. */
+export const nameFromEmail = (email: string | null | undefined) => (email?.split('@')[0] || 'Você').slice(0, NAME_MAX)
 
 interface SessionState {
   status: 'idle' | 'loading' | 'ready'
@@ -62,7 +72,7 @@ async function fetchOptional(table: string, uid: string): Promise<Row[] | null> 
 
 async function loadRemote(uid: string): Promise<RemoteData> {
   const [profile, routines, blocks, dayLogs, blockLogs, tasks, companion, trophies, slots] = await Promise.all([
-    supabase.from('profiles').select('timezone, local_import_answered, created_at, updated_at').eq('user_id', uid).maybeSingle(),
+    supabase.from('profiles').select('timezone, local_import_answered, display_name, created_at, updated_at').eq('user_id', uid).maybeSingle(),
     fetchAll('routines', uid),
     fetchAll('blocks', uid),
     fetchAll('day_logs', uid),
@@ -110,7 +120,14 @@ async function applyProfile(uid: string, p: RemoteData['profile']) {
     }
   }
   setAppTimeZone(timezone)
-  useSession.setState({ profile: { timezone, localImportAnswered: !!p?.local_import_answered } })
+  useSession.setState({
+    profile: {
+      timezone,
+      localImportAnswered: !!p?.local_import_answered,
+      displayName: p?.display_name?.trim() || null,
+      createdAt: p?.created_at ?? new Date().toISOString(),
+    },
+  })
 }
 
 // ---------------------------------------------------------------------
@@ -190,6 +207,14 @@ async function refreshOnReturn() {
   } catch {
     /* sem conexão: segue com o que tem */
   }
+}
+
+/** Atualiza o nome de exibição (otimista: a tela muda já e a gravação vai para a fila). Vazio = parte do e-mail. */
+export function setDisplayName(name: string) {
+  if (!currentUid) return
+  const display_name = name.trim().slice(0, NAME_MAX) || nameFromEmail(useAuth.getState().session?.user.email)
+  enqueue('profiles', 'upsert', { user_id: currentUid, display_name })
+  useSession.setState((s) => ({ profile: s.profile ? { ...s.profile, displayName: display_name } : s.profile }))
 }
 
 /** Atualiza o fuso do perfil. */
