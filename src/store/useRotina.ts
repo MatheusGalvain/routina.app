@@ -1,11 +1,12 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
-import type { AccessoryId, Block, BlockLog, Companion, CornerSlots, DayLog, PetKind, PetProgress, PlanEntry, Routine, Slot, TrophyMap, TrophyUnlock } from '../types'
+import type { AccessoryId, Area, AreaId, Block, DefaultAreaKey, UserTemplate, BlockLog, Companion, CornerSlots, DayLog, PetKind, PetProgress, PlanEntry, Routine, Slot, TrophyMap, TrophyUnlock } from '../types'
 import type { TrophyId } from '../data/trophies'
 import { EMPTY_SLOTS } from '../lib/corner'
 import { TEMPLATES } from '../data/templates'
-import { ROUTINE_COLORS } from '../data/areas'
+import { AREA_NAME_MAX, AREA_PALETTE, DEFAULT_AREAS, MAX_AREAS, ROUTINE_COLORS, normalizeAreas, removedDefaults, sameName } from '../data/areas'
 import { APP_KEY } from '../lib/storageKeys'
+import { nowInTz } from '../lib/dates'
 
 const uid = () => crypto.randomUUID()
 
@@ -38,7 +39,11 @@ export const DEFAULT_COMPANION: Companion = { kind: null, name: '', equipped: {}
 export const DEFAULT_PROGRESS: PetProgress = { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
 
 export interface RotinaState {
+  /** Áreas da vida da pessoa, sempre em ordem de `position`. */
+  areas: Area[]
   routines: Routine[]
+  /** Modelos de rotina da pessoa (os do app ficam em src/data/templates.ts). */
+  templates: UserTemplate[]
   logs: Record<string, DayLog>
   /** Tarefas concluídas: id do bloco → dia em que foi feita. */
   completedTasks: Record<string, string>
@@ -49,11 +54,34 @@ export interface RotinaState {
   trophies: TrophyMap
   /** Os 4 espaços de troféus do cantinho. */
   cornerSlots: CornerSlots
+  /** Dia (AAAA-MM-DD) em que a pessoa acordou o pet pelo botão do Início. Só neste aparelho. */
+  wokenOn: string | null
+
+  /** Cria uma área (até 12). Devolve o id, ou null se chegou no limite. */
+  addArea: (name: string, color: string) => string | null
+  updateArea: (id: AreaId, patch: Partial<Pick<Area, 'name' | 'color' | 'icon'>>) => void
+  /** Move uma área uma posição para cima (-1) ou para baixo (+1). */
+  moveArea: (id: AreaId, dir: -1 | 1) => void
+  /** Exclui a área; os blocos que usavam ela passam para `moveTo`. O histórico não muda. */
+  deleteArea: (id: AreaId, moveTo: AreaId | null) => void
+  /**
+   * Traz de volta uma área padrão excluída, com a chave original (o histórico e o troféu voltam a contar).
+   * Com `mergeFrom`, a área criada pela pessoa vira a original: blocos e registros passam para a chave.
+   */
+  restoreArea: (key: DefaultAreaKey, mergeFrom?: AreaId) => void
 
   createRoutine: (name?: string) => string
   updateRoutine: (id: string, patch: Partial<Omit<Routine, 'id' | 'blocks'>>) => void
   deleteRoutine: (id: string) => void
-  addTemplate: (key: string) => string | undefined
+  /** Usa um modelo (do app, pela chave, ou da pessoa, pelo id): cria uma rotina nova e devolve o id dela. */
+  addTemplate: (keyOrId: string) => string | undefined
+
+  /** Modelo vazio, para montar do zero. */
+  createTemplate: (name?: string) => string
+  /** Copia nome, cor, dias e blocos da rotina (sem os registros) para um modelo novo. */
+  saveAsTemplate: (routineId: string) => string | undefined
+  updateTemplate: (id: string, patch: Partial<Omit<UserTemplate, 'id'>>) => void
+  deleteTemplate: (id: string) => void
 
   addBlock: (routineId: string, block: Omit<Block, 'id'>) => void
   updateBlock: (routineId: string, blockId: string, patch: Partial<Block>) => void
@@ -64,6 +92,13 @@ export interface RotinaState {
   increment: (date: string, block: Block, delta: number) => boolean
   toggleSkip: (date: string, block: Block) => boolean
   setActive: (blockId: string | null) => void
+  /** Acorda o pet hoje (botão "Acordar meu pet"). */
+  wakePet: (date: string) => void
+  /**
+   * Tarefa avulsa para hoje: entra na rotina "Tarefas rápidas" (criada na primeira vez, todos os dias).
+   * Como é tarefa, some depois de feita. Devolve o id do bloco.
+   */
+  addQuickTask: (name: string, areaId: AreaId) => string
   setNote: (date: string, note: string) => void
   /** Guarda a lista planejada do dia, para o histórico não depender das rotinas atuais. */
   setPlan: (date: string, plan: PlanEntry[]) => void
@@ -77,6 +112,9 @@ export interface RotinaState {
   addTrophies: (list: { id: TrophyId; unlock: TrophyUnlock }[]) => void
   setCornerSlots: (slots: CornerSlots) => void
 }
+
+/** Rotina onde entram as tarefas criadas pelo botão "Adicionar algo para hoje". */
+export const QUICK_ROUTINE = 'Tarefas rápidas'
 
 const mapRoutine = (routines: Routine[], id: string, fn: (r: Routine) => Routine) =>
   routines.map((r) => (r.id === id ? fn(r) : r))
@@ -93,7 +131,9 @@ export const useRotina = create<RotinaState>()(
       }
 
       return {
+        areas: DEFAULT_AREAS,
         routines: [],
+        templates: [],
         logs: {},
         completedTasks: {},
         activeBlockId: null,
@@ -101,17 +141,89 @@ export const useRotina = create<RotinaState>()(
         petProgress: DEFAULT_PROGRESS,
         trophies: {},
         cornerSlots: EMPTY_SLOTS,
+        wokenOn: null,
+
+        addArea: (name, color) => {
+          const areas = get().areas
+          if (areas.length >= MAX_AREAS) return null
+          const clean = name.trim().slice(0, AREA_NAME_MAX) || 'Nova área'
+          const safeColor = AREA_PALETTE.includes(color) ? color : AREA_PALETTE[areas.length % AREA_PALETTE.length]
+          // Mesmo nome de uma área padrão excluída: volta a ser ela (com o histórico e o troféu).
+          const original = removedDefaults(areas).find((d) => sameName(d.name, clean))
+          const id = original?.id ?? uid()
+          set({ areas: [...areas, { id, name: clean, color: safeColor, position: areas.length, isDefault: !!original }] })
+          return id
+        },
+        updateArea: (id, patch) => {
+          const clean = { ...patch }
+          if (clean.name !== undefined) clean.name = clean.name.slice(0, AREA_NAME_MAX)
+          if (clean.color !== undefined && !AREA_PALETTE.includes(clean.color)) delete clean.color
+          set({ areas: get().areas.map((a) => (a.id === id ? { ...a, ...clean } : a)) })
+        },
+        moveArea: (id, dir) => {
+          const list = [...get().areas]
+          const i = list.findIndex((a) => a.id === id)
+          const j = i + dir
+          if (i < 0 || j < 0 || j >= list.length) return
+          ;[list[i], list[j]] = [list[j], list[i]]
+          set({ areas: list.map((a, position) => (a.position === position ? a : { ...a, position })) })
+        },
+        deleteArea: (id, moveTo) => {
+          const areas = get().areas
+          if (areas.length <= 1 || !areas.some((a) => a.id === id)) return
+          const target = moveTo && moveTo !== id && areas.some((a) => a.id === moveTo) ? moveTo : null
+          const routines = get().routines.map((r) =>
+            r.blocks.some((b) => b.areaId === id) && target ? { ...r, blocks: r.blocks.map((b) => (b.areaId === id ? { ...b, areaId: target } : b)) } : r,
+          )
+          const templates = get().templates.map((t) =>
+            t.blocks.some((b) => b.areaId === id) && target ? { ...t, blocks: t.blocks.map((b) => (b.areaId === id ? { ...b, areaId: target } : b)) } : t,
+          )
+          set({ routines, templates, areas: normalizeAreas(areas.filter((a) => a.id !== id)) })
+        },
+
+        restoreArea: (key, mergeFrom) => {
+          const areas = get().areas
+          const original = DEFAULT_AREAS.find((d) => d.id === key)
+          if (!original || areas.some((a) => a.id === key)) return
+          const from = mergeFrom ? areas.find((a) => a.id === mergeFrom && !a.isDefault) : undefined
+          if (!from) {
+            if (areas.length >= MAX_AREAS) return
+            set({ areas: [...areas, { ...original, position: areas.length }] })
+            return
+          }
+          // Junta: a área da pessoa fica com o nome, a cor e o lugar dela, mas com a chave original.
+          const swap = (id: AreaId) => (id === from.id ? key : id)
+          const routines = get().routines.map((r) =>
+            r.blocks.some((b) => b.areaId === from.id) ? { ...r, blocks: r.blocks.map((b) => ({ ...b, areaId: swap(b.areaId) })) } : r,
+          )
+          const logs = { ...get().logs }
+          for (const [date, day] of Object.entries(logs)) {
+            const touchesLog = Object.values(day.blocks).some((l) => l.areaId === from.id)
+            const touchesPlan = day.plan?.some((p) => p.block.areaId === from.id)
+            if (!touchesLog && !touchesPlan) continue
+            logs[date] = {
+              ...day,
+              blocks: Object.fromEntries(Object.entries(day.blocks).map(([id, l]) => [id, l.areaId === from.id ? { ...l, areaId: key } : l])),
+              ...(day.plan ? { plan: day.plan.map((p) => (p.block.areaId === from.id ? { ...p, block: { ...p.block, areaId: key } } : p)) } : {}),
+            }
+          }
+          const templates = get().templates.map((t) =>
+            t.blocks.some((b) => b.areaId === from.id) ? { ...t, blocks: t.blocks.map((b) => ({ ...b, areaId: swap(b.areaId) })) } : t,
+          )
+          set({ routines, templates, logs, areas: areas.map((a) => (a.id === from.id ? { ...a, id: key, isDefault: true } : a)) })
+        },
 
         createRoutine: (name = 'Nova rotina') => {
           const id = uid()
           const color = ROUTINE_COLORS[get().routines.length % ROUTINE_COLORS.length]
-          set({ routines: [...get().routines, { id, name, color, days: [0, 1, 2, 3, 4, 5, 6], blocks: [] }] })
+          // Rotina nova começa só no dia de hoje (no fuso da pessoa); os outros dias ela marca se quiser.
+          set({ routines: [...get().routines, { id, name, color, days: [nowInTz().getDay()], blocks: [] }] })
           return id
         },
         updateRoutine: (id, patch) => set({ routines: mapRoutine(get().routines, id, (r) => ({ ...r, ...patch })) }),
         deleteRoutine: (id) => set({ routines: get().routines.filter((r) => r.id !== id) }),
-        addTemplate: (key) => {
-          const t = TEMPLATES.find((x) => x.key === key)
+        addTemplate: (keyOrId) => {
+          const t = TEMPLATES.find((x) => x.key === keyOrId) ?? get().templates.find((x) => x.id === keyOrId)
           if (!t) return
           const id = uid()
           const routine: Routine = {
@@ -119,11 +231,29 @@ export const useRotina = create<RotinaState>()(
             name: t.name,
             color: t.color,
             days: [...t.days],
-            blocks: t.blocks.map((b) => ({ ...b, id: uid() })),
+            // Se a pessoa excluiu a área do modelo, o bloco vai para a primeira área dela.
+            blocks: t.blocks.map((b) => ({ ...b, areaId: get().areas.some((a) => a.id === b.areaId) ? b.areaId : (get().areas[0]?.id ?? b.areaId), id: uid() })),
           }
           set({ routines: [...get().routines, routine] })
           return id
         },
+
+        createTemplate: (name = 'Novo modelo') => {
+          const id = uid()
+          const color = ROUTINE_COLORS[get().templates.length % ROUTINE_COLORS.length]
+          set({ templates: [...get().templates, { id, name, color, days: [0, 1, 2, 3, 4, 5, 6], blocks: [] }] })
+          return id
+        },
+        saveAsTemplate: (routineId) => {
+          const r = get().routines.find((x) => x.id === routineId)
+          if (!r) return
+          const id = uid()
+          const t: UserTemplate = { id, name: r.name.trim() || 'Novo modelo', color: r.color, days: [...r.days], blocks: r.blocks.map((b) => ({ ...b, id: uid() })) }
+          set({ templates: [...get().templates, t] })
+          return id
+        },
+        updateTemplate: (id, patch) => set({ templates: get().templates.map((t) => (t.id === id ? { ...t, ...patch } : t)) }),
+        deleteTemplate: (id) => set({ templates: get().templates.filter((t) => t.id !== id) }),
 
         addBlock: (routineId, block) =>
           set({ routines: mapRoutine(get().routines, routineId, (r) => ({ ...r, blocks: [...r.blocks, { ...block, id: uid() }] })) }),
@@ -181,6 +311,15 @@ export const useRotina = create<RotinaState>()(
           return skipped
         },
         setActive: (blockId) => set({ activeBlockId: blockId }),
+        wakePet: (date) => set({ wokenOn: date }),
+        addQuickTask: (name, areaId) => {
+          const block: Block = { id: uid(), name: name.trim().slice(0, 200) || 'Tarefa', type: 'tarefa', areaId }
+          const routines = get().routines
+          const quick = routines.find((r) => !r.dev && r.name === QUICK_ROUTINE)
+          if (quick) set({ routines: mapRoutine(routines, quick.id, (r) => ({ ...r, blocks: [...r.blocks, block] })) })
+          else set({ routines: [...routines, { id: uid(), name: QUICK_ROUTINE, color: '#2DD4BF', days: [0, 1, 2, 3, 4, 5, 6], blocks: [block] }] })
+          return block.id
+        },
         setNote: (date, note) => {
           const day = get().logs[date] ?? { blocks: {} }
           set({ logs: { ...get().logs, [date]: { ...day, note } } })
@@ -213,7 +352,7 @@ export const useRotina = create<RotinaState>()(
     },
     {
       name: LEGACY_KEY,
-      version: 3,
+      version: 5,
       storage: createJSONStorage(() => scopedStorage),
       // Só carrega o cache depois do login, quando já se sabe de quem são os dados.
       skipHydration: true,
@@ -245,5 +384,12 @@ export function migrate(state: Partial<RotinaState>, version: number) {
   }
   // v2 → v3: troféus e espaços do cantinho.
   if (version < 3) state = { ...state, trophies: state.trophies ?? {}, cornerSlots: state.cornerSlots ?? EMPTY_SLOTS }
+  // v3 → v4: áreas da vida viram dados da pessoa (começa com as 8 padrão).
+  if (version < 4) state = { ...state, areas: state.areas?.length ? state.areas : DEFAULT_AREAS }
+  // v4 → v5: modelos de rotina da pessoa.
+  if (version < 5) state = { ...state, templates: state.templates ?? [] }
   return state as RotinaState
 }
+
+/** Áreas da vida da pessoa, em ordem. */
+export const useAreas = () => useRotina((s) => s.areas)

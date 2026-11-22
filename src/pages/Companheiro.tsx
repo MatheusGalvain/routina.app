@@ -24,7 +24,7 @@ export function Companheiro() {
 
       {view.kind && <PhaseCard />}
 
-      <Panel title="Escolha seu favorito" icon="paw" color="#FB7185">
+      <Panel title="Escolha seu favorito" icon="paw" color="#FB7185" help="favorito">
         <p className="m-0 text-sm text-muted">Ele vai te acompanhar em todos os estados do dia, mudando de cor e de expressão.</p>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-3">
           {ALL_PETS.map((k) => {
@@ -68,12 +68,12 @@ export function Companheiro() {
         </label>
       </Panel>
 
-      <Panel title="Cantinho" icon="sparkle" color="#C4B5FD">
+      <Panel title="Cantinho" icon="sparkle" color="#C4B5FD" help="cantinho">
         <PetCorner autoState="neutro" legend={false} />
       </Panel>
 
       <div id="colecao" className="scroll-mt-4">
-      <Panel title="Coleção" icon="box" color="#FFC24B">
+      <Panel title="Coleção" icon="box" color="#FFC24B" help="colecao">
         <p className="m-0 text-sm text-muted">Cada troféu tem 4 níveis. Os que você conquista ficam para sempre, e você escolhe quais expor no cantinho.</p>
         <TrophyCollection />
       </Panel>
@@ -156,7 +156,7 @@ function Accessories() {
   const u = unlockStats(view.stats, view.activeDays, !!view.kind)
 
   return (
-    <Panel title="Acessórios" icon="sparkle" color="#FFB020">
+    <Panel title="Acessórios" icon="sparkle" color="#FFB020" help="acessorios">
       <p className="m-0 text-sm text-muted">
         {view.kind ? 'Um item por parte do corpo. Novos itens aparecem conforme você cuida da rotina.' : 'Escolha um favorito para ele poder usar os acessórios.'}
       </p>

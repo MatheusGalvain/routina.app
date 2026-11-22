@@ -62,7 +62,7 @@ export function CornerDrawer() {
                 const exposedAt = slots.findIndex((s) => s?.trophyId === t.id)
                 return (
                   <section key={t.id} className="flex flex-col gap-2">
-                    <h3 className="m-0 flex items-baseline gap-2 text-sm font-semibold">
+                    <h3 className="m-0 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold">
                       {t.name}
                       {exposedAt >= 0 && exposedAt !== slot && <span className="text-[12px] font-normal text-muted">(exposto em outro espaço: troca de lugar)</span>}
                     </h3>

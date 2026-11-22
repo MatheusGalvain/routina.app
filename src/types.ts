@@ -2,7 +2,23 @@ import type { TrophyId, TrophyTier } from './data/trophies'
 
 export type BlockType = 'habito' | 'contador' | 'tarefa'
 
-export type AreaId = 'sono' | 'corpo' | 'foco' | 'casa' | 'financas' | 'estudo' | 'mente' | 'social'
+/** Id de uma área da vida: a chave original nas 8 padrão ("sono"…), um uuid nas criadas pela pessoa. */
+export type AreaId = string
+
+/** As 8 áreas com que toda conta começa. A chave nunca muda, mesmo se a pessoa renomear a área. */
+export type DefaultAreaKey = 'sono' | 'corpo' | 'foco' | 'casa' | 'financas' | 'estudo' | 'mente' | 'social'
+
+/** Uma área da vida da pessoa (renomeável, recolorível e reordenável). */
+export interface Area {
+  id: AreaId
+  name: string
+  color: string
+  icon?: string
+  /** Ordem na lista (0 = primeira). */
+  position: number
+  /** Uma das 8 padrão (o id é a chave original). */
+  isDefault: boolean
+}
 
 /** Um item planejado dentro de uma rotina. A ordem na lista é a ordem do dia (horário flexível). */
 export interface Block {
@@ -27,6 +43,19 @@ export interface Routine {
   blocks: Block[]
   /** Criada pelo painel de desenvolvimento. */
   dev?: true
+}
+
+/**
+ * Modelo de rotina criado pela pessoa. É só uma receita: usar o modelo cria uma rotina nova
+ * e independente (mudar o modelo depois não mexe nas rotinas já criadas).
+ * Os blocos têm id só para editar e reordenar; a rotina criada ganha ids novos.
+ */
+export interface UserTemplate {
+  id: string
+  name: string
+  color: string
+  days: number[]
+  blocks: Block[]
 }
 
 /** O que aconteceu com um bloco em um dia. */

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Reorder, useDragControls } from 'framer-motion'
-import { useRotina } from '../store/useRotina'
-import { AREAS, BLOCK_TYPES, ROUTINE_COLORS, WEEKDAYS, areaById } from '../data/areas'
+import { useAreas, useRotina } from '../store/useRotina'
+import { BLOCK_TYPES, ROUTINE_COLORS, WEEKDAYS, areaOf } from '../data/areas'
 import { Icon, Panel } from '../components/ui/ui'
-import type { AreaId, Block, BlockType, Routine } from '../types'
+import { HelpButton } from '../components/help/HelpButton'
+import type { AreaId, Block, BlockType, Routine, UserTemplate } from '../types'
 
 const inputCls = 'w-full rounded-lg border border-line bg-[#0B0E15] px-3 py-2.5 text-sm text-soft placeholder:text-[#6F788A]'
 
@@ -28,13 +29,19 @@ function fromDraft(d: Draft): Omit<Block, 'id'> {
 }
 
 function BlockForm({ initial, onSave, onCancel }: { initial?: Block; onSave: (b: Omit<Block, 'id'>) => void; onCancel?: () => void }) {
-  const [d, setD] = useState<Draft>(initial ? toDraft(initial) : emptyDraft)
+  const areas = useAreas()
+  // Bloco novo começa em Foco (se existir) ou na primeira área da pessoa.
+  const [d, setD] = useState<Draft>(() =>
+    initial ? toDraft(initial) : { ...emptyDraft, areaId: areas.some((a) => a.id === 'foco') ? 'foco' : (areas[0]?.id ?? 'foco') },
+  )
+  // Área do bloco que foi excluída: aparece na lista até a pessoa escolher outra.
+  const options = areas.some((a) => a.id === d.areaId) ? areas : [...areas, areaOf(areas, d.areaId)]
   const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }))
   const valid = d.name.trim() !== '' && (d.type !== 'contador' || Number(d.target) > 0)
 
   return (
     <form
-      className="flex flex-col gap-3 rounded-2xl border border-[#24304A] bg-[#0D1422] p-4"
+      className="flex flex-col gap-3 rounded-2xl border border-[#24304A] bg-[#0D1422] p-3 sm:p-4"
       onSubmit={(e) => {
         e.preventDefault()
         if (!valid) return
@@ -48,7 +55,9 @@ function BlockForm({ initial, onSave, onCancel }: { initial?: Block; onSave: (b:
       </label>
 
       <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
-        <legend className="mb-1.5 text-xs text-muted">Tipo</legend>
+        <legend className="mb-1.5 flex items-center gap-2 text-xs text-muted">
+          Tipo <HelpButton k="tipos" />
+        </legend>
         <div className="grid grid-cols-3 gap-2">
           {BLOCK_TYPES.map((t) => (
             <button
@@ -56,52 +65,52 @@ function BlockForm({ initial, onSave, onCancel }: { initial?: Block; onSave: (b:
               type="button"
               aria-pressed={d.type === t.id}
               onClick={() => set({ type: t.id })}
-              className={`flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left ${
+              className={`flex min-w-0 flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left sm:px-3 ${
                 d.type === t.id ? 'border-foco bg-[#12284A]' : 'border-line bg-panel-2'
               }`}
             >
               <span className="text-sm font-semibold">{t.name}</span>
-              <span className="text-[11px] leading-tight text-muted">{t.hint}</span>
+              <span className="text-[11px] leading-tight text-muted [overflow-wrap:anywhere]">{t.hint}</span>
             </button>
           ))}
         </div>
       </fieldset>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1.5 text-xs text-muted">
+        <label className="flex min-w-0 flex-col gap-1.5 text-xs text-muted">
           Área da vida
           <select className={inputCls} value={d.areaId} onChange={(e) => set({ areaId: e.target.value as AreaId })}>
-            {AREAS.map((a) => (
+            {options.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-xs text-muted">
+        <label className="flex min-w-0 flex-col gap-1.5 text-xs text-muted">
           Duração (min, opcional)
           <input className={inputCls} inputMode="numeric" value={d.minutes} onChange={(e) => set({ minutes: e.target.value })} placeholder="—" />
         </label>
       </div>
 
       {d.type === 'contador' && (
-        <div className="grid grid-cols-3 gap-3">
-          <label className="flex flex-col gap-1.5 text-xs text-muted">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <label className="flex min-w-0 flex-col gap-1.5 text-xs text-muted">
             Meta
             <input className={inputCls} inputMode="decimal" value={d.target} onChange={(e) => set({ target: e.target.value })} placeholder="8" />
           </label>
-          <label className="flex flex-col gap-1.5 text-xs text-muted">
+          <label className="flex min-w-0 flex-col gap-1.5 text-xs text-muted">
             Unidade
             <input className={inputCls} value={d.unit} onChange={(e) => set({ unit: e.target.value })} placeholder="copos" />
           </label>
-          <label className="flex flex-col gap-1.5 text-xs text-muted">
+          <label className="flex min-w-0 flex-col gap-1.5 text-xs text-muted">
             Passo do +
             <input className={inputCls} inputMode="decimal" value={d.step} onChange={(e) => set({ step: e.target.value })} placeholder="1" />
           </label>
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={!valid} className="rounded-full bg-ok px-4 py-2 text-sm font-bold text-[#06210F] disabled:opacity-40">
           {initial ? 'Salvar bloco' : '+ Adicionar bloco'}
         </button>
@@ -115,12 +124,25 @@ function BlockForm({ initial, onSave, onCancel }: { initial?: Block; onSave: (b:
   )
 }
 
-function BlockRow({ routine, block, index }: { routine: Routine; block: Block; index: number }) {
+/**
+ * O que o editor edita: uma rotina ou um modelo da pessoa. Os dois têm nome, cor, dias e blocos;
+ * as funções dizem onde gravar.
+ */
+interface EditorTarget {
+  kind: 'routine' | 'template'
+  value: { id: string; name: string; color: string; days: number[]; blocks: Block[] }
+  update: (patch: { name?: string; color?: string; days?: number[] }) => void
+  setBlocks: (blocks: Block[]) => void
+}
+
+const newId = () => crypto.randomUUID()
+
+function BlockRow({ target, block, index }: { target: EditorTarget; block: Block; index: number }) {
   const controls = useDragControls()
   const [editing, setEditing] = useState(false)
-  const { updateBlock, removeBlock } = useRotina.getState()
-  const area = areaById(block.areaId)
+  const area = areaOf(useAreas(), block.areaId)
   const typeName = BLOCK_TYPES.find((t) => t.id === block.type)?.name
+  const blocks = target.value.blocks
 
   return (
     <Reorder.Item value={block} dragListener={false} dragControls={controls} className="list-none">
@@ -128,7 +150,7 @@ function BlockRow({ routine, block, index }: { routine: Routine; block: Block; i
         <BlockForm
           initial={block}
           onSave={(b) => {
-            updateBlock(routine.id, block.id, b)
+            target.setBlocks(blocks.map((x) => (x.id === block.id ? { ...x, ...b } : x)))
             setEditing(false)
           }}
           onCancel={() => setEditing(false)}
@@ -155,7 +177,12 @@ function BlockRow({ routine, block, index }: { routine: Routine; block: Block; i
           <button type="button" onClick={() => setEditing(true)} aria-label={`Editar ${block.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:text-soft">
             <Icon name="edit" size={16} />
           </button>
-          <button type="button" onClick={() => removeBlock(routine.id, block.id)} aria-label={`Remover ${block.name}`} className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:text-erro">
+          <button
+            type="button"
+            onClick={() => target.setBlocks(blocks.filter((x) => x.id !== block.id))}
+            aria-label={`Remover ${block.name}`}
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:text-erro"
+          >
             <Icon name="trash" size={16} />
           </button>
         </div>
@@ -164,33 +191,38 @@ function BlockRow({ routine, block, index }: { routine: Routine; block: Block; i
   )
 }
 
-function RoutineEditor({ routine, onDeleted }: { routine: Routine; onDeleted: () => void }) {
-  const { updateRoutine, deleteRoutine, addBlock, setBlocks } = useRotina.getState()
-
-  const toggleDay = (d: number) =>
-    updateRoutine(routine.id, { days: routine.days.includes(d) ? routine.days.filter((x) => x !== d) : [...routine.days, d].sort() })
+function Editor({ target, footer }: { target: EditorTarget; footer: ReactNode }) {
+  const v = target.value
+  const isTemplate = target.kind === 'template'
+  const toggleDay = (d: number) => target.update({ days: v.days.includes(d) ? v.days.filter((x) => x !== d) : [...v.days, d].sort() })
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-4 rounded-[22px] border border-line bg-panel p-6">
+      <div className="flex flex-col gap-4 rounded-[22px] border border-line bg-panel p-4 sm:p-6">
+        {isTemplate && (
+          <p className="m-0 flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider text-[#FFB020] uppercase">
+            <Icon name="box" size={14} /> Modelo
+            <span className="font-sans text-[12.5px] tracking-normal text-muted normal-case">Mudar o modelo não altera as rotinas já criadas com ele.</span>
+          </p>
+        )}
         <label className="flex flex-col gap-1.5 text-xs text-muted">
-          Nome da rotina
-          <input className={`${inputCls} text-lg font-bold`} value={routine.name} onChange={(e) => updateRoutine(routine.id, { name: e.target.value })} />
+          {isTemplate ? 'Nome do modelo' : 'Nome da rotina'}
+          <input className={`${inputCls} text-lg font-bold`} value={v.name} onChange={(e) => target.update({ name: e.target.value })} />
         </label>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <fieldset className="m-0 border-0 p-0">
+          <fieldset className="m-0 w-full border-0 p-0 sm:w-auto">
             <legend className="mb-2 text-xs text-muted">Dias da semana</legend>
-            <div className="flex gap-1.5">
+            <div className="grid grid-cols-7 gap-1.5 sm:flex">
               {WEEKDAYS.map((w, d) => (
                 <button
                   key={d}
                   type="button"
-                  aria-pressed={routine.days.includes(d)}
+                  aria-pressed={v.days.includes(d)}
                   aria-label={w.long}
                   onClick={() => toggleDay(d)}
-                  className={`grid h-10 w-10 place-items-center rounded-full text-sm font-bold ${
-                    routine.days.includes(d) ? 'bg-foco-strong text-white' : 'bg-panel-2 text-muted'
+                  className={`grid aspect-square w-full max-w-10 place-items-center rounded-full text-sm font-bold sm:h-10 sm:w-10 ${
+                    v.days.includes(d) ? 'bg-foco-strong text-white' : 'bg-panel-2 text-muted'
                   }`}
                 >
                   {w.short}
@@ -201,15 +233,15 @@ function RoutineEditor({ routine, onDeleted }: { routine: Routine; onDeleted: ()
 
           <fieldset className="m-0 border-0 p-0">
             <legend className="mb-2 text-xs text-muted">Cor</legend>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {ROUTINE_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
                   aria-label={`Cor ${c}`}
-                  aria-pressed={routine.color === c}
-                  onClick={() => updateRoutine(routine.id, { color: c })}
-                  className={`h-8 w-8 rounded-full ${routine.color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-panel' : ''}`}
+                  aria-pressed={v.color === c}
+                  onClick={() => target.update({ color: c })}
+                  className={`h-8 w-8 rounded-full ${v.color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-panel' : ''}`}
                   style={{ background: c }}
                 />
               ))}
@@ -218,74 +250,184 @@ function RoutineEditor({ routine, onDeleted }: { routine: Routine; onDeleted: ()
         </div>
       </div>
 
-      <Panel
-        title="Blocos, na ordem do dia"
-        icon="calendar"
-        color={routine.color}
-        action={<span className="font-mono text-xs text-muted">arraste para reordenar</span>}
-      >
-        {routine.blocks.length === 0 ? (
+      <Panel title="Blocos, na ordem do dia" icon="calendar" color={v.color} help="editor" action={<span className="font-mono text-xs text-muted">arraste para reordenar</span>}>
+        {v.blocks.length === 0 ? (
           <p className="m-0 text-sm text-muted">Nenhum bloco ainda. Adicione o primeiro abaixo.</p>
         ) : (
-          <Reorder.Group axis="y" values={routine.blocks} onReorder={(b) => setBlocks(routine.id, b)} className="m-0 flex flex-col gap-2 p-0">
-            {routine.blocks.map((b, i) => (
-              <BlockRow key={b.id} routine={routine} block={b} index={i} />
+          <Reorder.Group axis="y" values={v.blocks} onReorder={target.setBlocks} className="m-0 flex flex-col gap-2 p-0">
+            {v.blocks.map((b, i) => (
+              <BlockRow key={b.id} target={target} block={b} index={i} />
             ))}
           </Reorder.Group>
         )}
-        <BlockForm onSave={(b) => addBlock(routine.id, b)} />
+        <BlockForm onSave={(b) => target.setBlocks([...v.blocks, { ...b, id: newId() }])} />
       </Panel>
 
-      <button
-        type="button"
-        onClick={() => {
-          if (window.confirm(`Excluir a rotina "${routine.name}"?`)) {
-            deleteRoutine(routine.id)
-            onDeleted()
-          }
-        }}
-        className="self-start rounded-full border border-[#4A1A26] px-4 py-2 text-sm font-semibold text-[#FB7185]"
-      >
-        Excluir rotina
-      </button>
+      <div className="flex flex-wrap items-center gap-3">{footer}</div>
     </div>
   )
 }
 
-export function Rotinas({ selectedId, select }: { selectedId: string | null; select: (id: string | null) => void }) {
+const ghostBtn = 'min-h-11 rounded-full border border-line px-4 text-sm font-semibold text-soft hover:bg-panel-2'
+const dangerBtn = 'min-h-11 rounded-full border border-[#4A1A26] px-4 text-sm font-semibold text-[#FB7185]'
+
+function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine; onDeleted: () => void; openTemplate: (id: string) => void }) {
+  const { updateRoutine, deleteRoutine, setBlocks, saveAsTemplate } = useRotina.getState()
+  const [saved, setSaved] = useState<string | null>(null)
+  const target: EditorTarget = {
+    kind: 'routine',
+    value: routine,
+    update: (patch) => updateRoutine(routine.id, patch),
+    setBlocks: (blocks) => setBlocks(routine.id, blocks),
+  }
+
+  return (
+    <Editor
+      target={target}
+      footer={
+        <>
+          <button type="button" onClick={() => setSaved(saveAsTemplate(routine.id) ?? null)} className={`inline-flex items-center gap-2 ${ghostBtn}`}>
+            <Icon name="box" size={15} /> Salvar como modelo
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Excluir a rotina "${routine.name}"?`)) {
+                deleteRoutine(routine.id)
+                onDeleted()
+              }
+            }}
+            className={dangerBtn}
+          >
+            Excluir rotina
+          </button>
+          <p className="m-0 w-full text-sm text-muted" aria-live="polite">
+            {saved && (
+              <>
+                Modelo salvo em Rotinas prontas.{' '}
+                <button type="button" onClick={() => openTemplate(saved)} className="font-semibold text-[#9CC8FF] underline underline-offset-2">
+                  Editar o modelo
+                </button>
+              </>
+            )}
+          </p>
+        </>
+      }
+    />
+  )
+}
+
+function TemplateEditor({ template, onDeleted, onUsed }: { template: UserTemplate; onDeleted: () => void; onUsed: (routineId: string) => void }) {
+  const { updateTemplate, deleteTemplate, addTemplate } = useRotina.getState()
+  const target: EditorTarget = {
+    kind: 'template',
+    value: template,
+    update: (patch) => updateTemplate(template.id, patch),
+    setBlocks: (blocks) => updateTemplate(template.id, { blocks }),
+  }
+
+  return (
+    <Editor
+      target={target}
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              const id = addTemplate(template.id)
+              if (id) onUsed(id)
+            }}
+            className="min-h-11 rounded-full bg-ok px-4 text-sm font-bold text-[#06210F]"
+          >
+            Usar este modelo
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Excluir o modelo "${template.name}"? As rotinas criadas com ele continuam.`)) {
+                deleteTemplate(template.id)
+                onDeleted()
+              }
+            }}
+            className={dangerBtn}
+          >
+            Excluir modelo
+          </button>
+        </>
+      }
+    />
+  )
+}
+
+/** O que está aberto no editor. `null` = a primeira rotina. */
+export type Selection = { kind: 'routine' | 'template'; id: string } | null
+
+function SideItem({ name, color, count, current, onClick }: { name: string; color: string; count: number; current: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={current ? 'true' : undefined}
+      className={`flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${current ? 'bg-[#16203A]' : 'hover:bg-panel-2'}`}
+    >
+      <span className="flex min-w-0 items-center gap-2.5">
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
+        <span className="[overflow-wrap:anywhere]">{name || 'Sem nome'}</span>
+      </span>
+      <span className="font-mono text-xs font-normal text-muted">{count}</span>
+    </button>
+  )
+}
+
+export function Rotinas({ selected, select }: { selected: Selection; select: (s: Selection) => void }) {
   const routines = useRotina((s) => s.routines)
+  const templates = useRotina((s) => s.templates)
   const createRoutine = useRotina((s) => s.createRoutine)
-  const current = routines.find((r) => r.id === selectedId) ?? routines[0]
+  const createTemplate = useRotina((s) => s.createTemplate)
+  const template = selected?.kind === 'template' ? templates.find((t) => t.id === selected.id) : undefined
+  const routine = template ? undefined : (routines.find((r) => selected?.kind === 'routine' && r.id === selected.id) ?? routines[0])
+  const openTemplate = (id: string) => select({ kind: 'template', id })
 
   return (
     <div className="flex flex-wrap items-start gap-5">
-      <aside className="flex min-w-0 flex-[1_1_260px] flex-col gap-2 rounded-[22px] border border-line bg-panel p-4">
-        <h2 className="m-0 px-2 pb-2 text-lg font-bold">Rotinas</h2>
-        {routines.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => select(r.id)}
-            aria-current={current?.id === r.id}
-            className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${
-              current?.id === r.id ? 'bg-[#16203A]' : 'hover:bg-panel-2'
-            }`}
-          >
-            <span className="flex items-center gap-2.5">
-              <span className="h-2 w-2 rounded-full" style={{ background: r.color }} />
-              {r.name || 'Sem nome'}
-            </span>
-            <span className="font-mono text-xs font-normal text-muted">{r.blocks.length}</span>
+      <aside className="flex min-w-0 flex-[1_1_260px] flex-col gap-4 rounded-[22px] border border-line bg-panel p-4">
+        <nav aria-labelledby="lista-rotinas" className="flex flex-col gap-2">
+          <div className="flex items-center gap-2.5 px-2 pb-1">
+            <h2 id="lista-rotinas" className="m-0 text-lg font-bold">
+              Rotinas
+            </h2>
+            <HelpButton k="rotinas" />
+          </div>
+          {routines.map((r) => (
+            <SideItem key={r.id} name={r.name} color={r.color} count={r.blocks.length} current={routine?.id === r.id} onClick={() => select({ kind: 'routine', id: r.id })} />
+          ))}
+          <button type="button" onClick={() => select({ kind: 'routine', id: createRoutine() })} className="mt-1 self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-[#06210F]">
+            + Nova rotina
           </button>
-        ))}
-        <button type="button" onClick={() => select(createRoutine())} className="mt-2 self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-[#06210F]">
-          + Nova rotina
-        </button>
+        </nav>
+
+        <nav aria-labelledby="lista-modelos" className="flex flex-col gap-2 border-t border-line pt-4">
+          <div className="flex items-center gap-2.5 px-2 pb-1">
+            <h2 id="lista-modelos" className="m-0 text-lg font-bold">
+              Meus modelos
+            </h2>
+            <HelpButton k="meus-modelos" />
+          </div>
+          {templates.length === 0 && <p className="m-0 px-2 text-[13px] text-muted">Salve uma rotina como modelo ou crie um do zero.</p>}
+          {templates.map((t) => (
+            <SideItem key={t.id} name={t.name} color={t.color} count={t.blocks.length} current={template?.id === t.id} onClick={() => openTemplate(t.id)} />
+          ))}
+          <button type="button" onClick={() => openTemplate(createTemplate())} className="mt-1 self-start rounded-full border border-line px-4 py-2 text-[13px] font-bold text-soft hover:bg-panel-2">
+            + Novo modelo
+          </button>
+        </nav>
       </aside>
 
       <div className="min-w-0 flex-[999_1_560px]">
-        {current ? (
-          <RoutineEditor key={current.id} routine={current} onDeleted={() => select(null)} />
+        {template ? (
+          <TemplateEditor key={template.id} template={template} onDeleted={() => select(null)} onUsed={(id) => select({ kind: 'routine', id })} />
+        ) : routine ? (
+          <RoutineEditor key={routine.id} routine={routine} onDeleted={() => select(null)} openTemplate={openTemplate} />
         ) : (
           <div className="rounded-[22px] border border-line bg-panel p-8 text-muted">Crie sua primeira rotina para começar.</div>
         )}

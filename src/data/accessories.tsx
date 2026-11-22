@@ -104,8 +104,8 @@ export const ACCESSORIES: Accessory[] = [
     name: 'Fones de ouvido',
     slot: 'cabeca',
     hint: '20 blocos da área Foco',
-    unlock: (s) => s.areaBlocks.foco >= 20,
-    progress: (s) => [s.areaBlocks.foco, 20],
+    unlock: (s) => (s.areaBlocks.foco ?? 0) >= 20,
+    progress: (s) => [s.areaBlocks.foco ?? 0, 20],
     draw: ({ x, y, w }) => {
       const hw = w / 2 + 10
       return (
@@ -126,8 +126,8 @@ export const ACCESSORIES: Accessory[] = [
     name: 'Óculos de leitura',
     slot: 'rosto',
     hint: '5 dias com Estudo concluído',
-    unlock: (s) => s.areaDaysTotal.estudo >= 5,
-    progress: (s) => [s.areaDaysTotal.estudo, 5],
+    unlock: (s) => (s.areaDaysTotal.estudo ?? 0) >= 5,
+    progress: (s) => [s.areaDaysTotal.estudo ?? 0, 5],
     draw: ({ x, y, w }) => {
       const l = x - w / 2
       const r = x + w / 2
@@ -167,8 +167,8 @@ export const ACCESSORIES: Accessory[] = [
     name: 'Tiara de lua',
     slot: 'cabeca',
     hint: '7 dias com Sono concluído',
-    unlock: (s) => s.areaDaysTotal.sono >= 7,
-    progress: (s) => [s.areaDaysTotal.sono, 7],
+    unlock: (s) => (s.areaDaysTotal.sono ?? 0) >= 7,
+    progress: (s) => [s.areaDaysTotal.sono ?? 0, 7],
     draw: ({ x, y, w }, body) => (
       <g>
         <path d={`M${x - w / 2 - 3},${y + 7} Q${x},${y - 9} ${x + w / 2 + 3},${y + 7}`} fill="none" stroke={pick(body, '#C4B5FD', '#5B21B6')} strokeWidth={3.5} strokeLinecap="round" />

@@ -1,6 +1,5 @@
 import { useId } from 'react'
-import type { AreaId } from '../../types'
-import { AREAS } from '../../data/areas'
+import type { Area, AreaId, DefaultAreaKey } from '../../types'
 
 /**
  * Céu do cantinho (viewBox 0 0 400 240): fundo escuro, halo atrás do pet, estrelinhas neutras
@@ -11,8 +10,10 @@ import { AREAS } from '../../data/areas'
 
 export const SCENE = { W: 400, H: 240, FLOOR: 186 }
 
+type Constellation = { stars: [number, number][]; edges: [number, number][] }
+
 /** Constelações em caixas de 70 × 44. `edges` liga os índices de `stars`. */
-const CONSTELLATIONS: Record<AreaId, { stars: [number, number][]; edges: [number, number][] }> = {
+const CONSTELLATIONS: Record<DefaultAreaKey, Constellation> = {
   sono: { stars: [[8, 30], [22, 12], [44, 8], [62, 20]], edges: [[0, 1], [1, 2], [2, 3]] },
   corpo: { stars: [[6, 36], [20, 20], [34, 30], [48, 10], [64, 24]], edges: [[0, 1], [1, 2], [2, 3], [3, 4]] },
   foco: { stars: [[10, 34], [36, 8], [62, 34]], edges: [[0, 1], [1, 2], [2, 0]] },
@@ -40,9 +41,17 @@ const DUST = Array.from({ length: 44 }, (_, i) => {
   return { x: r(1) * 400, y: r(2) * 176, r: 0.45 + r(3) * 0.6, o: 0.12 + r(4) * 0.2 }
 })
 
-const colorOf = (a: AreaId) => AREAS.find((x) => x.id === a)!.color
+const SHAPES = Object.values(CONSTELLATIONS)
 
-export function CornerSky({ areas, days, aura, shadows = [] }: { areas: AreaId[]; days: Record<AreaId, number>; aura: string; shadows?: number[] }) {
+/** Forma da constelação: a própria nas áreas padrão; nas criadas pela pessoa, uma das 8, sempre a mesma para o mesmo id. */
+export function constellationOf(id: AreaId): Constellation {
+  if (id in CONSTELLATIONS) return CONSTELLATIONS[id as DefaultAreaKey]
+  let h = 0
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return SHAPES[h % SHAPES.length]
+}
+
+export function CornerSky({ areas, days, aura, shadows = [] }: { areas: Area[]; days: Record<AreaId, number>; aura: string; shadows?: number[] }) {
   const id = useId().replace(/:/g, '')
   const { W, H, FLOOR } = SCENE
   return (
@@ -68,13 +77,13 @@ export function CornerSky({ areas, days, aura, shadows = [] }: { areas: AreaId[]
       ))}
       <ellipse cx="200" cy="140" rx="118" ry="88" fill={`url(#halo-${id})`} />
 
-      {areas.map((a, i) => {
-        const c = CONSTELLATIONS[a]
-        const color = colorOf(a)
-        const lit = litStars(days[a], c.stars.length)
+      {areas.slice(0, REGIONS.length).map((a, i) => {
+        const c = constellationOf(a.id)
+        const color = a.color
+        const lit = litStars(days[a.id] ?? 0, c.stars.length)
         const [ox, oy] = REGIONS[i]
         return (
-          <g key={a} transform={`translate(${ox} ${oy})`}>
+          <g key={a.id} transform={`translate(${ox} ${oy})`}>
             {c.edges.map(([p, q]) => {
               const on = p < lit && q < lit
               return (

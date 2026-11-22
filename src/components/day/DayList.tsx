@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { areaById } from '../../data/areas'
+import { areaOf } from '../../data/areas'
+import { useAreas } from '../../store/useRotina'
 import { Icon } from '../ui/ui'
 import type { TodayItem } from '../../types'
 
@@ -18,16 +19,17 @@ interface Props {
 
 /** Lista de blocos de um dia, agrupada por rotina. Usada no Hoje e no Histórico. */
 export function DayList({ items, readOnly = false, activeId = null, onToggle, onInc, onSkip, onStart, empty }: Props) {
+  const areas = useAreas()
   if (items.length === 0) return <div className="flex flex-col items-start gap-3 p-8">{empty}</div>
 
   return (
     <ol className="m-0 list-none p-0">
       {items.map((i, idx) => {
-        const area = areaById(i.block.areaId)
+        const area = areaOf(areas, i.block.areaId)
         const active = i.block.id === activeId && !i.done && !i.skipped
         const showRoutine = idx === 0 || items[idx - 1].routine.id !== i.routine.id
         return (
-          <li key={i.block.id}>
+          <li key={i.block.id} id={`bloco-${i.block.id}`} className="scroll-mt-24">
             {showRoutine && (
               <div className="flex items-center gap-2 border-t border-line px-5 pt-4 pb-2 font-mono text-xs text-muted first:border-t-0">
                 <span className="h-2 w-2 rounded-full" style={{ background: i.routine.color }} />
@@ -35,23 +37,23 @@ export function DayList({ items, readOnly = false, activeId = null, onToggle, on
               </div>
             )}
             <div
-              className={`flex flex-wrap items-center gap-3 border-l-2 px-5 py-3 transition-colors ${
+              className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-l-2 px-4 py-3 transition-colors sm:px-5 ${
                 active ? 'border-foco bg-[#0F1C33]' : 'border-transparent'
               } ${i.skipped ? 'opacity-50' : ''}`}
             >
-              <span className="w-6 text-right font-mono text-xs text-[#6F788A]">{idx + 1}</span>
+              <span className="hidden w-6 shrink-0 text-right font-mono text-xs text-[#6F788A] sm:block">{idx + 1}</span>
 
               {readOnly ? (
                 <StatusBadge item={i} />
               ) : i.block.type === 'contador' ? (
-                <div className="flex items-center gap-1.5">
-                  <button type="button" onClick={() => onInc?.(i, -1)} aria-label={`Diminuir ${i.block.name}`} className="grid h-8 w-8 place-items-center rounded-lg bg-panel-2 text-soft">
+                <div className="flex shrink-0 items-center gap-1">
+                  <button type="button" onClick={() => onInc?.(i, -1)} aria-label={`Diminuir ${i.block.name}`} className="grid h-11 w-11 place-items-center rounded-lg bg-panel-2 text-soft sm:h-8 sm:w-8">
                     <Icon name="minus" size={14} />
                   </button>
-                  <span className={`min-w-[64px] text-center font-mono text-sm ${i.done ? 'text-ok' : 'text-soft'}`}>
+                  <span className={`min-w-[52px] text-center font-mono text-sm sm:min-w-[64px] ${i.done ? 'text-ok' : 'text-soft'}`}>
                     {i.log.value ?? 0}/{i.block.target}
                   </span>
-                  <button type="button" onClick={() => onInc?.(i, 1)} aria-label={`Aumentar ${i.block.name}`} className="grid h-8 w-8 place-items-center rounded-lg bg-panel-2 text-soft">
+                  <button type="button" onClick={() => onInc?.(i, 1)} aria-label={`Aumentar ${i.block.name}`} className="grid h-11 w-11 place-items-center rounded-lg bg-panel-2 text-soft sm:h-8 sm:w-8">
                     <Icon name="plus" size={14} />
                   </button>
                 </div>
@@ -61,14 +63,14 @@ export function DayList({ items, readOnly = false, activeId = null, onToggle, on
                   onClick={() => onToggle?.(i)}
                   aria-pressed={i.done}
                   aria-label={`${i.done ? 'Desmarcar' : 'Marcar'} ${i.block.name}`}
-                  className={`grid h-8 w-8 place-items-center rounded-full border-2 ${i.done ? 'border-ok bg-ok text-[#06210F]' : 'border-[#3A4254] text-transparent'}`}
+                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 sm:h-8 sm:w-8 ${i.done ? 'border-ok bg-ok text-[#06210F]' : 'border-[#3A4254] text-transparent'}`}
                 >
                   <Icon name="check" size={16} />
                 </button>
               )}
 
               <div className="flex min-w-0 flex-1 flex-col">
-                <span className={`font-semibold ${i.done ? 'text-muted line-through' : ''}`}>{i.block.name}</span>
+                <span className={`font-semibold [overflow-wrap:anywhere] ${i.done ? 'text-muted line-through' : ''}`}>{i.block.name}</span>
                 <span className="flex flex-wrap items-center gap-2 font-mono text-[11.5px] text-muted">
                   <span style={{ color: area.color }}>{area.name.toLowerCase()}</span>
                   {i.block.type === 'tarefa' && <span>· tarefa</span>}
@@ -83,12 +85,12 @@ export function DayList({ items, readOnly = false, activeId = null, onToggle, on
               </div>
 
               {!readOnly && !i.done && (
-                <div className="flex items-center gap-2">
+                <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
                   {onStart && !i.skipped && (
                     <button
                       type="button"
                       onClick={() => onStart(i, active)}
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${active ? 'bg-[#1A2B4A] text-[#9CC8FF]' : 'bg-foco-strong text-white'}`}
+                      className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-xs font-bold sm:min-h-0 sm:px-3 sm:py-1.5 ${active ? 'bg-[#1A2B4A] text-[#9CC8FF]' : 'bg-foco-strong text-white'}`}
                     >
                       <Icon name="play" size={11} /> {active ? 'Em andamento' : 'Começar'}
                     </button>
@@ -97,7 +99,7 @@ export function DayList({ items, readOnly = false, activeId = null, onToggle, on
                     type="button"
                     onClick={() => onSkip?.(i)}
                     aria-label={i.skipped ? `Desfazer pulo de ${i.block.name}` : `Pular ${i.block.name}`}
-                    className="grid h-8 w-8 place-items-center rounded-full bg-panel-2 text-muted"
+                    className="grid h-11 w-11 place-items-center rounded-full bg-panel-2 text-muted sm:h-8 sm:w-8"
                   >
                     <Icon name={i.skipped ? 'undo' : 'skip'} size={14} />
                   </button>

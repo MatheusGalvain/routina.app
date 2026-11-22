@@ -4,7 +4,8 @@ import { useRotina, setStorageUser, type RotinaState } from '../store/useRotina'
 import { useAuth } from '../store/useAuth'
 import { deviceTimeZone, setAppTimeZone } from '../lib/dates'
 import type { DayLog } from '../types'
-import { toStore, type RemoteData, type Row } from './rows'
+import { areaRow, toStore, type RemoteData, type Row } from './rows'
+import { DEFAULT_AREAS } from '../data/areas'
 import { diff } from './diff'
 import { markLegacyImported, mergeLegacy, type LegacyData } from './legacy'
 import { APP_KEY } from '../lib/storageKeys'
@@ -24,6 +25,8 @@ export interface Profile {
   displayName: string | null
   /** Quando a conta foi criada (ISO). */
   createdAt: string
+  /** Já concluiu (ou pulou) o onboarding de primeiro acesso. */
+  onboardingDone: boolean
 }
 
 /** Limite do nome de exibição (igual ao da tabela profiles). */
@@ -71,8 +74,9 @@ async function fetchOptional(table: string, uid: string): Promise<Row[] | null> 
 }
 
 async function loadRemote(uid: string): Promise<RemoteData> {
-  const [profile, routines, blocks, dayLogs, blockLogs, tasks, companion, trophies, slots] = await Promise.all([
-    supabase.from('profiles').select('timezone, local_import_answered, display_name, created_at, updated_at').eq('user_id', uid).maybeSingle(),
+  const [profile, routines, blocks, dayLogs, blockLogs, tasks, companion, trophies, slots, areas, templates] = await Promise.all([
+    // select('*'): uma coluna nova que ainda não existe no servidor não derruba o carregamento.
+    supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle(),
     fetchAll('routines', uid),
     fetchAll('blocks', uid),
     fetchAll('day_logs', uid),
@@ -81,10 +85,17 @@ async function loadRemote(uid: string): Promise<RemoteData> {
     supabase.from('companion').select('*').eq('user_id', uid).maybeSingle(),
     fetchOptional('user_trophies', uid),
     fetchOptional('corner_slots', uid),
+    fetchOptional('user_areas', uid),
+    fetchOptional('user_templates', uid),
   ])
   if (profile.error) throw profile.error
   if (companion.error) throw companion.error
-  return { profile: profile.data, routines, blocks, dayLogs, blockLogs, tasks, companion: companion.data, trophies, slots }
+  return { profile: profile.data, routines, blocks, dayLogs, blockLogs, tasks, companion: companion.data, trophies, slots, areas, templates }
+}
+
+/** Conta sem áreas no servidor (primeiro login): grava as 8 padrão. Os ids fixos tornam isso seguro em dois aparelhos. */
+function seedAreas(uid: string, remote: RemoteData) {
+  if (remote.areas && remote.areas.length === 0) for (const a of DEFAULT_AREAS) enqueue('user_areas', 'upsert', areaRow(uid, a))
 }
 
 /** Troca o store pelos dados da conta, mantendo as simulações locais do painel dev. */
@@ -126,6 +137,8 @@ async function applyProfile(uid: string, p: RemoteData['profile']) {
       localImportAnswered: !!p?.local_import_answered,
       displayName: p?.display_name?.trim() || null,
       createdAt: p?.created_at ?? new Date().toISOString(),
+      // Sem a coluna (migration 007 não aplicada), não mostra o onboarding para ninguém.
+      onboardingDone: p ? p.onboarding_done !== false : false,
     },
   })
 }
@@ -155,6 +168,7 @@ export async function startSession(uid: string) {
     const remote = await loadRemote(uid)
     if (currentUid !== uid) return
     applyRemote(remote)
+    seedAreas(uid, remote)
     await applyProfile(uid, remote.profile)
   } catch (e) {
     console.warn('[sync] usando o cache deste aparelho', e)
@@ -191,6 +205,7 @@ export async function reloadFromServer() {
   applyingRemote = true
   useRotina.setState(toStore(remote))
   applyingRemote = false
+  seedAreas(uid, remote)
   lastFetch = Date.now()
   useSession.setState({ offline: false })
 }
@@ -203,6 +218,7 @@ async function refreshOnReturn() {
     const remote = await loadRemote(uid)
     if (currentUid !== uid || hasPending()) return
     applyRemote(remote)
+    seedAreas(uid, remote)
     useSession.setState({ offline: false })
   } catch {
     /* sem conexão: segue com o que tem */
@@ -215,6 +231,13 @@ export function setDisplayName(name: string) {
   const display_name = name.trim().slice(0, NAME_MAX) || nameFromEmail(useAuth.getState().session?.user.email)
   enqueue('profiles', 'upsert', { user_id: currentUid, display_name })
   useSession.setState((s) => ({ profile: s.profile ? { ...s.profile, displayName: display_name } : s.profile }))
+}
+
+/** Marca o onboarding como concluído (ou pulado): não aparece de novo em nenhum aparelho. */
+export function setOnboardingDone() {
+  if (!currentUid) return
+  enqueue('profiles', 'upsert', { user_id: currentUid, onboarding_done: true })
+  useSession.setState((s) => ({ profile: s.profile ? { ...s.profile, onboardingDone: true } : s.profile }))
 }
 
 /** Atualiza o fuso do perfil. */
@@ -276,7 +299,7 @@ export async function exportMyData() {
   const data = {
     exportado_em: new Date().toISOString(),
     app: 'Habbit Do',
-    conta: { email, ...(remote.profile ?? {}) },
+    conta: { email, ...(remote.profile ? strip([remote.profile as Row])[0] : {}) },
     rotinas: strip(remote.routines),
     blocos: strip(remote.blocks),
     dias: strip(remote.dayLogs),
@@ -285,6 +308,8 @@ export async function exportMyData() {
     pet: remote.companion ? strip([remote.companion])[0] : null,
     trofeus: remote.trophies ? strip(remote.trophies) : [],
     cantinho: remote.slots ? strip(remote.slots) : [],
+    areas_da_vida: remote.areas ? strip(remote.areas) : [],
+    modelos_de_rotina: remote.templates ? strip(remote.templates) : [],
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const a = document.createElement('a')

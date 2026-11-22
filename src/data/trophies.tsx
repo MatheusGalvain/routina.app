@@ -1,6 +1,6 @@
 import { useId, type CSSProperties, type ReactNode } from 'react'
 import { useReducedMotion } from 'framer-motion'
-import type { AreaId } from '../types'
+import type { DefaultAreaKey } from '../types'
 import type { Stats } from '../lib/stats'
 import { crescent } from './accessories'
 
@@ -40,6 +40,8 @@ interface TrophyDef<I extends string = string> {
   unit: readonly [string, string]
   /** Como se conquista (para a coleção). */
   hint: string
+  /** Troféu de área: a chave da área padrão que ele acompanha. */
+  area?: DefaultAreaKey
   draw: () => ReactNode
 }
 
@@ -59,15 +61,21 @@ function starPath(cx: number, cy: number, R: number, r: number) {
   return `M${pts.join(' L')} Z`
 }
 
-/** Troféu de uma área da vida: dias com bloco da área concluído (7 / 30 / 90 / 200). */
-function areaTrophy<I extends string>(id: I, area: AreaId, name: string, areaName: string, draw: () => ReactNode): TrophyDef<I> {
+/**
+ * Troféu de uma área da vida: dias com bloco da área concluído (7 / 30 / 90 / 200).
+ * Fica preso à chave original da área padrão (ex.: "sono"), mesmo se a pessoa renomear.
+ * Se a área for excluída, o que já foi conquistado fica e o progresso para de avançar
+ * (os blocos dela passam para outra área, então não entram dias novos nessa chave).
+ */
+function areaTrophy<I extends string>(id: I, area: DefaultAreaKey, name: string, areaName: string, draw: () => ReactNode): TrophyDef<I> {
   return {
     id,
     name,
     goals: [7, 30, 90, 200],
-    value: (s) => s.areaDaysTotal[area],
+    value: (s) => s.areaDaysTotal[area] ?? 0,
     unit: ['dia', 'dias'],
     hint: `Dias com bloco de ${areaName} concluído`,
+    area,
     draw,
   }
 }
@@ -155,6 +163,9 @@ export const TROPHIES = [
 export type TrophyId = (typeof TROPHIES)[number]['id']
 
 export const TROPHY_BY_ID = Object.fromEntries(TROPHIES.map((t) => [t.id, t])) as Record<TrophyId, TrophyDef<TrophyId>>
+
+/** Nome do troféu que acompanha uma área padrão (ex.: "estudo" → "Livros"), se houver. */
+export const trophyNameForArea = (key: string) => (TROPHIES as readonly TrophyDef[]).find((t) => t.area === key)?.name ?? null
 
 /** Maior nível alcançado (0 = nenhum). */
 export function earnedTier(id: TrophyId, s: TrophyStats): 0 | TrophyTier {

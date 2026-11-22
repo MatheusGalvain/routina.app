@@ -23,6 +23,8 @@ const PK: Record<Table, string[]> = {
   companion: [],
   user_trophies: ['trophy_id', 'tier'],
   corner_slots: ['slot'],
+  user_areas: ['id'],
+  user_templates: ['id'],
 }
 const CONFLICT: Record<Table, string> = {
   profiles: 'user_id',
@@ -34,10 +36,12 @@ const CONFLICT: Record<Table, string> = {
   companion: 'user_id',
   user_trophies: 'user_id,trophy_id,tier',
   corner_slots: 'user_id,slot',
+  user_areas: 'user_id,id',
+  user_templates: 'user_id,id',
 }
 // Pais antes dos filhos ao gravar; filhos antes dos pais ao apagar.
-const UPSERT_ORDER: Table[] = ['profiles', 'routines', 'blocks', 'day_logs', 'block_logs', 'completed_tasks', 'companion', 'user_trophies', 'corner_slots']
-const DELETE_ORDER: Table[] = ['block_logs', 'completed_tasks', 'blocks', 'day_logs', 'routines', 'corner_slots', 'user_trophies']
+const UPSERT_ORDER: Table[] = ['profiles', 'user_areas', 'routines', 'blocks', 'day_logs', 'block_logs', 'completed_tasks', 'companion', 'user_trophies', 'corner_slots', 'user_templates']
+const DELETE_ORDER: Table[] = ['block_logs', 'completed_tasks', 'blocks', 'day_logs', 'routines', 'corner_slots', 'user_trophies', 'user_areas', 'user_templates']
 
 const DEBOUNCE_MS = 600
 const BACKOFF_S = [2, 5, 10, 20, 30]

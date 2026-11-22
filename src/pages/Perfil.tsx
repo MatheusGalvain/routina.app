@@ -9,6 +9,8 @@ import { useShownPet } from '../store/useCompanion'
 import { useTrophyView } from '../store/useTrophies'
 import { TIERS, TROPHIES, Trophy, trophyTitle } from '../data/trophies'
 import { Icon } from '../components/ui/ui'
+import { HelpButton, HelpPet } from '../components/help/HelpButton'
+import type { HelpKey } from '../data/help'
 import { Pet } from '../components/pets/Pet'
 import { STATE_STYLE } from '../components/pets/pets'
 
@@ -36,22 +38,26 @@ const AUTO = '__auto'
 
 const btn = 'min-h-11 rounded-full border border-line px-4 text-sm font-semibold text-soft hover:bg-panel-2 disabled:opacity-50'
 
-function Card({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
+function Card({ title, children, id, help }: { title: string; children: ReactNode; id?: string; help?: HelpKey }) {
   return (
     <section id={id} className="flex flex-col gap-4 rounded-[22px] border border-line bg-panel p-5 sm:p-6">
-      <h2 className="m-0 text-lg font-bold">{title}</h2>
+      <div className="flex items-center gap-2.5">
+        <h2 className="m-0 text-lg font-bold">{title}</h2>
+        {help && <HelpButton k={help} />}
+      </div>
       {children}
     </section>
   )
 }
 
 /** Perfil pessoal e privado: quem é, números, vitrine de troféus e configurações. */
-export function Perfil({ openPrivacy, openCollection }: { openPrivacy: () => void; openCollection: () => void }) {
+export function Perfil({ openPrivacy, openCollection, startTour }: { openPrivacy: () => void; openCollection: () => void; startTour: () => void }) {
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5">
       <Header />
       <Numbers />
       <Showcase openCollection={openCollection} />
+      <TourCard startTour={startTour} />
       <Settings openPrivacy={openPrivacy} />
     </div>
   )
@@ -140,6 +146,7 @@ function Header() {
       ) : (
         <div className="flex max-w-full items-center gap-1">
           <h1 className="m-0 min-w-0 truncate text-2xl font-extrabold tracking-tight">{name}</h1>
+          <HelpButton k="perfil" className="mx-1" />
           <button
             ref={editBtn}
             type="button"
@@ -193,7 +200,7 @@ function Showcase({ openCollection }: { openCollection: () => void }) {
     .slice(0, 6)
 
   return (
-    <Card title="Vitrine de troféus">
+    <Card title="Vitrine de troféus" help="vitrine">
       {top.length ? (
         <ul className="m-0 grid list-none grid-cols-3 gap-3 p-0 sm:grid-cols-6">
           {top.map((t) => (
@@ -242,7 +249,7 @@ function Settings({ openPrivacy }: { openPrivacy: () => void }) {
   }
 
   return (
-    <Card title="Configurações">
+    <Card title="Configurações" help="configuracoes">
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-muted">Fuso horário dos seus dias</span>
         <select
@@ -283,6 +290,24 @@ function Settings({ openPrivacy }: { openPrivacy: () => void }) {
 
       <DeleteAccount />
     </Card>
+  )
+}
+
+/** "Rever o tour": um passeio rápido pelos "?" da tela Início, com o pet. */
+function TourCard({ startTour }: { startTour: () => void }) {
+  return (
+    <section className="flex flex-wrap items-center gap-4 rounded-[22px] border border-line bg-panel p-5 sm:p-6">
+      <span className="shrink-0">
+        <HelpPet size={52} />
+      </span>
+      <div className="flex min-w-[180px] flex-1 flex-col gap-0.5">
+        <h2 className="m-0 text-lg font-bold">Ajuda</h2>
+        <p className="m-0 text-sm text-muted">Toque em qualquer "?" para eu explicar. Ou faça o tour comigo de novo.</p>
+      </div>
+      <button type="button" onClick={startTour} className={btn}>
+        Rever o tour
+      </button>
+    </section>
   )
 }
 

@@ -1,5 +1,5 @@
 import type { AreaId, Block, BlockLog, DayLog } from '../types'
-import { AREAS } from '../data/areas'
+import { DEFAULT_AREA_KEYS } from '../data/areas'
 import { addDays, dayKey, diffDays, parseKey } from './dates'
 
 /**
@@ -124,10 +124,11 @@ export function daysSinceLastActive(logs: Logs, today = dayKey()) {
 }
 
 /**
- * Houve 7 dias seguidos (uma semana) em que cada uma das áreas da vida
+ * Houve 7 dias seguidos (uma semana) em que cada uma das áreas da vida (`areaIds`)
  * teve pelo menos um bloco concluído? Vale qualquer janela de 7 dias do histórico.
  */
-export function allAreasInAWeek(logs: Logs, today = dayKey()) {
+export function allAreasInAWeek(logs: Logs, areaIds: AreaId[] = DEFAULT_AREA_KEYS, today = dayKey()) {
+  if (areaIds.length === 0) return false
   const days = pastKeys(logs, today)
     .sort()
     .map((k) => ({ k, areas: Object.keys(summarizeDay(logs[k]).areas) }))
@@ -135,7 +136,7 @@ export function allAreasInAWeek(logs: Logs, today = dayKey()) {
   for (let i = 0; i < days.length; i++) {
     const seen = new Set<string>()
     for (let j = i; j < days.length && diffDays(days[j].k, days[i].k) < 7; j++) days[j].areas.forEach((a) => seen.add(a))
-    if (seen.size >= AREAS.length) return true
+    if (areaIds.every((a) => seen.has(a))) return true
   }
   return false
 }
@@ -151,6 +152,8 @@ export interface Stats {
   daysSinceLastActive: number | null
   /** Blocos concluídos hoje. */
   doneToday: number
+  // Por área (id → valor): as áreas atuais, as 8 padrão (mesmo se excluídas, para os troféus)
+  // e qualquer área que apareça no histórico. Uma área pode faltar: leia com `?? 0`.
   /** Dias com bloco concluído por área, nos últimos 7. */
   areaDays7: Record<AreaId, number>
   /** Dias com bloco concluído por área, desde sempre. */
@@ -161,9 +164,15 @@ export interface Stats {
   allAreasWeek: boolean
 }
 
-/** Todas as estatísticas de uma vez. */
-export function computeStats(logs: Logs, today = dayKey()): Stats {
-  const byArea = <T,>(fn: (id: AreaId) => T) => Object.fromEntries(AREAS.map((a) => [a.id, fn(a.id)])) as Record<AreaId, T>
+/**
+ * Todas as estatísticas de uma vez. `areaIds` = áreas atuais da pessoa
+ * (a "semana com todas as áreas" usa só elas).
+ */
+export function computeStats(logs: Logs, today = dayKey(), areaIds: AreaId[] = DEFAULT_AREA_KEYS): Stats {
+  // O histórico continua contando mesmo para áreas excluídas.
+  const ids = new Set<AreaId>([...areaIds, ...DEFAULT_AREA_KEYS])
+  for (const k of pastKeys(logs, today)) for (const a of Object.keys(summarizeDay(logs[k]).areas)) ids.add(a)
+  const byArea = <T,>(fn: (id: AreaId) => T) => Object.fromEntries([...ids].map((id) => [id, fn(id)])) as Record<AreaId, T>
   return {
     activeDays: activeDays(logs, today),
     currentStreak: currentStreak(logs, today),
@@ -175,6 +184,6 @@ export function computeStats(logs: Logs, today = dayKey()): Stats {
     areaDays7: byArea((id) => areaDays(logs, id, 7, today)),
     areaDaysTotal: byArea((id) => areaDays(logs, id, Infinity, today)),
     areaBlocks: byArea((id) => areaBlocksDone(logs, id, today)),
-    allAreasWeek: allAreasInAWeek(logs, today),
+    allAreasWeek: allAreasInAWeek(logs, areaIds, today),
   }
 }

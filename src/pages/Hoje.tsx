@@ -4,6 +4,7 @@ import { useRotina } from '../store/useRotina'
 import { computePetState, getTodayItems, petMessage } from '../lib/today'
 import { dayKey, formatLong, nowInTz } from '../lib/dates'
 import { Panel } from '../components/ui/ui'
+import { HelpButton } from '../components/help/HelpButton'
 import { DayList } from '../components/day/DayList'
 import { Pet } from '../components/pets/Pet'
 import { STATE_STYLE, textColor } from '../components/pets/pets'
@@ -51,7 +52,10 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="m-0 font-mono text-xs tracking-wider text-muted uppercase">Modo dia</p>
-          <h1 className="m-0 mt-1 text-3xl font-extrabold tracking-tight">{formatLong(now)}</h1>
+          <div className="mt-1 flex items-center gap-2.5">
+            <h1 className="m-0 text-3xl font-extrabold tracking-tight">{formatLong(now)}</h1>
+            <HelpButton k="hoje" />
+          </div>
         </div>
         <span className="rounded-full border border-line bg-panel px-4 py-2 font-mono text-sm text-soft">
           {done}/{items.length} blocos feitos
@@ -106,7 +110,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
           </section>
 
           {counters.length > 0 && (
-            <Panel title="Painel do dia" icon="gauge">
+            <Panel title="Painel do dia" icon="gauge" help="painel-do-dia">
               <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
                 {counters.map((c) => (
                   <div key={c.block.id} className="flex flex-col gap-1 rounded-xl border border-dashed border-[#2B3A55] bg-[#0F1520] p-3">
@@ -122,7 +126,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
             </Panel>
           )}
 
-          <Panel title="Revisão da noite" icon="note" color="#A78BFA">
+          <Panel title="Revisão da noite" icon="note" color="#A78BFA" help="revisao">
             <label htmlFor="nota" className="text-sm text-muted">
               Como foi o seu dia?
             </label>

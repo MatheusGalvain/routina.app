@@ -1,21 +1,163 @@
-import { useMemo, useState } from 'react'
-import { AnimatePresence } from 'framer-motion'
-import { useRotina } from '../store/useRotina'
+import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useAreas, useRotina } from '../store/useRotina'
 import { computePetState, getTodayItems } from '../lib/today'
 import { dayKey, greeting, nowInTz } from '../lib/dates'
-import { AREAS, WEEKDAYS } from '../data/areas'
+import { WEEKDAYS } from '../data/areas'
+import { AreaManager } from '../components/areas/AreaManager'
 import { TEMPLATES } from '../data/templates'
 import { Bar, Icon, Logo, Panel, ProgressRing } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
 import { PETS, PET_ORDER } from '../components/pets/pets'
 import { PetStory } from '../components/pets/PetStory'
 import { PetCorner } from '../components/pets/PetCorner'
+import { PrimaryActionButton, type TodayTarget } from '../components/home/PrimaryAction'
+import { HelpButton } from '../components/help/HelpButton'
 import type { BasePetKind } from '../types'
 
 const daysLabel = (days: number[]) =>
   days.length === 7 ? 'todo dia' : days.length === 0 ? 'nenhum dia' : days.map((d) => WEEKDAYS[d].long.slice(0, 3).toLowerCase()).join(' · ')
 
-export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRoutine: (id: string) => void }) {
+type TemplateTab = 'sugestoes' | 'meus'
+
+const TEMPLATE_TABS: { id: TemplateTab; label: string; on: string }[] = [
+  { id: 'sugestoes', label: 'Sugestões', on: 'bg-[#FFB020]/15 text-[#FFC24B]' },
+  { id: 'meus', label: 'Meus modelos', on: 'bg-[#1E88FF]/15 text-[#9CC8FF]' },
+]
+
+/**
+ * "Rotinas prontas" em duas abas: as sugestões do app (src/data/templates.ts) e os modelos da pessoa.
+ * Abas acessíveis (role tablist): setas, Home e End trocam de aba.
+ */
+function TemplatesPanel({ apply, openTemplate }: { apply: (keyOrId: string) => void; openTemplate: (id: string) => void }) {
+  const templates = useRotina((s) => s.templates)
+  const createTemplate = useRotina((s) => s.createTemplate)
+  // Quem já tem modelos começa vendo os seus.
+  const [tab, setTab] = useState<TemplateTab>(() => (useRotina.getState().templates.length ? 'meus' : 'sugestoes'))
+  const tabRefs = useRef<Record<TemplateTab, HTMLButtonElement | null>>({ sugestoes: null, meus: null })
+  const baseId = useId()
+  const count: Record<TemplateTab, number> = { sugestoes: TEMPLATES.length, meus: templates.length }
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = TEMPLATE_TABS.findIndex((t) => t.id === tab)
+    const n = TEMPLATE_TABS.length
+    const next =
+      e.key === 'ArrowRight'
+        ? TEMPLATE_TABS[(i + 1) % n]
+        : e.key === 'ArrowLeft'
+          ? TEMPLATE_TABS[(i - 1 + n) % n]
+          : e.key === 'Home'
+            ? TEMPLATE_TABS[0]
+            : e.key === 'End'
+              ? TEMPLATE_TABS[n - 1]
+              : null
+    if (!next) return
+    e.preventDefault()
+    setTab(next.id)
+    tabRefs.current[next.id]?.focus()
+  }
+
+  return (
+    <>
+      <div role="tablist" aria-label="Tipo de modelo" onKeyDown={onKeyDown} className="grid grid-cols-2 gap-1 rounded-full border border-line bg-[#0B0E15] p-1">
+        {TEMPLATE_TABS.map((t) => {
+          const selected = tab === t.id
+          return (
+            <button
+              key={t.id}
+              ref={(el) => {
+                tabRefs.current[t.id] = el
+              }}
+              type="button"
+              role="tab"
+              id={`${baseId}-tab-${t.id}`}
+              aria-selected={selected}
+              aria-controls={`${baseId}-panel-${t.id}`}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => setTab(t.id)}
+              className={`flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-[13px] font-semibold transition-colors ${selected ? t.on : 'text-muted hover:text-soft'}`}
+            >
+              <span className="truncate">{t.label}</span>
+              <span className={`shrink-0 rounded-full px-1.5 font-mono text-[11px] ${selected ? 'bg-black/25' : 'bg-panel-2'}`}>{count[t.id]}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={tab}
+          role="tabpanel"
+          id={`${baseId}-panel-${tab}`}
+          aria-labelledby={`${baseId}-tab-${tab}`}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.16 }}
+          className="flex min-w-0 flex-col gap-2.5"
+        >
+          {tab === 'sugestoes' ? (
+            <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+              {TEMPLATES.map((t) => (
+                <li key={t.key}>
+                  <button
+                    type="button"
+                    onClick={() => apply(t.key)}
+                    className="flex w-full flex-col gap-1 rounded-xl border border-[#4A3A12] bg-[#17140C] px-4 py-3.5 text-left hover:border-[#6B5418]"
+                  >
+                    <strong className="text-sm [overflow-wrap:anywhere]">{t.name}</strong>
+                    <span className="text-[12.5px] text-[#B5AC96]">{t.description}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <>
+              {templates.length === 0 ? (
+                <p className="m-0 rounded-xl border border-dashed border-[#24304A] px-4 py-3.5 text-[13px] text-muted">
+                  Você ainda não tem modelos. Crie um do zero ou use "Salvar como modelo" no editor de uma rotina.
+                </p>
+              ) : (
+                <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                  {templates.map((t) => (
+                    <li key={t.id} className="flex items-stretch rounded-xl border border-[#24304A] bg-[#0D1422] hover:border-[#2E4166]">
+                      <button type="button" onClick={() => apply(t.id)} className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-3.5 text-left">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} aria-hidden="true" />
+                          <strong className="min-w-0 text-sm [overflow-wrap:anywhere]">{t.name}</strong>
+                        </span>
+                        <span className="text-[12.5px] text-muted">
+                          {t.blocks.length} {t.blocks.length === 1 ? 'bloco' : 'blocos'} · {daysLabel(t.days)}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openTemplate(t.id)}
+                        aria-label={`Editar o modelo ${t.name}`}
+                        className="grid w-11 shrink-0 place-items-center rounded-r-xl border-l border-[#1A2336] text-muted hover:bg-[#16203A] hover:text-soft"
+                      >
+                        <Icon name="edit" size={16} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button
+                type="button"
+                onClick={() => openTemplate(createTemplate())}
+                className="min-h-10 self-start rounded-full border border-line px-4 text-[13px] font-semibold text-soft hover:bg-panel-2"
+              >
+                + Criar modelo
+              </button>
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </>
+  )
+}
+
+export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: TodayTarget) => void; openRoutine: (id: string) => void; openTemplate: (id: string) => void }) {
   const now = nowInTz()
   const date = dayKey(now)
   const routines = useRotina((s) => s.routines)
@@ -23,9 +165,21 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
   const completedTasks = useRotina((s) => s.completedTasks)
   const createRoutine = useRotina((s) => s.createRoutine)
   const addTemplate = useRotina((s) => s.addTemplate)
+  // Usar um modelo cria uma rotina nova e independente e abre o editor nela.
+  const applyTemplate = (keyOrId: string) => {
+    const id = addTemplate(keyOrId)
+    if (id) openRoutine(id)
+  }
   const activeId = useRotina((s) => s.activeBlockId)
   const companion = useRotina((s) => s.companion)
+  const areas = useAreas()
   const [storyPet, setStoryPet] = useState<BasePetKind | null>(null)
+  const [editAreas, setEditAreas] = useState(false)
+  const editAreasRef = useRef<HTMLButtonElement>(null)
+  const closeAreas = () => {
+    setEditAreas(false)
+    editAreasRef.current?.focus()
+  }
 
   const items = useMemo(() => getTodayItems(routines, dayLog, completedTasks, now, date), [routines, dayLog, completedTasks, date])
   const done = items.filter((i) => i.done).length
@@ -37,27 +191,24 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
         <div className="flex items-center gap-4">
           <Logo />
           <div className="flex flex-col gap-1">
-            <h1 className="m-0 text-[44px] leading-none font-extrabold tracking-tight">
-              Habbit <span className="text-[#5AA7FF]">Do</span>
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="m-0 text-[44px] leading-none font-extrabold tracking-tight">
+                Habbit <span className="text-[#5AA7FF]">Do</span>
+              </h1>
+              <HelpButton k="inicio" />
+            </div>
             <p className="m-0 text-muted">{greeting(now)}! Pronto para organizar o seu dia?</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={goToday}
-          className="inline-flex items-center gap-2.5 rounded-full bg-foco-strong px-5 py-3.5 text-[15px] font-bold text-white shadow-[0_0_24px_rgba(30,136,255,.35)]"
-        >
-          <Icon name="play" size={14} /> Continuar de onde parei
-        </button>
+        <PrimaryActionButton items={items} goToday={goToday} />
       </header>
 
-      <Panel title={companion.kind ? `Cantinho ${companion.name ? `de ${companion.name}` : 'do seu pet'}` : 'Cantinho do pet'} icon="paw" color="#5AA7FF">
+      <Panel title={companion.kind ? `Cantinho ${companion.name ? `de ${companion.name}` : 'do seu pet'}` : 'Cantinho do pet'} icon="paw" color="#5AA7FF" help="cantinho">
         <PetCorner autoState={computePetState(items, activeId, now)} />
       </Panel>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-5">
-        <Panel title="Hoje" icon="trend">
+        <Panel title="Hoje" icon="trend" help="resumo-hoje">
           <div className="flex items-center gap-5">
             <ProgressRing pct={items.length ? done / items.length : 0}>{items.length ? Math.round((done / items.length) * 100) : 0}%</ProgressRing>
             <div className="flex flex-col gap-1.5">
@@ -68,12 +219,12 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
               {next && <span className="text-[13px] font-semibold text-[#5AA7FF]">{next.routine.name}</span>}
             </div>
           </div>
-          <button type="button" onClick={goToday} className="mt-auto self-start rounded-full bg-foco-strong px-4 py-2 text-[13px] font-bold text-white">
+          <button type="button" onClick={() => goToday()} className="mt-auto self-start rounded-full bg-foco-strong px-4 py-2 text-[13px] font-bold text-white">
             Abrir o dia
           </button>
         </Panel>
 
-        <Panel title="Minhas rotinas" icon="calendar" color="#3EDC7E">
+        <Panel title="Minhas rotinas" icon="calendar" color="#3EDC7E" help="minhas-rotinas">
           {routines.length === 0 ? (
             <p className="m-0 text-sm text-muted">Você ainda não tem rotinas. Crie uma do zero ou comece por um modelo pronto.</p>
           ) : (
@@ -106,52 +257,7 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
           </button>
         </Panel>
 
-        <Panel title="Rotinas prontas" icon="box" color="#FFB020">
-          {TEMPLATES.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => {
-                const id = addTemplate(t.key)
-                if (id) openRoutine(id)
-              }}
-              className="flex flex-col gap-1 rounded-xl border border-[#4A3A12] bg-[#17140C] px-4 py-3.5 text-left"
-            >
-              <strong className="text-sm">{t.name}</strong>
-              <span className="text-[12.5px] text-[#B5AC96]">{t.description}</span>
-            </button>
-          ))}
-        </Panel>
-      </div>
-
-      <div className="flex flex-wrap items-start gap-5">
-        <Panel title="Áreas da vida" icon="grid" color="#A78BFA" className="min-w-0 flex-[999_1_640px]">
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
-            {AREAS.map((a) => {
-              const list = items.filter((i) => i.block.areaId === a.id)
-              const ok = list.filter((i) => i.done).length
-              return (
-                <div key={a.id} className="flex flex-col gap-3 rounded-xl bg-panel-2 p-3.5">
-                  <div className="flex items-center justify-between">
-                    <strong className="flex items-center gap-2 text-sm">
-                      <span className="h-2 w-2 rounded-[3px]" style={{ background: a.color }} />
-                      {a.name}
-                    </strong>
-                    {list.length > 0 && ok === list.length && (
-                      <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-ok text-[#06210F]" aria-label="Concluído hoje">
-                        <Icon name="check" size={12} />
-                      </span>
-                    )}
-                  </div>
-                  <Bar pct={list.length ? ok / list.length : 0} color={a.color} />
-                  <span className="font-mono text-[11.5px] text-muted">{list.length ? `${ok}/${list.length} hoje` : 'nada hoje'}</span>
-                </div>
-              )
-            })}
-          </div>
-        </Panel>
-
-        <Panel title="Os pets" icon="paw" color="#FB7185" className="min-w-0 flex-[1_1_320px]">
+        <Panel title="Os pets" icon="paw" color="#FB7185" help="os-pets">
           <div className="grid grid-cols-3 gap-y-4">
             {PET_ORDER.map((k) => (
               <div key={k} className="flex flex-col items-center gap-1.5 text-center">
@@ -168,6 +274,56 @@ export function Inicio({ goToday, openRoutine }: { goToday: () => void; openRout
           </div>
         </Panel>
       </div>
+
+      {/* Áreas e modelos lado a lado com a mesma altura; no celular, uma coluna. */}
+      <div className="grid items-stretch gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Panel
+          title="Áreas da vida"
+          help="areas"
+          icon="grid"
+          color="#A78BFA"
+          className="min-w-0"
+          action={
+            <button
+              ref={editAreasRef}
+              type="button"
+              onClick={() => setEditAreas(true)}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3.5 text-[13px] font-semibold text-soft hover:bg-panel-2"
+            >
+              <Icon name="edit" size={14} /> Editar
+            </button>
+          }
+        >
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
+            {areas.map((a) => {
+              const list = items.filter((i) => i.block.areaId === a.id)
+              const ok = list.filter((i) => i.done).length
+              return (
+                <div key={a.id} className="flex flex-col gap-3 rounded-xl bg-panel-2 p-3.5">
+                  <div className="flex items-center justify-between">
+                    <strong className="flex min-w-0 items-center gap-2 text-sm [overflow-wrap:anywhere]">
+                      <span className="h-2 w-2 shrink-0 rounded-[3px]" style={{ background: a.color }} />
+                      {a.name}
+                    </strong>
+                    {list.length > 0 && ok === list.length && (
+                      <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-ok text-[#06210F]" aria-label="Concluído hoje">
+                        <Icon name="check" size={12} />
+                      </span>
+                    )}
+                  </div>
+                  <Bar pct={list.length ? ok / list.length : 0} color={a.color} />
+                  <span className="font-mono text-[11.5px] text-muted">{list.length ? `${ok}/${list.length} hoje` : 'nada hoje'}</span>
+                </div>
+              )
+            })}
+          </div>
+        </Panel>
+
+        <Panel title="Rotinas prontas" icon="box" color="#FFB020" className="min-w-0" help="modelos">
+          <TemplatesPanel apply={applyTemplate} openTemplate={openTemplate} />
+        </Panel>
+      </div>
+      <AreaManager open={editAreas} onClose={closeAreas} />
       <AnimatePresence>{storyPet && <PetStory key={storyPet} kind={storyPet} onClose={() => setStoryPet(null)} />}</AnimatePresence>
     </div>
   )

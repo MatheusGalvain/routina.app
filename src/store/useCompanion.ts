@@ -13,8 +13,9 @@ import type { AccessoryId, PetKind, PetState, UnlockId } from '../types'
 /** Estatísticas atuais, recalculadas quando os registros mudam. */
 export function useStats() {
   const logs = useRotina((s) => s.logs)
+  const areas = useRotina((s) => s.areas)
   const today = dayKey()
-  return useMemo(() => computeStats(logs, today), [logs, today])
+  return useMemo(() => computeStats(logs, today, areas.map((a) => a.id)), [logs, today, areas])
 }
 
 export function unlockStats(stats: Stats, activeDays: number, hasCompanion: boolean): UnlockStats {
@@ -99,8 +100,9 @@ export function useCompanionView() {
   const phase = dev.phase ?? phaseFor(activeDays)
   const unlocked = dev.unlockAll ? null : new Set(progress.unlocked)
   const accessories = Object.values(companion.equipped).filter((id): id is AccessoryId => !!id && (!unlocked || unlocked.has(id)))
-  // Dorme depois de 2+ dias sem dia ativo, até concluir um bloco hoje.
-  const sleepy = stats.daysSinceLastActive !== null && stats.daysSinceLastActive >= 2 && stats.doneToday === 0
+  // Dorme depois de 2+ dias sem dia ativo, até concluir um bloco hoje (ou ser acordado pelo botão do Início).
+  const woke = useRotina((s) => s.wokenOn === dayKey())
+  const sleepy = stats.daysSinceLastActive !== null && stats.daysSinceLastActive >= 2 && stats.doneToday === 0 && !woke
 
   const unlockedIds = dev.unlockAll ? ACCESSORIES.map((a) => a.id) : progress.unlocked
   const secretUnlocked = dev.secretPet || progress.unlocked.includes(SECRET_UNLOCK)

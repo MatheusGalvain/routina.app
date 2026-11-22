@@ -120,7 +120,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
       <div className="flex flex-wrap items-start gap-5">
         {/* Calendário do mês */}
         <div className="flex min-w-0 flex-[1_1_380px] flex-col gap-5">
-          <Panel title="Mês" icon="calendar">
+          <Panel title="Mês" icon="calendar" help="mes">
             <div className="grid grid-cols-3 gap-3">
               <Stat label="dias registrados" value={String(summary.days)} />
               <Stat label="média feita" value={`${Math.round(summary.avg * 100)}%`} />
@@ -222,7 +222,7 @@ export function Historico({ goToday }: { goToday: () => void }) {
           </section>
 
           {(selNote || editing) && (
-            <Panel title="Revisão da noite" icon="note" color="#A78BFA">
+            <Panel title="Revisão da noite" icon="note" color="#A78BFA" help="revisao">
               {editing ? (
                 <textarea
                   value={selNote ?? ''}

@@ -1,5 +1,5 @@
-import type { AreaId, Block, BlockLog, BlockType, DayLog, PlanEntry, Routine } from '../types'
-import { AREAS } from '../data/areas'
+import type { Area, AreaId, Block, BlockLog, BlockType, DayLog, PlanEntry, Routine } from '../types'
+import { DEFAULT_AREAS } from '../data/areas'
 import { addDays, parseKey } from '../lib/dates'
 import { isActiveDay, type Logs } from '../lib/stats'
 
@@ -13,9 +13,9 @@ import { isActiveDay, type Logs } from '../lib/stats'
 const uid = () => crypto.randomUUID()
 
 /** Rotina de teste com blocos de todas as áreas e dos 3 tipos. */
-export function testRoutine(): Routine {
+export function testRoutine(areas: Area[] = DEFAULT_AREAS): Routine {
   const types: BlockType[] = ['habito', 'contador', 'tarefa']
-  const blocks: Block[] = AREAS.flatMap((a, i) =>
+  const blocks: Block[] = areas.flatMap((a, i) =>
     [0, 1].map((j) => {
       const type = types[(i + j) % 3]
       return {

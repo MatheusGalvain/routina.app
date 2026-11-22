@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useRotina } from '../store/useRotina'
+import { useAreas, useRotina } from '../store/useRotina'
+import { useOnboarding } from '../store/useOnboarding'
 import { reloadFromServer } from '../sync/session'
 import { flushNow } from '../sync/outbox'
 import { useDevOverrides, type ForcedState } from '../store/useDevOverrides'
 import { usePetEvents } from '../store/usePetEvents'
 import { useStats } from '../store/useCompanion'
-import { AREAS } from '../data/areas'
 import { ACCESSORIES } from '../data/accessories'
 import { ALL_PETS, PETS } from '../components/pets/pets'
 import { PHASES, phaseFor } from '../lib/companion'
@@ -50,7 +50,7 @@ function ensureRoutines(area?: AreaId) {
   const { routines } = useRotina.getState()
   const blocks = routines.flatMap((r) => r.blocks)
   if (blocks.length && (!area || blocks.some((b) => b.areaId === area))) return routines
-  const next = [...routines, testRoutine()]
+  const next = [...routines, testRoutine(useRotina.getState().areas)]
   useRotina.setState({ routines: next })
   return next
 }
@@ -171,6 +171,7 @@ function Row({ children }: { children: ReactNode }) {
 function StatsReadout() {
   const stats = useStats()
   const peak = useRotina((s) => s.petProgress.peakActiveDays)
+  const areas = useAreas()
   const best = Math.max(peak, stats.activeDays)
   const items: [string, ReactNode][] = [
     ['Dias ativos', stats.activeDays],
@@ -191,11 +192,11 @@ function StatsReadout() {
         ))}
       </dl>
       <div className="grid grid-cols-4 gap-1.5">
-        {AREAS.map((a) => (
+        {areas.map((a) => (
           <div key={a.id} className="flex flex-col items-center rounded-lg bg-panel px-1 py-1.5">
             <span className="text-[10.5px] text-muted">{a.name}</span>
             <span className="font-mono text-sm font-bold" style={{ color: a.color }}>
-              {stats.areaDays7[a.id]}/7
+              {stats.areaDays7[a.id] ?? 0}/7
             </span>
           </div>
         ))}
@@ -208,7 +209,8 @@ function Simulation({ onStatus }: { onStatus: (s: string) => void }) {
   const [active, setActive] = useState(10)
   const [streak, setStreak] = useState(5)
   const [idle, setIdle] = useState(3)
-  const [area, setArea] = useState<AreaId>('corpo')
+  const areas = useAreas()
+  const [area, setArea] = useState<AreaId>(() => areas.find((a) => a.id === 'corpo')?.id ?? areas[0]?.id ?? 'corpo')
   const [areaK, setAreaK] = useState(5)
 
   const run = (label: string, fn: (today: string) => void) => {
@@ -242,14 +244,14 @@ function Simulation({ onStatus }: { onStatus: (s: string) => void }) {
           onChange={(e) => setArea(e.target.value as AreaId)}
           className="rounded-lg border border-line bg-panel px-2 py-1.5 text-[12.5px] text-soft"
         >
-          {AREAS.map((a) => (
+          {areas.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
             </option>
           ))}
         </select>
         <NumberField label="Dias com a área concluída" value={areaK} onChange={setAreaK} min={0} max={6} />
-        <Btn onClick={() => run(`${AREAS.find((a) => a.id === area)?.name} em ${areaK} dias`, (t) => setLogs(simulateArea(useRotina.getState().logs, ensureRoutines(area), area, areaK, t)))}>
+        <Btn onClick={() => run(`${areas.find((a) => a.id === area)?.name} em ${areaK} dias`, (t) => setLogs(simulateArea(useRotina.getState().logs, ensureRoutines(area), area, areaK, t)))}>
           Focar numa área
         </Btn>
       </Row>
@@ -284,6 +286,7 @@ function Overrides() {
   const push = usePetEvents((s) => s.push)
   const [acc, setAcc] = useState(ACCESSORIES[0].id)
   const skyDays = [0, 1, 3, 5, 7]
+  const areas = useAreas()
 
   return (
     <Section title="Atalhos de visualização (não mexem nos dados)">
@@ -303,7 +306,7 @@ function Overrides() {
       </Row>
       <div className="flex flex-col gap-1.5">
         <span className="text-[12px] text-muted">Dias por área no céu do cantinho</span>
-        {AREAS.map((a) => (
+        {areas.map((a) => (
           <div key={a.id} className="flex items-center gap-2">
             <span className="w-16 text-[12px]" style={{ color: a.color }}>
               {a.name}
@@ -466,6 +469,7 @@ function Safety({ onStatus }: { onStatus: (s: string) => void }) {
       </p>
       <Row>
         <Btn onClick={() => void discardSimulation(onStatus)}>Restaurar dados reais (recarregar da conta)</Btn>
+        <Btn onClick={() => useOnboarding.getState().show(1, true)}>Refazer o onboarding</Btn>
         {!confirming ? (
           <Btn tone="danger" onClick={() => setConfirming(true)}>
             Resetar tudo neste aparelho

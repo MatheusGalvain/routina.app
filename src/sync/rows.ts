@@ -1,13 +1,14 @@
-import type { AccessoryId, Block, BlockLog, Companion, CornerSlot, CornerSlots, DayLog, PetProgress, PetPhase, Routine, Slot, TrophyMap, UnlockId } from '../types'
+import type { AccessoryId, Area, Block, UserTemplate, BlockLog, Companion, CornerSlot, CornerSlots, DayLog, PetProgress, PetPhase, Routine, Slot, TrophyMap, UnlockId } from '../types'
 import { TROPHY_BY_ID, type TrophyId, type TrophyTier } from '../data/trophies'
 import { EMPTY_SLOTS } from '../lib/corner'
+import { AREA_NAME_MAX, DEFAULT_AREAS, normalizeAreas } from '../data/areas'
 
 /**
  * Conversão entre o store (formato do app) e as linhas das tabelas do Supabase.
  * Tudo puro: recebe dados e devolve dados.
  */
 
-export type Table = 'profiles' | 'routines' | 'blocks' | 'day_logs' | 'block_logs' | 'completed_tasks' | 'companion' | 'user_trophies' | 'corner_slots'
+export type Table = 'profiles' | 'routines' | 'blocks' | 'day_logs' | 'block_logs' | 'completed_tasks' | 'companion' | 'user_trophies' | 'corner_slots' | 'user_areas' | 'user_templates'
 export type Row = Record<string, unknown>
 
 const clip = (s: string | undefined | null, max: number) => (s ?? '').slice(0, max)
@@ -76,6 +77,37 @@ export function trophyRows(uid: string, map: TrophyMap) {
   return out
 }
 
+export const areaRow = (uid: string, a: Area): Row => ({
+  user_id: uid,
+  id: a.id,
+  name: clip(a.name.trim(), AREA_NAME_MAX) || 'Sem nome',
+  color: a.color,
+  icon: a.icon ?? null,
+  position: a.position,
+  is_default: a.isDefault,
+})
+
+/** Bloco de um modelo, como vai no jsonb (mesmos limites da tabela blocks). */
+const templateBlock = (b: Block): Row => {
+  const { routine_id: _r, user_id: _u, position: _p, ...rest } = blockRow('', '', b, 0)
+  return rest
+}
+
+export const templateRow = (uid: string, t: UserTemplate, position: number): Row => ({
+  id: t.id,
+  user_id: uid,
+  name: clip(t.name.trim(), 120) || 'Sem nome',
+  color: t.color,
+  days: t.days,
+  blocks: t.blocks.slice(0, 100).map(templateBlock),
+  position,
+})
+
+export const templateRows = (uid: string, templates: UserTemplate[]) => new Map(templates.map((t, i) => [t.id, templateRow(uid, t, i)]))
+
+/** Uma linha por área, com o id como chave. */
+export const areaRows = (uid: string, areas: Area[]) => new Map(areas.map((a) => [a.id, areaRow(uid, a)]))
+
 export const slotRow = (uid: string, slot: number, s: CornerSlot): Row => ({ user_id: uid, slot, trophy_id: s.trophyId, tier: s.tier })
 
 /** Rotinas e blocos (com a ordem) a partir do store. Rotinas do painel dev ficam de fora. */
@@ -96,7 +128,15 @@ export function structureRows(uid: string, routines: Routine[]) {
 // ---------------------------------------------------------------------
 
 export interface RemoteData {
-  profile: { timezone: string; local_import_answered: boolean; display_name: string | null; created_at: string; updated_at: string } | null
+  profile: {
+    timezone: string
+    local_import_answered: boolean
+    display_name: string | null
+    /** Falta se a migration 007 não foi aplicada. */
+    onboarding_done?: boolean
+    created_at: string
+    updated_at: string
+  } | null
   routines: Row[]
   blocks: Row[]
   dayLogs: Row[]
@@ -106,18 +146,28 @@ export interface RemoteData {
   /** `null` = não deu para ler (ex.: migration 003 ainda não aplicada): o store mantém o que tem. */
   trophies: Row[] | null
   slots: Row[] | null
+  /** `null` = não deu para ler (migration 005 não aplicada). Lista vazia = conta nova (recebe as 8 padrão). */
+  areas: Row[] | null
+  /** `null` = não deu para ler (migration 006 não aplicada): o store mantém o que tem. */
+  templates: Row[] | null
 }
 
 const num = (v: unknown) => (v === null || v === undefined ? undefined : Number(v))
 
+/** Linha de bloco (tabela blocks ou jsonb de um modelo) → bloco do app. */
+function blockFromRow(b: Row): Block {
+  const block: Block = { id: String(b.id), name: String(b.name), type: b.type as Block['type'], areaId: b.area_id as Block['areaId'] }
+  if (b.minutes != null) block.minutes = num(b.minutes)
+  if (b.target != null) block.target = num(b.target)
+  if (b.unit != null) block.unit = String(b.unit)
+  if (b.step != null) block.step = num(b.step)
+  return block
+}
+
 export function toStore(r: RemoteData) {
   const byRoutine = new Map<string, Block[]>()
   for (const b of [...r.blocks].sort((a, c) => Number(a.position) - Number(c.position))) {
-    const block: Block = { id: String(b.id), name: String(b.name), type: b.type as Block['type'], areaId: b.area_id as Block['areaId'] }
-    if (b.minutes !== null) block.minutes = num(b.minutes)
-    if (b.target !== null) block.target = num(b.target)
-    if (b.unit !== null) block.unit = String(b.unit)
-    if (b.step !== null) block.step = num(b.step)
+    const block = blockFromRow(b)
     const list = byRoutine.get(String(b.routine_id)) ?? []
     list.push(block)
     byRoutine.set(String(b.routine_id), list)
@@ -162,7 +212,32 @@ export function toStore(r: RemoteData) {
     : { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
 
   // Troféus de ids que o app não conhece mais são ignorados.
-  const extra: { trophies?: TrophyMap; cornerSlots?: CornerSlots } = {}
+  const extra: { trophies?: TrophyMap; cornerSlots?: CornerSlots; areas?: Area[]; templates?: UserTemplate[] } = {}
+  if (r.templates) {
+    extra.templates = [...r.templates]
+      .sort((a, c) => Number(a.position) - Number(c.position))
+      .map((t) => ({
+        id: String(t.id),
+        name: String(t.name),
+        color: String(t.color),
+        days: (t.days as number[]).map(Number),
+        blocks: ((t.blocks as Row[] | null) ?? []).map(blockFromRow),
+      }))
+  }
+  if (r.areas) {
+    extra.areas = r.areas.length
+      ? normalizeAreas(
+          r.areas.map((a) => ({
+            id: String(a.id),
+            name: String(a.name),
+            color: String(a.color),
+            ...(a.icon ? { icon: String(a.icon) } : {}),
+            position: Number(a.position),
+            isDefault: !!a.is_default,
+          })),
+        )
+      : DEFAULT_AREAS
+  }
   if (r.trophies) {
     const trophies: TrophyMap = {}
     for (const t of r.trophies) {

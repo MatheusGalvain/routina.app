@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
-import type { AreaId, PetState } from '../../types'
-import { AREAS } from '../../data/areas'
+import type { Area, AreaId, PetState } from '../../types'
+import { useAreas } from '../../store/useRotina'
 import { useShownPet } from '../../store/useCompanion'
 import { useDevOverrides } from '../../store/useDevOverrides'
 import { useCornerEdit } from '../../store/useCornerEdit'
@@ -22,11 +22,11 @@ export const SLOT_X = [62, 124, 276, 338]
 /** Distância do chão até a base do cenário, em % da altura. */
 const FLOOR_FROM_BOTTOM = ((H - FLOOR) / H) * 100
 
-/** As 4 áreas mais ativas na semana (mais dias primeiro), sem as zeradas. */
-export function topAreas(days: Record<AreaId, number>, n = 4): AreaId[] {
-  return AREAS.map((a) => a.id)
-    .filter((id) => days[id] > 0)
-    .sort((a, b) => days[b] - days[a])
+/** As 4 áreas mais ativas na semana (mais dias primeiro), sem as zeradas. Empate: a ordem da pessoa. */
+export function topAreas(areas: Area[], days: Record<AreaId, number>, n = 4): Area[] {
+  return areas
+    .filter((a) => (days[a.id] ?? 0) > 0)
+    .sort((a, b) => days[b.id] - days[a.id])
     .slice(0, n)
 }
 
@@ -62,6 +62,7 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
   const pet = useShownPet(autoState)
   const forced = useDevOverrides((s) => s.corner)
   const { trophies, slots } = useTrophyView()
+  const areas = useAreas()
   const editing = useCornerEdit((s) => s.editing)
   const setEdit = useCornerEdit((s) => s.set)
   const [ref, width] = useWidth<HTMLDivElement>()
@@ -71,12 +72,14 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
   useEffect(() => () => setEdit({ editing: false, slot: null }), [])
 
   const aura = pet.sleeping ? '#8B5CF6' : STATE_STYLE[pet.state].color
-  const days = Object.fromEntries(AREAS.map((a) => [a.id, forced[a.id] ?? pet.stats.areaDays7[a.id]])) as Record<AreaId, number>
-  const shown = topAreas(days)
+  const days = Object.fromEntries(areas.map((a) => [a.id, forced[a.id] ?? pet.stats.areaDays7[a.id] ?? 0])) as Record<AreaId, number>
+  const shown = topAreas(areas, days)
   const petName = pet.isCompanion ? pet.name || SPECIES[pet.kind].name : 'seu pet'
   const hasTrophies = TROPHIES.some((t) => tiersOf(trophies, t.id).length > 0)
   const trophySize = Math.round(width * 0.115)
-  const box = Math.max(44, Math.round(trophySize * 1.3))
+  // Altura mínima de 44px para o toque; a largura encolhe em telas estreitas para não cobrir o pet.
+  const boxH = Math.max(44, Math.round(trophySize * 1.3))
+  const boxW = Math.max(Math.round(trophySize * 1.3), Math.min(44, Math.round(width * 0.135)))
 
   return (
     <div className="flex flex-wrap items-start gap-5">
@@ -115,7 +118,7 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
           {width > 0 &&
             SLOT_X.map((x, i) => {
               const s = slots[i]
-              const style = { left: `${(x / W) * 100}%`, bottom: `${FLOOR_FROM_BOTTOM}%`, width: box, height: box, marginLeft: -box / 2 }
+              const style = { left: `${(x / W) * 100}%`, bottom: `${FLOOR_FROM_BOTTOM}%`, width: boxW, height: boxH, marginLeft: -boxW / 2 }
               if (!editing)
                 return s ? (
                   <div key={i} className="pointer-events-none absolute flex items-end justify-center" style={style} title={trophyTitle(s.trophyId, s.tier)}>
@@ -179,10 +182,10 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
 
       {legend && (
         <ul className="m-0 grid min-w-0 flex-[2_1_240px] list-none grid-cols-2 gap-2 p-0" aria-label="Áreas nos últimos 7 dias">
-          {AREAS.map((area) => {
-            const inSky = shown.includes(area.id)
+          {areas.map((area) => {
+            const inSky = shown.some((a) => a.id === area.id)
             return (
-              <li key={area.id} className="flex items-center justify-between gap-2 rounded-xl bg-panel-2 px-3 py-2.5">
+              <li key={area.id} className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-xl bg-panel-2 px-3 py-2.5">
                 <span className="flex items-center gap-2 text-[13px] font-semibold">
                   <span className="h-2 w-2 rounded-full" style={{ background: area.color, opacity: inSky ? 1 : 0.3 }} aria-hidden="true" />
                   {area.name}

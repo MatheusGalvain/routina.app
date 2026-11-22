@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import type { HelpKey } from '../../data/help'
+import { HelpButton } from '../help/HelpButton'
 
 const PATHS: Record<string, ReactNode> = {
   trend: <><path d="M4 19 L10 13 L14 17 L20 7" /><path d="M15 7 L20 7 L20 12" /></>,
@@ -18,9 +20,12 @@ const PATHS: Record<string, ReactNode> = {
   note: <path d="M6 4 L15 4 L19 8 L19 20 L6 20 Z M9 11 L16 11 M9 15 L14 15" />,
   'chevron-left': <path d="M15 5 L8 12 L15 19" />,
   'chevron-right': <path d="M9 5 L16 12 L9 19" />,
+  'chevron-up': <path d="M5 15 L12 8 L19 15" />,
+  'chevron-down': <path d="M5 9 L12 16 L19 9" />,
   gauge: <><path d="M4 16 A8 8 0 0 1 20 16" /><path d="M12 16 L16 10" /></>,
   lock: <><rect x="5" y="11" width="14" height="9" rx="2.5" /><path d="M8 11 V8 A4 4 0 0 1 16 8 V11" /></>,
   x: <path d="M6 6 L18 18 M18 6 L6 18" />,
+  menu: <path d="M4 7 L20 7 M4 12 L20 12 M4 17 L20 17" />,
   sparkle: <path d="M12 3 L13.8 10.2 L21 12 L13.8 13.8 L12 21 L10.2 13.8 L3 12 L10.2 10.2 Z" />,
   book: <><path d="M4 5 Q8 3.5 12 6 Q16 3.5 20 5 L20 19 Q16 17.5 12 20 Q8 17.5 4 19 Z" /><path d="M12 6 L12 20" /></>,
   hand: <path d="M9 11 V5.5 A1.5 1.5 0 0 1 12 5.5 V10 M12 9.5 A1.5 1.5 0 0 1 15 9.5 V11 M15 10.5 A1.5 1.5 0 0 1 18 10.5 V15 A6 6 0 0 1 12 21 A6 6 0 0 1 6.5 17 L4.8 13.2 A1.4 1.4 0 0 1 7.3 12 L9 14" />,
@@ -39,6 +44,7 @@ export function Panel({
   icon,
   color = '#5AA7FF',
   action,
+  help,
   className = '',
   children,
 }: {
@@ -46,18 +52,23 @@ export function Panel({
   icon: string
   color?: string
   action?: ReactNode
+  /** Botão "?" ao lado do título, com o texto de src/data/help.ts. */
+  help?: HelpKey
   className?: string
   children: ReactNode
 }) {
   return (
-    <section className={`flex flex-col gap-4 rounded-[22px] border border-line bg-panel p-6 ${className}`}>
-      <header className="flex items-center justify-between gap-3">
-        <h2 className="m-0 flex items-center gap-3 text-lg font-bold">
-          <span className="grid h-8 w-8 place-items-center rounded-[9px]" style={{ background: `${color}22`, color }}>
-            <Icon name={icon} />
-          </span>
-          {title}
-        </h2>
+    <section className={`flex flex-col gap-4 rounded-[22px] border border-line bg-panel p-4 sm:p-6 ${className}`}>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <h2 className="m-0 flex min-w-0 items-center gap-3 text-lg font-bold">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px]" style={{ background: `${color}22`, color }}>
+              <Icon name={icon} />
+            </span>
+            <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
+          </h2>
+          {help && <HelpButton k={help} />}
+        </div>
         {action}
       </header>
       {children}

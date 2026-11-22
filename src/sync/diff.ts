@@ -1,6 +1,6 @@
 import type { RotinaState } from '../store/useRotina'
 import type { Row, Table } from './rows'
-import { blockLogRow, companionRow, dayRow, slotRow, structureRows, taskRow, trophyRows } from './rows'
+import { areaRows, blockLogRow, templateRows, companionRow, dayRow, slotRow, structureRows, taskRow, trophyRows } from './rows'
 
 export type Emit = (table: Table, kind: 'upsert' | 'delete', row: Row) => void
 
@@ -61,6 +61,20 @@ export function diff(uid: string, prev: RotinaState, next: RotinaState, enqueue:
   if (prev.trophies !== next.trophies) {
     const a = trophyRows(uid, prev.trophies)
     for (const [key, row] of trophyRows(uid, next.trophies)) if (!same(a.get(key), row)) enqueue('user_trophies', 'upsert', row)
+  }
+
+  if (prev.areas !== next.areas) {
+    const a = areaRows(uid, prev.areas)
+    const b = areaRows(uid, next.areas)
+    for (const [id, row] of b) if (!same(a.get(id), row)) enqueue('user_areas', 'upsert', row)
+    for (const id of a.keys()) if (!b.has(id)) enqueue('user_areas', 'delete', { id })
+  }
+
+  if (prev.templates !== next.templates) {
+    const a = templateRows(uid, prev.templates)
+    const b = templateRows(uid, next.templates)
+    for (const [id, row] of b) if (!same(a.get(id), row)) enqueue('user_templates', 'upsert', row)
+    for (const id of a.keys()) if (!b.has(id)) enqueue('user_templates', 'delete', { id })
   }
 
   if (prev.cornerSlots !== next.cornerSlots) {
