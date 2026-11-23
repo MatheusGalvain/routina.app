@@ -5,7 +5,7 @@ import { APP_KEY } from './storageKeys'
 /**
  * Lê o que voltou na URL ao abrir o link do e-mail sem conseguir entrar:
  * link expirado/usado, ou link aberto em OUTRO aparelho (o acesso fica preso ao
- * navegador que pediu; nesse caso, o código de 6 dígitos resolve).
+ * navegador que pediu; nesse caso, o código do e-mail resolve).
  */
 function readUrlError() {
   const hash = new URLSearchParams(window.location.hash.slice(1))
@@ -17,9 +17,9 @@ function readUrlError() {
   // Limpa a URL para a mensagem não reaparecer ao recarregar.
   window.history.replaceState(null, '', window.location.pathname)
   if (errorCode === 'otp_expired')
-    return 'Esse link expirou ou já foi usado. Use o código de 6 dígitos do e-mail mais recente, ou peça um novo acesso abaixo.'
+    return 'Esse link expirou ou já foi usado. Use o código do e-mail mais recente, ou peça um novo acesso abaixo.'
   if (strayCode)
-    return 'Esse link foi aberto em um aparelho diferente de onde você pediu o acesso. No outro aparelho, digite o código de 6 dígitos do e-mail. Ou peça um acesso novo aqui.'
+    return 'Esse link foi aberto em um aparelho diferente de onde você pediu o acesso. No outro aparelho, digite o código do e-mail. Ou peça um acesso novo aqui.'
   return 'Não deu para entrar com esse link. Tente pedir outro.'
 }
 

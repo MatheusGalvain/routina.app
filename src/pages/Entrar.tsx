@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, GOOGLE_ENABLED, redirectTo } from '../lib/supabase'
@@ -6,6 +6,7 @@ import { Logo } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
 import { URL_ERROR } from '../lib/authUrl'
 import { Footer } from '../components/ui/Footer'
+import { OTP_LENGTH, cleanCode, logAuth, normalizeEmail } from '../lib/otp'
 
 /** Intervalo mínimo entre e-mails para o mesmo endereço (padrão do Supabase). */
 const RESEND_SECONDS = 60
@@ -46,11 +47,16 @@ function ConfirmLink({ tokenHash, type }: { tokenHash: string; type: 'email' | '
   const navigate = useNavigate()
   const [entering, setEntering] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const enteringRef = useRef(false)
 
   const enter = async () => {
+    if (enteringRef.current) return
+    enteringRef.current = true
     setEntering(true)
     setError(null)
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
+    logAuth('verifyOtp', { type: `${type} (link)`, result: error ? `erro: ${error.message}` : 'ok' })
+    enteringRef.current = false
     setEntering(false)
     // Deu certo: a sessão chega pelo useAuth e o PublicOnly leva para o app.
     if (error)
@@ -107,6 +113,14 @@ function EntrarForm() {
   const [cooldown, setCooldown] = useState(0)
   const [code, setCode] = useState('')
   const [verifying, setVerifying] = useState(false)
+  /** A verificação falhou: mostra "Pedir um código novo" (nada é reenviado sozinho). */
+  const [codeFailed, setCodeFailed] = useState(false)
+  // Travas síncronas: o estado do React só atualiza no próximo render, então dois eventos seguidos
+  // (Enter + clique, colar + digitar) passariam pelo `sending`/`verifying`. O ref barra na hora.
+  const sendingRef = useRef(false)
+  const verifyingRef = useRef(false)
+  /** Códigos já verificados desde o último envio: cada código vai ao servidor uma vez só. */
+  const triedRef = useRef(new Set<string>())
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -114,13 +128,17 @@ function EntrarForm() {
     return () => window.clearTimeout(t)
   }, [cooldown])
 
+  /** Único lugar que pede e-mail. Só roda quando a pessoa aperta um botão. */
   const sendLink = async (e?: FormEvent) => {
     e?.preventDefault()
-    const target = (sentTo ?? email).trim()
-    if (!target || sending || cooldown > 0) return
+    const target = normalizeEmail(sentTo ?? email)
+    if (!target || sendingRef.current || cooldown > 0) return
+    sendingRef.current = true
     setSending(true)
     setError(null)
     const { error } = await supabase.auth.signInWithOtp({ email: target, options: { emailRedirectTo: redirectTo() } })
+    logAuth('signInWithOtp', { email: target, result: error ? `erro: ${error.message}` : 'ok' })
+    sendingRef.current = false
     setSending(false)
     if (error) {
       const f = friendly(error.message)
@@ -130,20 +148,56 @@ function EntrarForm() {
     }
     setSentTo(target)
     setCode('')
+    setCodeFailed(false)
+    triedRef.current.clear()
     setCooldown(RESEND_SECONDS)
   }
 
-  // Código de 6 dígitos do e-mail: funciona em qualquer aparelho (lê no celular, digita no PC).
-  const verifyCode = async (e: FormEvent) => {
-    e.preventDefault()
-    const token = code.replace(/\D/g, '')
-    if (!sentTo || token.length < 6 || verifying) return
+  /**
+   * Código do e-mail: funciona em qualquer aparelho (lê no celular, digita no PC).
+   * Única função que chama verifyOtp: usada pelo envio automático (ao completar os dígitos) e
+   * pelo botão. Tenta `email` e, se o servidor disser que o código é inválido, uma vez `signup`
+   * (o primeiro e-mail de uma conta nova é a confirmação de cadastro).
+   */
+  const verifyCode = async (raw: string) => {
+    const token = cleanCode(raw)
+    if (!sentTo || token.length !== OTP_LENGTH || verifyingRef.current) return
+    if (triedRef.current.has(token)) {
+      setError('Esse código já foi testado e não funcionou. Confira os números ou peça um código novo.')
+      setCodeFailed(true)
+      return
+    }
+    verifyingRef.current = true
+    triedRef.current.add(token)
     setVerifying(true)
     setError(null)
-    const { error } = await supabase.auth.verifyOtp({ email: sentTo, token, type: 'email' })
+    setCodeFailed(false)
+
+    let { error } = await supabase.auth.verifyOtp({ email: sentTo, token, type: 'email' })
+    logAuth('verifyOtp', { email: sentTo, codeLength: token.length, type: 'email', result: error ? `erro: ${error.message}` : 'ok' })
+    if (error && /invalid|expired/i.test(error.message)) {
+      ;({ error } = await supabase.auth.verifyOtp({ email: sentTo, token, type: 'signup' }))
+      logAuth('verifyOtp', { email: sentTo, codeLength: token.length, type: 'signup', result: error ? `erro: ${error.message}` : 'ok' })
+    }
+
+    verifyingRef.current = false
     setVerifying(false)
-    if (error)
-      setError(error.message.toLowerCase().includes('expired') ? 'Esse código expirou. Peça um novo e-mail.' : 'Código incorreto. Confira os números e tente de novo.')
+    // Deu certo: a sessão chega pelo useAuth e o PublicOnly leva para o app.
+    if (error) {
+      setCodeFailed(true)
+      setError(
+        /expired|invalid/i.test(error.message)
+          ? 'Esse código não funcionou: ele pode ter expirado ou ser de um e-mail anterior. Confira os números no e-mail mais recente ou peça um código novo.'
+          : 'Não deu para entrar agora. Verifique sua conexão e tente de novo.',
+      )
+    }
+  }
+
+  /** Digitar e colar passam só por aqui (colar dispara um único onChange). */
+  const changeCode = (value: string) => {
+    const next = cleanCode(value)
+    setCode(next)
+    if (next.length === OTP_LENGTH) void verifyCode(next)
   }
 
   const google = async () => {
@@ -190,25 +244,32 @@ function EntrarForm() {
             <div className="flex w-full flex-col gap-3 text-center">
               <h2 className="m-0 text-lg font-bold">Confira seu e-mail</h2>
               <p className="m-0 text-sm text-muted">
-                Enviamos um e-mail para <strong className="text-soft">{sentTo}</strong>. Abra o link ou digite aqui o código de 6 dígitos. Use sempre o
-                e-mail <strong className="text-soft">mais recente</strong>: cada envio novo cancela o anterior.
+                Enviamos um e-mail para <strong className="text-soft">{sentTo}</strong>. Abra o link ou digite aqui o código de {OTP_LENGTH} dígitos. Use
+                sempre o e-mail <strong className="text-soft">mais recente</strong>: cada envio novo cancela o anterior.
               </p>
-              <form onSubmit={verifyCode} className="flex flex-col items-center gap-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void verifyCode(code)
+                }}
+                className="flex flex-col items-center gap-2"
+              >
                 <label htmlFor="otp" className="sr-only">
-                  Código de 6 dígitos do e-mail
+                  Código de {OTP_LENGTH} dígitos do e-mail
                 </label>
                 <input
                   id="otp"
                   value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  onChange={(e) => changeCode(e.target.value)}
+                  maxLength={OTP_LENGTH}
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  placeholder="000000"
+                  placeholder={'0'.repeat(OTP_LENGTH)}
                   className="w-[200px] rounded-xl border border-line bg-ink px-3 py-3 text-center font-mono text-2xl tracking-[0.35em] text-soft placeholder:text-muted"
                 />
                 <button
                   type="submit"
-                  disabled={code.length < 6 || verifying}
+                  disabled={code.length !== OTP_LENGTH || verifying}
                   className="rounded-full bg-accent px-6 py-2.5 text-sm font-bold text-ink shadow-[0_0_24px_color-mix(in_srgb,var(--color-accent)_30%,transparent)] disabled:opacity-40 disabled:shadow-none"
                 >
                   {verifying ? 'Entrando…' : 'Entrar com o código'}
@@ -287,6 +348,16 @@ function EntrarForm() {
             <p role="alert" className="m-0 w-full rounded-xl border border-erro/40 bg-erro/10 px-3.5 py-2.5 text-sm text-erro">
               {error}
             </p>
+          )}
+          {sentTo && codeFailed && (
+            <button
+              type="button"
+              onClick={() => void sendLink()}
+              disabled={sending || cooldown > 0}
+              className="rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-ink disabled:opacity-50"
+            >
+              {cooldown > 0 ? `Pedir um código novo em ${cooldown}s` : sending ? 'Enviando…' : 'Pedir um código novo'}
+            </button>
           )}
         </section>
 
