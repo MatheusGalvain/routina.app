@@ -23,6 +23,7 @@ export type Table =
   | 'user_templates'
   | 'user_scene_items'
   | 'user_event_items'
+  | 'focus_sessions'
 export type Row = Record<string, unknown>
 
 const clip = (s: string | undefined | null, max: number) => (s ?? '').slice(0, max)

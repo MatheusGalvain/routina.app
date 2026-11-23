@@ -15,6 +15,7 @@ import { dayKey, nowInTz, parseKey } from '../lib/dates'
 import { EVENTS, eventItems, eventLabel, isEventActive } from '../data/events'
 import { isFullMoon, moonIllumination, nextFullMoon } from '../lib/moon'
 import type { EventItemMap } from '../types'
+import { useFocus } from '../store/useFocus'
 import { Icon } from '../components/ui/ui'
 import { APP_KEY } from '../lib/storageKeys'
 import { TIERS, TIER_LIST, TROPHIES, trophyTitle, type TrophyId, type TrophyTier } from '../data/trophies'
@@ -118,6 +119,7 @@ export default function DevPanel() {
               <Trophies onStatus={setStatus} />
               <Scenes onStatus={setStatus} />
               <Seasons onStatus={setStatus} />
+              <FocusTest />
               <Safety onStatus={setStatus} />
             </div>
             <p aria-live="polite" className="m-0 min-h-[38px] border-t border-line px-4 py-2.5 font-mono text-[11.5px] text-soft">
@@ -605,6 +607,23 @@ function Scenes({ onStatus }: { onStatus: (s: string) => void }) {
           Voltar aos reais
         </Btn>
       </Row>
+    </Section>
+  )
+}
+
+/** Modo foco: ciclos curtos para testar o fim do foco e da pausa sem esperar 25 minutos. */
+function FocusTest() {
+  const test = useDevOverrides((s) => s.focusTest)
+  const set = useDevOverrides((s) => s.set)
+  return (
+    <Section title="Modo foco">
+      <Row>
+        <Btn pressed={test} onClick={() => set({ focusTest: !test })}>
+          {test ? 'Ciclo de 10 s ligado' : 'Ciclo de 10 s (pausa de 5 s)'}
+        </Btn>
+        <Btn onClick={() => useFocus.getState().start(useRotina.getState().activeBlockId)}>Abrir modo foco</Btn>
+      </Row>
+      <p className="m-0 text-[11.5px] text-muted">Com o ciclo de teste ligado, as sessões não são salvas.</p>
     </Section>
   )
 }

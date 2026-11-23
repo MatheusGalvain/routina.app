@@ -312,6 +312,7 @@ export async function exportMyData() {
     cantinho: remote.slots ? strip(remote.slots) : [],
     itens_de_cenario: remote.sceneItems ? strip(remote.sceneItems) : [],
     itens_de_eventos: remote.eventItems ? strip(remote.eventItems) : [],
+    sessoes_de_foco: strip((await fetchOptional('focus_sessions', uid)) ?? []),
     areas_da_vida: remote.areas ? strip(remote.areas) : [],
     modelos_de_rotina: remote.templates ? strip(remote.templates) : [],
   }

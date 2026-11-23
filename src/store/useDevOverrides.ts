@@ -25,6 +25,8 @@ interface DevOverrides {
   date: string | null
   /** Decorações de época: forçar ligadas/desligadas. `null` = segue o Perfil. */
   decor: boolean | null
+  /** Modo foco de teste: ciclos de 10 s de foco e 5 s de pausa (sessões não são salvas). */
+  focusTest: boolean
   /** Dias (0–7) por área no céu do cantinho. */
   corner: Partial<Record<AreaId, number>>
   set: (patch: Partial<Omit<DevOverrides, 'set' | 'setCorner'>>) => void
@@ -48,6 +50,7 @@ export const useDevOverrides = create<DevOverrides>()((set, get) => ({
   eventItems: null,
   date: null,
   decor: null,
+  focusTest: false,
   corner: {},
   set: (patch) => set(patch),
   setCorner: (area, days) => {

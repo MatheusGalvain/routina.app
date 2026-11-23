@@ -13,6 +13,7 @@ import { useShownPet } from '../store/useCompanion'
 import type { PetState, TodayItem } from '../types'
 import type { TodayTarget } from '../lib/navigation'
 import { editorPath } from '../lib/slug'
+import { useFocus } from '../store/useFocus'
 
 /**
  * Veio do botão principal do Início com um alvo (state.focus): rola até o bloco, ou até a revisão
@@ -100,6 +101,7 @@ export function Hoje() {
             onInc={onInc}
             onSkip={onSkip}
             onStart={(i, active) => setActive(active ? null : i.block.id)}
+            onFocus={(i) => useFocus.getState().start(i.block.id)}
             empty={
               <>
                 <p className="m-0 text-muted">Nenhum bloco para hoje.</p>

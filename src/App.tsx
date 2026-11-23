@@ -7,6 +7,7 @@ import { useCompanionProgress } from './store/useCompanion'
 import { useTrophyProgress } from './store/useTrophies'
 import { useSceneItemProgress } from './store/useCorner'
 import { useEventProgress } from './store/useEvents'
+import { FocusMode } from './components/focus/FocusMode'
 import { SceneDefs } from './data/scenes'
 import { PetCelebration } from './components/pets/PetCelebration'
 import { useAuth } from './store/useAuth'
@@ -146,6 +147,7 @@ function SignedIn() {
       <SceneDefs />
       <Outlet />
       <PetCelebration />
+      <FocusMode />
       <Toaster />
       <Tour />
       <SyncNotice />

@@ -13,6 +13,7 @@ import { PetStory } from '../components/pets/PetStory'
 import { PetCorner } from '../components/pets/PetCorner'
 import { PrimaryActionButton } from '../components/home/PrimaryAction'
 import { EventBanner } from '../components/home/EventBanner'
+import { useFocus } from '../store/useFocus'
 import { useGoToday } from '../lib/navigation'
 import { editorPath } from '../lib/slug'
 import { useNavigate } from 'react-router-dom'
@@ -248,9 +249,19 @@ export function Inicio() {
               {next && <span className="text-[13px] font-semibold text-accent">{next.routine.name}</span>}
             </div>
           </div>
-          <button type="button" onClick={() => goToday()} className="mt-auto self-start rounded-full bg-accent px-4 py-2 text-[13px] font-bold text-ink">
-            Abrir o dia
-          </button>
+          <div className="mt-auto flex flex-wrap gap-2">
+            <button type="button" onClick={() => goToday()} className="rounded-full bg-accent px-4 py-2 text-[13px] font-bold text-ink">
+              Abrir o dia
+            </button>
+            {/* Modo foco no próximo bloco do dia (ou foco livre, sem bloco). */}
+            <button
+              type="button"
+              onClick={() => useFocus.getState().start(next?.block.id ?? null)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 px-4 py-2 text-[13px] font-bold text-accent"
+            >
+              <Icon name="focus" size={13} /> Modo foco
+            </button>
+          </div>
         </Panel>
 
         <Panel title="Minhas rotinas" icon="calendar" color="var(--color-ok)" help="minhas-rotinas">

@@ -14,11 +14,13 @@ interface Props {
   onSkip?: (i: TodayItem) => void
   /** Sem esta função o botão "Começar" não aparece (ex.: dias passados). */
   onStart?: (i: TodayItem, active: boolean) => void
+  /** Abre o modo foco com o pet neste bloco. Sem esta função o botão "Focar" não aparece. */
+  onFocus?: (i: TodayItem) => void
   empty: ReactNode
 }
 
 /** Lista de blocos de um dia, agrupada por rotina. Usada no Hoje e no Histórico. */
-export function DayList({ items, readOnly = false, activeId = null, onToggle, onInc, onSkip, onStart, empty }: Props) {
+export function DayList({ items, readOnly = false, activeId = null, onToggle, onInc, onSkip, onStart, onFocus, empty }: Props) {
   const areas = useAreas()
   if (items.length === 0) return <div className="flex flex-col items-start gap-3 p-8">{empty}</div>
 
@@ -93,6 +95,16 @@ export function DayList({ items, readOnly = false, activeId = null, onToggle, on
                       className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-xs font-bold sm:min-h-0 sm:px-3 sm:py-1.5 ${active ? 'bg-accent/15 text-accent' : 'bg-accent text-ink'}`}
                     >
                       <Icon name="play" size={11} /> {active ? 'Em andamento' : 'Começar'}
+                    </button>
+                  )}
+                  {onFocus && !i.skipped && (
+                    <button
+                      type="button"
+                      onClick={() => onFocus(i)}
+                      aria-label={`Focar em ${i.block.name}`}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-accent/40 px-4 text-xs font-bold text-accent sm:min-h-0 sm:px-3 sm:py-1.5"
+                    >
+                      <Icon name="focus" size={12} /> Focar
                     </button>
                   )}
                   <button

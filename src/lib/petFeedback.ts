@@ -5,7 +5,7 @@ import { canVibrate, usePetPrefs } from '../store/usePetPrefs'
  * sem arquivos. Só tocam depois de um toque da pessoa (regra dos navegadores) e se estiverem ligados no Perfil.
  */
 
-export type Feedback = 'tap' | 'hop' | 'spin' | 'dizzy' | 'special' | 'pet' | 'heart' | 'thanks' | 'yawn'
+export type Feedback = 'tap' | 'hop' | 'spin' | 'dizzy' | 'special' | 'pet' | 'heart' | 'thanks' | 'yawn' | 'cycle'
 
 let ctx: AudioContext | null = null
 function audio() {
@@ -59,6 +59,11 @@ const SOUNDS: Record<Feedback, () => void> = {
     tone(1040, 1400, 110, { delay: 100 })
   },
   yawn: () => tone(380, 220, 600, { type: 'triangle', volume: 0.035 }),
+  // Fim de um ciclo do modo foco: duas notas suaves, como um sininho distante.
+  cycle: () => {
+    tone(660, 655, 700, { volume: 0.045 })
+    tone(880, 875, 900, { delay: 260, volume: 0.035 })
+  },
 }
 
 const VIBRATION: Partial<Record<Feedback, number | number[]>> = {
@@ -68,6 +73,20 @@ const VIBRATION: Partial<Record<Feedback, number | number[]>> = {
   dizzy: [30, 50, 30, 50, 60],
   pet: 12,
   thanks: 16,
+}
+
+/**
+ * Libera o áudio num toque da pessoa (ex.: "Começar" no modo foco), para o som do fim do ciclo
+ * poder tocar depois, sem novo toque. Respeita a configuração de sons.
+ */
+export function primeAudio() {
+  if (!usePetPrefs.getState().sound) return
+  try {
+    const a = audio()
+    if (a?.state === 'suspended') void a.resume()
+  } catch {
+    /* sem áudio */
+  }
 }
 
 export function petFeedback(kind: Feedback) {
