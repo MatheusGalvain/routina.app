@@ -1,6 +1,6 @@
 import type { RotinaState } from '../store/useRotina'
 import type { Row, Table } from './rows'
-import { areaRows, blockLogRow, templateRows, companionRow, dayRow, sceneItemRows, slotRow, structureRows, taskRow, trophyRows } from './rows'
+import { areaRows, blockLogRow, eventItemRows, templateRows, companionRow, dayRow, sceneItemRows, slotRow, structureRows, taskRow, trophyRows } from './rows'
 import { SCENES } from '../data/scenes'
 
 export type Emit = (table: Table, kind: 'upsert' | 'delete', row: Row) => void
@@ -99,6 +99,12 @@ export function diff(uid: string, prev: RotinaState, next: RotinaState, enqueue:
   if (prev.sceneItems !== next.sceneItems) {
     const a = sceneItemRows(uid, prev.sceneItems)
     for (const [key, row] of sceneItemRows(uid, next.sceneItems)) if (!same(a.get(key), row)) enqueue('user_scene_items', 'upsert', row)
+  }
+
+  // Itens de evento: só acrescenta (o que se conquista num evento fica para sempre).
+  if (prev.eventItems !== next.eventItems) {
+    const a = eventItemRows(uid, prev.eventItems)
+    for (const [key, row] of eventItemRows(uid, next.eventItems)) if (!same(a.get(key), row)) enqueue('user_event_items', 'upsert', row)
   }
 
   if (prev.scene !== next.scene) enqueue('profiles', 'upsert', { user_id: uid, scene: next.scene })

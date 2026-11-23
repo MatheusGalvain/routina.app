@@ -15,7 +15,9 @@ interface PetPrefs {
   sound: boolean
   /** Vibração curta nos combos, se o aparelho tiver. */
   vibrate: boolean
-  set: (patch: Partial<Pick<PetPrefs, 'sound' | 'vibrate' | 'motion'>>) => void
+  /** Decorações de época no cantinho (neve, luzinhas, fogos…) durante os eventos. */
+  seasonDecor: boolean
+  set: (patch: Partial<Pick<PetPrefs, 'sound' | 'vibrate' | 'motion' | 'seasonDecor'>>) => void
 }
 
 /** Preferências deste aparelho (Perfil → Sons e vibração). Não vão para a conta. */
@@ -25,9 +27,10 @@ export const usePetPrefs = create<PetPrefs>()(
       sound: true,
       vibrate: true,
       motion: 'sistema',
+      seasonDecor: true,
       set: (patch) => set(patch),
     }),
-    { name: `${APP_KEY}-preferencias`, partialize: (s) => ({ sound: s.sound, vibrate: s.vibrate, motion: s.motion }) },
+    { name: `${APP_KEY}-preferencias`, partialize: (s) => ({ sound: s.sound, vibrate: s.vibrate, motion: s.motion, seasonDecor: s.seasonDecor }) },
   ),
 )
 

@@ -3,9 +3,9 @@ import type { AccessoryId, PetPhase } from '../types'
 import type { TrophyId, TrophyTier } from '../data/trophies'
 import type { SceneItemId } from '../data/scenes'
 
-export type PetEvent = { id: number; type: 'phase'; phase: PetPhase } | { id: number; type: 'unlock'; accessory: AccessoryId } | { id: number; type: 'secret' } | { id: number; type: 'trophy'; trophy: TrophyId; tier: TrophyTier } | { id: number; type: 'item'; item: SceneItemId }
+export type PetEvent = { id: number; type: 'phase'; phase: PetPhase } | { id: number; type: 'unlock'; accessory: AccessoryId } | { id: number; type: 'secret' } | { id: number; type: 'trophy'; trophy: TrophyId; tier: TrophyTier } | { id: number; type: 'item'; item: SceneItemId } | { id: number; type: 'event-trophy'; eventId: string }
 
-type NewEvent = { type: 'phase'; phase: PetPhase } | { type: 'unlock'; accessory: AccessoryId } | { type: 'secret' } | { type: 'trophy'; trophy: TrophyId; tier: TrophyTier } | { type: 'item'; item: SceneItemId }
+type NewEvent = { type: 'phase'; phase: PetPhase } | { type: 'unlock'; accessory: AccessoryId } | { type: 'secret' } | { type: 'trophy'; trophy: TrophyId; tier: TrophyTier } | { type: 'item'; item: SceneItemId } | { type: 'event-trophy'; eventId: string }
 
 let nextId = 1
 

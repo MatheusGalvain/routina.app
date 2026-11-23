@@ -7,7 +7,10 @@ import { ALL_PETS, PETS, SECRET_PET, SPECIES, textColor as light } from '../comp
 import { PHASES, daysToPhase, nextPhase, phaseIndex } from '../lib/companion'
 import { Switch } from '../components/ui/Switch'
 import type { PetAppearance } from '../types'
-import { ACCESSORIES, SLOT_NAMES } from '../data/accessories'
+import { ACCESSORIES, EVENT_ACCESSORY_LIST, SLOT_NAMES } from '../data/accessories'
+import { EVENT_ACCESSORIES, EVENT_BY_ID, eventLabel, isEventActive, ownedAt } from '../data/events'
+import { eventCtx, useEventDay, useEventItemsView } from '../store/useEvents'
+import { EventCollection, EventTag, hasEventsToShow } from '../components/pets/EventCollection'
 import { chooseFavorite, unlockStats } from '../store/useCompanion'
 import { PetCorner } from '../components/pets/PetCorner'
 import { TrophyCollection } from '../components/pets/TrophyCollection'
@@ -272,6 +275,14 @@ function Accessories() {
   const equip = useRotina((s) => s.equip)
   const kind = view.kind ?? 'gatinho'
   const u = unlockStats(view.stats, view.activeDays, !!view.kind)
+  // Acessórios de evento: aparecem se conquistados, ou (bloqueados) enquanto o evento acontece.
+  const day = useEventDay()
+  const eventMap = useEventItemsView()
+  const logs = useRotina((s) => s.logs)
+  const eventList = EVENT_ACCESSORY_LIST.filter((a) => {
+    const e = EVENT_BY_ID[a.event!]
+    return !!e && (!!ownedAt(eventMap, e.id, a.id) || isEventActive(e, day) || view.unlockedIds.includes(a.id))
+  })
 
   return (
     <Panel title="Acessórios" icon="sparkle" color="var(--color-alerta)" help="acessorios">
@@ -279,10 +290,12 @@ function Accessories() {
         {view.kind ? 'Um item por parte do corpo. Novos itens aparecem conforme você cuida da rotina.' : 'Escolha um favorito para ele poder usar os acessórios.'}
       </p>
       <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-0">
-        {ACCESSORIES.map((a) => {
+        {[...ACCESSORIES, ...eventList].map((a) => {
           const unlocked = view.unlockedIds.includes(a.id)
           const isOn = equipped[a.slot] === a.id
-          const [cur, goal] = a.progress?.(u) ?? [0, 0]
+          const ev = a.event ? EVENT_BY_ID[a.event] : null
+          const evDef = ev ? EVENT_ACCESSORIES.find((x) => x.id === a.id) : null
+          const [cur, goal] = ev && evDef ? evDef.progress(eventCtx(logs, ev, day)) : (a.progress?.(u) ?? [0, 0])
           return (
             <li
               key={a.id}
@@ -299,6 +312,7 @@ function Accessories() {
               </div>
               <strong className="text-sm">{a.name}</strong>
               <span className="font-mono text-[10.5px] tracking-wider text-muted uppercase">{SLOT_NAMES[a.slot]}</span>
+              {ev && <EventTag label={eventLabel(ev)} color={ev.color} />}
               {unlocked ? (
                 <button
                   type="button"
@@ -329,43 +343,55 @@ function Accessories() {
   )
 }
 
-type CollectionTab = 'trofeus' | 'cenarios'
+type CollectionTab = 'trofeus' | 'cenarios' | 'eventos'
 const COLLECTION_TABS: { id: CollectionTab; label: string }[] = [
   { id: 'trofeus', label: 'Troféus' },
   { id: 'cenarios', label: 'Cenários' },
+  { id: 'eventos', label: 'Eventos' },
 ]
 
 /** Coleção em abas (role tablist; setas trocam de aba): troféus e itens de cenário. */
 function CollectionTabs() {
   const [tab, setTab] = useState<CollectionTab>('trofeus')
+  // A aba Eventos só aparece com evento acontecendo ou algum item de evento conquistado.
+  const day = useEventDay()
+  const eventMap = useEventItemsView()
+  const tabs = COLLECTION_TABS.filter((t) => t.id !== 'eventos' || hasEventsToShow(eventMap, day))
+  const current = tabs.some((t) => t.id === tab) ? tab : 'trofeus'
   const onKey = (e: KeyboardEvent) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
     e.preventDefault()
-    const next = tab === 'trofeus' ? 'cenarios' : 'trofeus'
+    const i = tabs.findIndex((t) => t.id === current)
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length].id
     setTab(next)
     document.getElementById(`colecao-aba-${next}`)?.focus()
   }
   return (
     <div className="flex flex-col gap-4">
       <div role="tablist" aria-label="Coleção" className="flex gap-1 self-start rounded-full border border-line bg-ink p-1" onKeyDown={onKey}>
-        {COLLECTION_TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             id={`colecao-aba-${t.id}`}
             type="button"
             role="tab"
-            aria-selected={tab === t.id}
+            aria-selected={current === t.id}
             aria-controls="colecao-painel"
-            tabIndex={tab === t.id ? 0 : -1}
+            tabIndex={current === t.id ? 0 : -1}
             onClick={() => setTab(t.id)}
-            className={`min-h-10 rounded-full px-4 text-[13px] font-semibold ${tab === t.id ? 'bg-accent text-ink' : 'text-muted hover:text-soft'}`}
+            className={`min-h-10 rounded-full px-4 text-[13px] font-semibold ${current === t.id ? 'bg-accent text-ink' : 'text-muted hover:text-soft'}`}
           >
             {t.label}
           </button>
         ))}
       </div>
-      <div id="colecao-painel" role="tabpanel" aria-labelledby={`colecao-aba-${tab}`} className="flex flex-col gap-3">
-        {tab === 'trofeus' ? (
+      <div id="colecao-painel" role="tabpanel" aria-labelledby={`colecao-aba-${current}`} className="flex flex-col gap-3">
+        {current === 'eventos' ? (
+          <>
+            <p className="m-0 text-sm text-muted">Itens de época. O que você conquista durante um evento fica para sempre, com o nome do evento.</p>
+            <EventCollection />
+          </>
+        ) : current === 'trofeus' ? (
           <>
             <p className="m-0 text-sm text-muted">Cada troféu tem 4 níveis. Os que você conquista ficam para sempre, e você escolhe quais expor no cantinho.</p>
             <TrophyCollection />

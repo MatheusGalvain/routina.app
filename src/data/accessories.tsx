@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { AccessoryId, AreaId, PetPhase, Slot } from '../types'
 import { edge, pick } from '../lib/color'
+import { EVENT_ACCESSORIES } from './events'
 
 /** Ponto de ancoragem de uma espécie (viewBox 0 0 120 120). `w` = largura útil ali. */
 export interface Anchor {
@@ -30,6 +31,8 @@ export interface Accessory {
   progress?: (s: UnlockStats) => [number, number]
   /** Desenha no ponto de ancoragem. `body` = cor do corpo da espécie, para escolher tons legíveis. */
   draw: (a: Anchor, body: string) => ReactNode
+  /** Acessório de evento sazonal: o id do evento (src/data/events.ts). Não libera por estatística. */
+  event?: string
 }
 
 export const SLOT_NAMES: Record<Slot, string> = { cabeca: 'Cabeça', rosto: 'Rosto', pescoco: 'Pescoço', mao: 'Mão' }
@@ -197,4 +200,8 @@ export const ACCESSORIES: Accessory[] = [
   },
 ]
 
-export const ACCESSORY_BY_ID = Object.fromEntries(ACCESSORIES.map((a) => [a.id, a])) as Record<AccessoryId, Accessory>
+/** Acessórios de evento no mesmo formato (liberados por src/store/useEvents.ts, não por `unlock`). */
+export const EVENT_ACCESSORY_LIST: Accessory[] = EVENT_ACCESSORIES.map(({ id, name, slot, hint, draw, event }) => ({ id, name, slot, hint, draw, event, unlock: () => false }))
+
+/** Todos os acessórios, inclusive os de evento (para desenhar e equipar). */
+export const ACCESSORY_BY_ID = Object.fromEntries([...ACCESSORIES, ...EVENT_ACCESSORY_LIST].map((a) => [a.id, a])) as Record<AccessoryId, Accessory>

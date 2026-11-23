@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, GOOGLE_ENABLED, redirectTo } from '../lib/supabase'
 import { Logo } from '../components/ui/ui'
@@ -26,8 +27,79 @@ function friendly(message: string): { text: string; wait?: number } {
   return { text: 'Não foi possível enviar agora. Verifique sua conexão e tente de novo.' }
 }
 
-/** Tela de entrada: link mágico no e-mail e, se ativado, Google. */
+/**
+ * /entrar: link mágico no e-mail e, se ativado, Google.
+ * Com `?token_hash=…` (o link do e-mail), mostra só o botão "Entrar" (ver ConfirmLink).
+ */
 export function Entrar() {
+  const [params] = useSearchParams()
+  const tokenHash = params.get('token_hash')
+  return tokenHash ? <ConfirmLink tokenHash={tokenHash} type={params.get('type') === 'magiclink' ? 'magiclink' : 'email'} /> : <EntrarForm />
+}
+
+/**
+ * Link do e-mail. O acesso só é gasto quando a pessoa aperta "Entrar": o Gmail, antivírus e
+ * outros robôs que abrem links sozinhos não gastam mais o acesso antes dela. Também funciona em
+ * qualquer navegador ou aparelho (o link não depende de onde o e-mail foi pedido).
+ */
+function ConfirmLink({ tokenHash, type }: { tokenHash: string; type: 'email' | 'magiclink' }) {
+  const navigate = useNavigate()
+  const [entering, setEntering] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const enter = async () => {
+    setEntering(true)
+    setError(null)
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
+    setEntering(false)
+    // Deu certo: a sessão chega pelo useAuth e o PublicOnly leva para o app.
+    if (error)
+      setError(
+        error.message.toLowerCase().includes('expired') || error.message.toLowerCase().includes('invalid')
+          ? 'Esse link expirou ou já foi usado. Peça um acesso novo.'
+          : 'Não deu para entrar agora. Verifique sua conexão e tente de novo.',
+      )
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <main className="mx-auto flex w-full max-w-[440px] flex-1 flex-col items-center justify-center gap-6 px-4 py-10">
+        <div className="flex items-center gap-3">
+          <Logo size={40} />
+          <h1 className="m-0 text-[34px] leading-none font-extrabold tracking-tight">
+            Habbit <span className="text-accent">Do</span>
+          </h1>
+        </div>
+        <section className="flex w-full flex-col items-center gap-5 rounded-[26px] border border-line bg-panel px-6 pt-7 pb-6 text-center">
+          <Pet kind="gatinho" state="neutro" size={110} label="Gatinho esperando você entrar" />
+          <h2 className="m-0 text-lg font-bold">Tudo pronto para entrar</h2>
+          <p className="m-0 text-sm text-muted">Aperte o botão para abrir sua conta neste navegador.</p>
+          <button
+            type="button"
+            onClick={() => void enter()}
+            disabled={entering}
+            className="w-full rounded-full bg-accent px-5 py-3 text-[15px] font-bold text-ink shadow-[0_0_24px_color-mix(in_srgb,var(--color-accent)_30%,transparent)] disabled:opacity-60"
+          >
+            {entering ? 'Entrando…' : 'Entrar'}
+          </button>
+          {error && (
+            <>
+              <p role="alert" className="m-0 w-full rounded-xl border border-erro/40 bg-erro/10 px-3.5 py-2.5 text-sm text-erro">
+                {error}
+              </p>
+              <button type="button" onClick={() => navigate('/entrar', { replace: true })} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-soft hover:bg-panel-2">
+                Pedir um acesso novo
+              </button>
+            </>
+          )}
+        </section>
+      </main>
+      <Footer />
+    </div>
+  )
+}
+
+function EntrarForm() {
   const [email, setEmail] = useState('')
   const [sentTo, setSentTo] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
@@ -118,8 +190,8 @@ export function Entrar() {
             <div className="flex w-full flex-col gap-3 text-center">
               <h2 className="m-0 text-lg font-bold">Confira seu e-mail</h2>
               <p className="m-0 text-sm text-muted">
-                Enviamos um e-mail para <strong className="text-soft">{sentTo}</strong>. Abra o link <strong className="text-soft">neste aparelho</strong>{' '}
-                ou digite aqui o código de 6 dígitos. Dá para ler o e-mail no celular e digitar o código no computador.
+                Enviamos um e-mail para <strong className="text-soft">{sentTo}</strong>. Abra o link ou digite aqui o código de 6 dígitos. Use sempre o
+                e-mail <strong className="text-soft">mais recente</strong>: cada envio novo cancela o anterior.
               </p>
               <form onSubmit={verifyCode} className="flex flex-col items-center gap-2">
                 <label htmlFor="otp" className="sr-only">

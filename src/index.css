@@ -79,6 +79,21 @@ body {
 .sc-flick { animation: sc-flick 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center bottom; }
 .sc-glowpulse { animation: sc-glowpulse 2.8s ease-in-out infinite; }
 
+/* Decorações de época (SeasonDecor): neve/confete caindo e fogos que só aparecem animando. */
+@keyframes sc-fall {
+  from { transform: translate(0, var(--from)) rotate(0deg); }
+  to { transform: translate(var(--x, 0px), var(--to)) rotate(var(--rot, 0deg)); }
+}
+@keyframes sc-burst {
+  0%, 62% { opacity: 0; transform: scale(0.2); }
+  66% { opacity: 1; transform: scale(0.55); }
+  82% { opacity: 0.85; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.12); }
+}
+.sc-fall { animation: sc-fall var(--d, 14s) linear var(--dl, 0s) infinite; }
+.sc-spin { transform-box: fill-box; transform-origin: center; }
+.sc-burst { opacity: 0; transform-box: fill-box; transform-origin: center; animation: sc-burst var(--d, 10s) ease-out var(--dl, 0s) infinite; }
+
 /* Brilho do troféu de cristal. */
 @keyframes twinkle {
   0%, 100% { opacity: 1; }

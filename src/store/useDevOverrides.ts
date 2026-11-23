@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { AreaId, CornerLayouts, PetKind, PetPhase, PetState, SceneItemMap, TrophyMap } from '../types'
+import type { AreaId, CornerLayouts, EventItemMap, PetKind, PetPhase, PetState, SceneItemMap, TrophyMap } from '../types'
 import type { SceneId } from '../data/scenes'
 
 export type ForcedState = PetState | 'dormindo'
@@ -19,6 +19,12 @@ interface DevOverrides {
   scene: SceneId | null
   /** Itens de cenário de mentira. `null` = os reais. */
   sceneItems: SceneItemMap | null
+  /** Itens de evento de mentira. `null` = os reais. */
+  eventItems: EventItemMap | null
+  /** Data simulada (AAAA-MM-DD) para eventos e lua cheia (sempre "à noite"). `null` = hoje de verdade. */
+  date: string | null
+  /** Decorações de época: forçar ligadas/desligadas. `null` = segue o Perfil. */
+  decor: boolean | null
   /** Dias (0–7) por área no céu do cantinho. */
   corner: Partial<Record<AreaId, number>>
   set: (patch: Partial<Omit<DevOverrides, 'set' | 'setCorner'>>) => void
@@ -39,6 +45,9 @@ export const useDevOverrides = create<DevOverrides>()((set, get) => ({
   layouts: null,
   scene: null,
   sceneItems: null,
+  eventItems: null,
+  date: null,
+  decor: null,
   corner: {},
   set: (patch) => set(patch),
   setCorner: (area, days) => {

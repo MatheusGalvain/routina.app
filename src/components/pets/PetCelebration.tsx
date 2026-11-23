@@ -12,6 +12,8 @@ import { expose } from '../../lib/corner'
 import { chooseScene, currentLayout, currentScene, writeLayout } from '../../store/useCorner'
 import { ITEM_BY_ID, SCENE_BY_ID, SceneItem, type SceneItemId } from '../../data/scenes'
 import { SPECIES, STATE_STYLE, textColor } from './pets'
+import { EVENT_BY_ID, eventLabel } from '../../data/events'
+import { EventTrophyArt } from '../../data/eventArt'
 
 const PARTICLES = Array.from({ length: 18 }, (_, i) => {
   const angle = (i / 18) * Math.PI * 2 + (i % 2) * 0.2
@@ -34,6 +36,8 @@ export function PetCelebration() {
           <TrophyArrival key={event.id} trophy={event.trophy} tier={event.tier} onClose={shift} />
         ) : event.type === 'item' ? (
           <ItemArrival key={event.id} item={event.item} onClose={shift} />
+        ) : event.type === 'event-trophy' ? (
+          <EventTrophyArrival key={event.id} eventId={event.eventId} onClose={shift} />
         ) : (
           <Celebration key={event.id} event={event} onClose={shift} />
         ))}
@@ -109,6 +113,74 @@ function TrophyArrival({ trophy, tier, onClose }: { trophy: TrophyId; tier: Trop
             style={{ background: tier === 4 ? 'var(--color-noite)' : color }}
           >
             Expor no cantinho
+          </button>
+          <button type="button" onClick={onClose} className="min-h-11 rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-soft hover:bg-panel-2">
+            Depois
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+/** Aviso de troféu de evento (um nível só): entra caindo, com um brilho na cor do evento. */
+function EventTrophyArrival({ eventId, onClose }: { eventId: string; onClose: () => void }) {
+  const navigate = useNavigate()
+  const ev = EVENT_BY_ID[eventId]
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  if (!ev) return null
+  const t = ev.trophy
+  return (
+    <motion.div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="event-trophy-title"
+        className="relative flex w-full max-w-[380px] flex-col items-center gap-3 overflow-hidden rounded-[26px] border border-line bg-panel px-6 pt-6 pb-6 text-center"
+        initial={{ scale: 0.9, y: 16 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.94, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative grid h-[170px] w-full place-items-center">
+          <motion.div
+            aria-hidden="true"
+            className="absolute h-[160px] w-[160px] rounded-full"
+            style={{ background: `radial-gradient(circle, ${t.color}40 0%, transparent 68%)` }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.35, ease: 'easeOut' }}
+          />
+          <motion.div initial={{ y: -90, opacity: 0, rotate: -12, scale: 0.7 }} animate={{ y: 0, opacity: 1, rotate: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 170, damping: 13, delay: 0.15 }}>
+            <EventTrophyArt draw={t.draw} color={t.color} size={120} />
+          </motion.div>
+        </div>
+        <p className="m-0 font-mono text-[11px] tracking-[0.2em] uppercase" style={{ color: ev.color }}>
+          {eventLabel(ev)}
+        </p>
+        <h2 id="event-trophy-title" className="m-0 text-xl font-extrabold">
+          Novo troféu: {t.name}
+        </h2>
+        <p className="m-0 text-sm text-muted">Fica na sua coleção para sempre.</p>
+        <div className="mt-1 flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            autoFocus
+            onClick={() => {
+              onClose()
+              navigate('/pet#colecao')
+            }}
+            className="min-h-11 rounded-full px-5 py-2.5 text-sm font-bold text-ink"
+            style={{ background: t.color }}
+          >
+            Ver na coleção
           </button>
           <button type="button" onClick={onClose} className="min-h-11 rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-soft hover:bg-panel-2">
             Depois

@@ -249,7 +249,7 @@ const MOTION_OPTIONS: { id: MotionPref; label: string }[] = [
 
 /** Animações, sons e vibração. Ficam salvos neste aparelho. */
 function PetPrefsFields() {
-  const { sound, vibrate, motion, set } = usePetPrefs()
+  const { sound, vibrate, motion, seasonDecor, set } = usePetPrefs()
   const vibrates = canVibrate()
   const systemReduces = useReducedMotion()
   return (
@@ -284,6 +284,13 @@ function PetPrefsFields() {
               : 'Sem pulos nem giros: o pet só muda de expressão.'}
         </span>
       </div>
+      <Switch
+        id="pref-decoracoes"
+        label="Decorações de época"
+        hint="Neve, luzinhas e fogos no cantinho durante o Natal, o Ano Novo e outras datas."
+        checked={seasonDecor}
+        onChange={(v) => set({ seasonDecor: v })}
+      />
       <Switch id="pref-som" label="Sons do pet" hint="Bipes curtos quando você brinca com ele." checked={sound} onChange={(v) => set({ sound: v })} />
       <Switch
         id="pref-vibrar"

@@ -113,7 +113,12 @@ export type PetPhase = 'filhote' | 'jovem' | 'adulto'
 
 export type Slot = 'cabeca' | 'rosto' | 'pescoco' | 'mao'
 
-export type AccessoryId = 'chapeu-mago' | 'coroa' | 'fones' | 'oculos' | 'cachecol' | 'tiara-lua' | 'cartinha' | 'laco'
+export type BaseAccessoryId = 'chapeu-mago' | 'coroa' | 'fones' | 'oculos' | 'cachecol' | 'tiara-lua' | 'cartinha' | 'laco'
+
+/** Acessórios de evento sazonal (src/data/events.ts): sempre com o prefixo "evt-". */
+export type EventAccessoryId = `evt-${string}`
+
+export type AccessoryId = BaseAccessoryId | EventAccessoryId
 
 /** Pets desbloqueáveis ficam na mesma lista dos acessórios, com o prefixo "pet:". */
 export type PetUnlockId = `pet:${SecretPetKind}`
@@ -133,6 +138,12 @@ export type TrophyMap = Partial<Record<TrophyId, TrophyUnlock[]>>
 export interface SceneItemUnlock {
   unlockedAt: string
 }
+
+/**
+ * Itens de evento sazonal conquistados: id do evento → id do item (acessório ou troféu) → data ISO.
+ * Ficam para sempre, mesmo depois que o evento acaba.
+ */
+export type EventItemMap = Record<string, Record<string, string>>
 
 /** Itens de cenário desbloqueados: id → data (nunca são perdidos). */
 export type SceneItemMap = Partial<Record<SceneItemId, SceneItemUnlock>>

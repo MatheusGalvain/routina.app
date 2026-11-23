@@ -6,7 +6,8 @@ import { computeStats } from '../lib/stats'
 import { SECRET_DAYS, SECRET_UNLOCK, phaseFor, phaseIndex, shownPhase } from '../lib/companion'
 import { dayKey } from '../lib/dates'
 import { DEFAULT_PET } from '../components/pets/pets'
-import { ACCESSORIES, type UnlockStats } from '../data/accessories'
+import { ACCESSORIES, EVENT_ACCESSORY_LIST, type UnlockStats } from '../data/accessories'
+import { ownedEventAccessories } from '../data/events'
 import type { Stats } from '../lib/stats'
 import type { AccessoryId, PetKind, PetState, UnlockId } from '../types'
 
@@ -102,13 +103,17 @@ export function useCompanionView() {
   const conqueredPhase = phaseFor(activeDays)
   const phase = dev.phase ?? shownPhase(conqueredPhase, companion.appearance)
   const adultDetail = dev.phase ? dev.phase === 'adulto' : conqueredPhase === 'adulto' && companion.showAdultDetail
-  const unlocked = dev.unlockAll ? null : new Set(progress.unlocked)
+  // Acessórios de evento conquistados (ou simulados pelo painel dev) contam como liberados.
+  const realEventItems = useRotina((s) => s.eventItems)
+  const eventItems = dev.eventItems ?? realEventItems
+  const eventOwned = ownedEventAccessories(eventItems)
+  const unlocked = dev.unlockAll ? null : new Set<string>([...progress.unlocked, ...eventOwned])
   const accessories = Object.values(companion.equipped).filter((id): id is AccessoryId => !!id && (!unlocked || unlocked.has(id)))
   // Dorme depois de 2+ dias sem dia ativo, até concluir um bloco hoje (ou ser acordado pelo botão do Início).
   const woke = useRotina((s) => s.wokenOn === dayKey())
   const sleepy = stats.daysSinceLastActive !== null && stats.daysSinceLastActive >= 2 && stats.doneToday === 0 && !woke
 
-  const unlockedIds = dev.unlockAll ? ACCESSORIES.map((a) => a.id) : progress.unlocked
+  const unlockedIds: string[] = dev.unlockAll ? [...ACCESSORIES, ...EVENT_ACCESSORY_LIST].map((a) => a.id) : [...progress.unlocked, ...eventOwned]
   const secretUnlocked = dev.secretPet || progress.unlocked.includes(SECRET_UNLOCK)
   const sleeping = dev.state ? dev.state === 'dormindo' : sleepy
 

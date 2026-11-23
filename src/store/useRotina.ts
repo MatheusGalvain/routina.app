@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
-import type { AccessoryId, Area, AreaId, Block, CornerLayout, CornerLayouts, DefaultAreaKey, UserTemplate, BlockLog, Companion, DayLog, PetAppearance, PetKind, PetProgress, PlanEntry, Routine, SceneItemMap, Slot, TrophyMap, TrophyUnlock } from '../types'
+import type { AccessoryId, Area, AreaId, Block, CornerLayout, CornerLayouts, DefaultAreaKey, UserTemplate, BlockLog, Companion, DayLog, EventItemMap, PetAppearance, PetKind, PetProgress, PlanEntry, Routine, SceneItemMap, Slot, TrophyMap, TrophyUnlock } from '../types'
 import type { TrophyId } from '../data/trophies'
 import { EMPTY_LAYOUT, EMPTY_LAYOUTS } from '../lib/corner'
 import { DEFAULT_SCENE, type SceneId, type SceneItemId } from '../data/scenes'
@@ -57,6 +57,8 @@ export interface RotinaState {
   scene: SceneId
   /** Itens de cenário desbloqueados (nunca são perdidos). */
   sceneItems: SceneItemMap
+  /** Itens de evento sazonal conquistados (nunca são perdidos). */
+  eventItems: EventItemMap
   /** Os 4 espaços do chão, por cenário (cada cenário guarda a própria montagem). */
   cornerLayouts: CornerLayouts
   /** Dia (AAAA-MM-DD) em que a pessoa acordou o pet pelo botão do Início. Só neste aparelho. */
@@ -121,6 +123,8 @@ export interface RotinaState {
   /** Acrescenta itens desbloqueados (os que já existem ficam como estão). */
   addSceneItems: (ids: SceneItemId[], at: string) => void
   setCornerLayout: (scene: SceneId, layout: CornerLayout) => void
+  /** Acrescenta itens de evento conquistados (os que já existem ficam como estão). */
+  addEventItems: (list: { eventId: string; itemId: string }[], at: string) => void
 }
 
 /** Rotina onde entram as tarefas criadas pelo botão "Adicionar algo para hoje". */
@@ -152,6 +156,7 @@ export const useRotina = create<RotinaState>()(
         trophies: {},
         scene: DEFAULT_SCENE,
         sceneItems: {},
+        eventItems: {},
         cornerLayouts: EMPTY_LAYOUTS,
         wokenOn: null,
 
@@ -385,12 +390,20 @@ export const useRotina = create<RotinaState>()(
           for (const id of ids) sceneItems[id] ??= { unlockedAt: at }
           set({ sceneItems })
         },
+        addEventItems: (list, at) => {
+          const eventItems = { ...get().eventItems }
+          for (const { eventId, itemId } of list) {
+            if (eventItems[eventId]?.[itemId]) continue
+            eventItems[eventId] = { ...eventItems[eventId], [itemId]: at }
+          }
+          set({ eventItems })
+        },
         setCornerLayout: (scene, layout) => set({ cornerLayouts: { ...get().cornerLayouts, [scene]: layout } }),
       }
     },
     {
       name: LEGACY_KEY,
-      version: 8,
+      version: 9,
       storage: createJSONStorage(() => scopedStorage),
       // Só carrega o cache depois do login, quando já se sabe de quem são os dados.
       skipHydration: true,
@@ -441,6 +454,8 @@ export function migrate(state: Partial<RotinaState>, version: number) {
   }
   // v7 → v8: aparência escolhida do pet (padrão: acompanha a fase conquistada) e detalhe de adulto.
   if (version < 8) state = { ...state, companion: { ...DEFAULT_COMPANION, ...state.companion } }
+  // v8 → v9: itens de eventos sazonais.
+  if (version < 9) state = { ...state, eventItems: state.eventItems ?? {} }
   return state as RotinaState
 }
 

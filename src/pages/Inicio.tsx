@@ -12,6 +12,7 @@ import { PETS, PET_ORDER, textColor } from '../components/pets/pets'
 import { PetStory } from '../components/pets/PetStory'
 import { PetCorner } from '../components/pets/PetCorner'
 import { PrimaryActionButton } from '../components/home/PrimaryAction'
+import { EventBanner } from '../components/home/EventBanner'
 import { useGoToday } from '../lib/navigation'
 import { editorPath } from '../lib/slug'
 import { useNavigate } from 'react-router-dom'
@@ -228,6 +229,8 @@ export function Inicio() {
         </div>
         <PrimaryActionButton items={items} />
       </header>
+
+      <EventBanner />
 
       <Panel title={companion.kind ? `Cantinho ${companion.name ? `de ${companion.name}` : 'do seu pet'}` : 'Cantinho do pet'} icon="paw" color="var(--color-accent)" help="cantinho">
         <PetCorner autoState={computePetState(items, activeId, now)} />

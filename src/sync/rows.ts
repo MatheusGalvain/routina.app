@@ -1,4 +1,4 @@
-import type { AccessoryId, Area, Block, UserTemplate, BlockLog, Companion, CornerLayout, CornerLayouts, DayLog, PetProgress, PetPhase, Placed, Routine, SceneItemMap, Slot, TrophyMap, UnlockId } from '../types'
+import type { AccessoryId, Area, Block, UserTemplate, BlockLog, Companion, CornerLayout, CornerLayouts, DayLog, EventItemMap, PetProgress, PetPhase, Placed, Routine, SceneItemMap, Slot, TrophyMap, UnlockId } from '../types'
 import { TROPHY_BY_ID, type TrophyId, type TrophyTier } from '../data/trophies'
 import { EMPTY_LAYOUTS } from '../lib/corner'
 import { DEFAULT_SCENE, isItemId, isSceneId, type SceneId } from '../data/scenes'
@@ -22,6 +22,7 @@ export type Table =
   | 'user_areas'
   | 'user_templates'
   | 'user_scene_items'
+  | 'user_event_items'
 export type Row = Record<string, unknown>
 
 const clip = (s: string | undefined | null, max: number) => (s ?? '').slice(0, max)
@@ -143,6 +144,15 @@ export function sceneItemRows(uid: string, map: SceneItemMap) {
   return out
 }
 
+/** Um registro por item de evento conquistado (chave: evento/item). */
+export function eventItemRows(uid: string, map: EventItemMap) {
+  const out = new Map<string, Row>()
+  for (const [eventId, items] of Object.entries(map))
+    for (const [itemId, at] of Object.entries(items ?? {}))
+      out.set(`${eventId}/${itemId}`, { user_id: uid, event_id: eventId, item_id: itemId, kind: itemId.startsWith('evt-') ? 'accessory' : 'trophy', unlocked_at: at })
+  return out
+}
+
 /** Rotinas e blocos (com a ordem) a partir do store. Rotinas do painel dev ficam de fora. */
 export function structureRows(uid: string, routines: Routine[]) {
   const routinesOut = new Map<string, Row>()
@@ -187,6 +197,8 @@ export interface RemoteData {
   templates: Row[] | null
   /** `null` = não deu para ler (migration 009 não aplicada): o store mantém o que tem. */
   sceneItems: Row[] | null
+  /** `null` = não deu para ler (migration 011 não aplicada): o store mantém o que tem. */
+  eventItems: Row[] | null
 }
 
 const num = (v: unknown) => (v === null || v === undefined ? undefined : Number(v))
@@ -257,7 +269,7 @@ export function toStore(r: RemoteData) {
     : { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
 
   // Troféus de ids que o app não conhece mais são ignorados.
-  const extra: { trophies?: TrophyMap; cornerLayouts?: CornerLayouts; areas?: Area[]; templates?: UserTemplate[]; sceneItems?: SceneItemMap; scene?: SceneId } = {}
+  const extra: { trophies?: TrophyMap; cornerLayouts?: CornerLayouts; areas?: Area[]; templates?: UserTemplate[]; sceneItems?: SceneItemMap; eventItems?: EventItemMap; scene?: SceneId } = {}
   if (r.templates) {
     extra.templates = [...r.templates]
       .sort((a, c) => Number(a.position) - Number(c.position))
@@ -309,6 +321,15 @@ export function toStore(r: RemoteData) {
     const items: SceneItemMap = {}
     for (const it of r.sceneItems) if (isItemId(it.item_id)) items[it.item_id] = { unlockedAt: String(it.unlocked_at) }
     extra.sceneItems = items
+  }
+  if (r.eventItems) {
+    // Itens de eventos que o app não conhece mais também ficam (são da pessoa).
+    const events: EventItemMap = {}
+    for (const it of r.eventItems) {
+      const e = String(it.event_id)
+      events[e] = { ...events[e], [String(it.item_id)]: String(it.unlocked_at) }
+    }
+    extra.eventItems = events
   }
   if (r.profile && isSceneId(r.profile.scene)) extra.scene = r.profile.scene
 

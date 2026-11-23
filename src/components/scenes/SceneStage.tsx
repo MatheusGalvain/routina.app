@@ -3,6 +3,12 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import type { Area, AreaId } from '../../types'
 import { constellationOf, litStars, type SceneId } from '../../data/scenes'
 import { useReducedMotionPref } from '../../store/usePetPrefs'
+import { useFullMoonNight, useSeasonDecor } from '../../store/useEvents'
+import { useRotina } from '../../store/useRotina'
+import { useDevOverrides } from '../../store/useDevOverrides'
+import { SECRET_UNLOCK } from '../../lib/companion'
+import type { DecorId } from '../../data/events'
+import { Bunting, Confetti, Fireworks, GuideStar, LIGHT_WIRES, Lights, MoonBunny, Snow } from './SeasonDecor'
 
 /**
  * Motor de cena do cantinho, em camadas de profundidade (viewBox 640 × 320, proporção 2:1).
@@ -162,6 +168,13 @@ export function SceneStage({ scene, areas, days, seed, preview = false, label, c
   const gy = useTransform(tilt.y, (v) => v * shiftOf(groundDepth) * 0.5 * scale)
   // A ilhota do cosmos flutua devagar; o que está em cima dela flutua junto.
   const floats = scene === 'cosmos' && !still
+  // Decorações de época (src/data/events.ts) e o coelho que passa nas noites de lua cheia
+  // (só para quem ainda não desbloqueou o coelho; com movimento reduzido ele não passa).
+  const decor = useSeasonDecor(scene)
+  const fullMoon = useFullMoonNight()
+  const secretKnown = useRotina((s) => s.petProgress.unlocked.includes(SECRET_UNLOCK))
+  const secretDev = useDevOverrides((s) => s.secretPet)
+  const bunny = fullMoon && !secretKnown && !secretDev && !still
 
   return (
     <div
@@ -184,10 +197,11 @@ export function SceneStage({ scene, areas, days, seed, preview = false, label, c
           transition={{ duration: 0.8, ease: 'easeInOut' }}
         >
           {scene === 'cosmos' ? (
-            <CosmosBack areas={areas} days={days} seed={seed} tilt={tilt} preview={preview} floats={floats} />
+            <CosmosBack areas={areas} days={days} seed={seed} tilt={tilt} preview={preview} floats={floats} decor={decor} />
           ) : (
-            <ForestBack areas={areas} days={days} seed={seed} tilt={tilt} preview={preview} />
+            <ForestBack areas={areas} days={days} seed={seed} tilt={tilt} preview={preview} decor={decor} />
           )}
+          {bunny && <MoonBunny y={scene === 'floresta' ? 82 : 46} />}
         </motion.svg>
       </AnimatePresence>
 
@@ -213,6 +227,8 @@ export function SceneStage({ scene, areas, days, seed, preview = false, label, c
             </motion.g>
           )}
         </AnimatePresence>
+        {decor.includes('neve') && <Snow seed={seed} preview={preview} />}
+        {decor.includes('confete') && <Confetti seed={seed} preview={preview} />}
         {!preview && <rect width={SCENE_W} height={SCENE_H} filter="url(#hd-grain)" opacity=".6" />}
       </svg>
     </div>
@@ -232,7 +248,7 @@ const REGIONS: [number, number][] = [
 ]
 const STAR_COLORS = ['#FFFFFF', '#E4D8FF', '#FFE8D6', '#D7E0FF']
 
-function CosmosBack({ areas, days, seed, tilt, preview, floats }: { areas: Area[]; days: Record<AreaId, number>; seed: number; tilt: Tilt; preview: boolean; floats: boolean }) {
+function CosmosBack({ areas, days, seed, tilt, preview, floats, decor }: { areas: Area[]; days: Record<AreaId, number>; seed: number; tilt: Tilt; preview: boolean; floats: boolean; decor: DecorId[] }) {
   const stars = useMemo(() => {
     const r = rng(seed ^ 0xc05305)
     return Array.from({ length: preview ? 60 : 160 }, () => {
@@ -277,6 +293,18 @@ function CosmosBack({ areas, days, seed, tilt, preview, floats }: { areas: Area[
           </g>
         ))}
       </Layer>
+      {/* Decorações de época no céu. */}
+      {decor.includes('fogos') && (
+        <Layer depth={4} tilt={tilt}>
+          <Fireworks preview={preview} />
+        </Layer>
+      )}
+      {(decor.includes('estrela-guia') || decor.includes('bandeirinhas')) && (
+        <Layer depth={6} tilt={tilt}>
+          {decor.includes('estrela-guia') && <GuideStar />}
+          {decor.includes('bandeirinhas') && <Bunting />}
+        </Layer>
+      )}
       {/* Constelações das áreas da semana. */}
       <Layer depth={7} tilt={tilt}>
         {areas.slice(0, REGIONS.length).map((a, i) => {
@@ -385,7 +413,7 @@ function Trees({ list, color, trunk }: { list: TreeShape[]; color: string; trunk
   )
 }
 
-function ForestBack({ areas, days, seed, tilt, preview }: { areas: Area[]; days: Record<AreaId, number>; seed: number; tilt: Tilt; preview: boolean }) {
+function ForestBack({ areas, days, seed, tilt, preview, decor }: { areas: Area[]; days: Record<AreaId, number>; seed: number; tilt: Tilt; preview: boolean; decor: DecorId[] }) {
   const gen = useMemo(() => {
     const r = rng(seed ^ 0xf0e57)
     const far = Array.from({ length: preview ? 5 : 8 }, (_, i) => treeShapes(r, 10 + i * (preview ? 140 : 86) + r() * 30, 252, 120 + r() * 50))
@@ -434,17 +462,30 @@ function ForestBack({ areas, days, seed, tilt, preview }: { areas: Area[]; days:
           <path d="M455,66 L230,320 L290,320 Z" fill="url(#hd-fRay)" opacity=".7" />
         </g>
       </Layer>
+      {/* Decorações de época no céu (atrás das árvores). */}
+      {(decor.includes('fogos') || decor.includes('bandeirinhas')) && (
+        <Layer depth={5} tilt={tilt}>
+          {decor.includes('fogos') && <Fireworks preview={preview} />}
+          {decor.includes('bandeirinhas') && <Bunting />}
+        </Layer>
+      )}
       {/* Árvores do fundo: desfocadas e mais claras pela névoa. */}
       <Layer depth={7} tilt={tilt}>
         <g opacity=".75" filter="url(#hd-blur2)">
           <Trees list={gen.far} color="#173027" trunk="#152A22" />
         </g>
       </Layer>
+      {decor.includes('luzinhas') && (
+        <Layer depth={7} tilt={tilt}>
+          <Lights wires={LIGHT_WIRES.back} small />
+        </Layer>
+      )}
       <Layer depth={10} tilt={tilt}>
         <ellipse className="sc-anim sc-mist" cx="240" cy="232" rx="280" ry="26" fill="url(#hd-fMist)" opacity=".09" />
       </Layer>
       <Layer depth={12} tilt={tilt}>
         <Trees list={gen.mid} color="#1A3A2E" trunk="#142B22" />
+        {decor.includes('luzinhas') && <Lights wires={LIGHT_WIRES.front} />}
       </Layer>
       <Layer depth={16} tilt={tilt}>
         <ellipse className="sc-anim sc-mist sc-mist-b" cx="420" cy="252" rx="260" ry="20" fill="url(#hd-fMist)" opacity=".1" />

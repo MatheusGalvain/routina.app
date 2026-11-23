@@ -60,6 +60,12 @@ export function activeDays(logs: Logs, today = dayKey()) {
   return pastKeys(logs, today).filter((k) => isActiveDay(logs[k])).length
 }
 
+/** Dias ativos entre `from` e `to` (AAAA-MM-DD, inclusive), sem passar de hoje. */
+export function activeDaysBetween(logs: Logs, from: string, to: string, today = dayKey()) {
+  const end = to < today ? to : today
+  return pastKeys(logs, today).filter((k) => k >= from && k <= end && isActiveDay(logs[k])).length
+}
+
 /**
  * Dias ativos seguidos até hoje. Se hoje ainda não está ativo, a sequência
  * conta até ontem (o dia ainda não acabou, então não quebra).

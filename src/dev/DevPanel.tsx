@@ -11,7 +11,10 @@ import { useStats } from '../store/useCompanion'
 import { ACCESSORIES } from '../data/accessories'
 import { ALL_PETS, PETS } from '../components/pets/pets'
 import { PHASES, phaseFor } from '../lib/companion'
-import { dayKey } from '../lib/dates'
+import { dayKey, nowInTz, parseKey } from '../lib/dates'
+import { EVENTS, eventItems, eventLabel, isEventActive } from '../data/events'
+import { isFullMoon, moonIllumination, nextFullMoon } from '../lib/moon'
+import type { EventItemMap } from '../types'
 import { Icon } from '../components/ui/ui'
 import { APP_KEY } from '../lib/storageKeys'
 import { TIERS, TIER_LIST, TROPHIES, trophyTitle, type TrophyId, type TrophyTier } from '../data/trophies'
@@ -114,6 +117,7 @@ export default function DevPanel() {
               <Overrides />
               <Trophies onStatus={setStatus} />
               <Scenes onStatus={setStatus} />
+              <Seasons onStatus={setStatus} />
               <Safety onStatus={setStatus} />
             </div>
             <p aria-live="polite" className="m-0 min-h-[38px] border-t border-line px-4 py-2.5 font-mono text-[11.5px] text-soft">
@@ -601,6 +605,85 @@ function Scenes({ onStatus }: { onStatus: (s: string) => void }) {
           Voltar aos reais
         </Btn>
       </Row>
+    </Section>
+  )
+}
+
+/** Todos os itens de todos os eventos, conquistados agora (simulado). */
+function allEventItems(): EventItemMap {
+  const at = new Date().toISOString()
+  return Object.fromEntries(EVENTS.map((e) => [e.id, Object.fromEntries(eventItems(e).map(({ def }) => [def.id, at]))]))
+}
+
+/** Eventos sazonais e lua cheia: data simulada, itens de teste e decorações. */
+function Seasons({ onStatus }: { onStatus: (s: string) => void }) {
+  const dev = useDevOverrides()
+  const day = dev.date ?? dayKey()
+  const at = parseKey(day)
+  at.setHours(22)
+  const moon = dev.date ? at : new Date()
+  const active = EVENTS.filter((e) => isEventActive(e, day))
+  const fullMoonDay = dayKey(nowInTz(nextFullMoon(new Date())))
+  const presets: { label: string; date: string }[] = [
+    ...EVENTS.map((e) => ({ label: eventLabel(e), date: e.start })),
+    { label: 'Virada (31/12)', date: '2026-12-31' },
+    { label: 'Próxima lua cheia', date: fullMoonDay },
+  ]
+
+  return (
+    <Section title="Eventos e lua cheia (só neste aparelho)">
+      <p className="m-0 text-[11.5px] text-muted">
+        {dev.date ? `Simulando ${day} às 22h.` : 'Usando a data de hoje.'} Eventos: {active.length ? active.map(eventLabel).join(', ') : 'nenhum'}. Lua:{' '}
+        {Math.round(moonIllumination(moon) * 100)}% {isFullMoon(moon) ? '(cheia)' : ''}
+      </p>
+      <Row>
+        <input
+          type="date"
+          aria-label="Data simulada"
+          value={dev.date ?? ''}
+          onChange={(e) => dev.set({ date: e.target.value || null })}
+          className="rounded-lg border border-line bg-panel px-2 py-1.5 font-mono text-[12.5px] text-soft"
+        />
+        <Btn pressed={!dev.date} onClick={() => dev.set({ date: null })}>
+          Hoje (real)
+        </Btn>
+      </Row>
+      <Row>
+        {presets.map((p) => (
+          <Btn key={p.label} pressed={dev.date === p.date} onClick={() => dev.set({ date: p.date })}>
+            {p.label}
+          </Btn>
+        ))}
+      </Row>
+      <Row>
+        <Btn
+          onClick={() => {
+            dev.set({ eventItems: allEventItems() })
+            onStatus('Todos os itens de evento desbloqueados (simulado).')
+          }}
+        >
+          Desbloquear itens de evento
+        </Btn>
+        <Btn
+          disabled={!dev.eventItems}
+          onClick={() => {
+            dev.set({ eventItems: null })
+            onStatus('Itens de evento: de volta aos reais.')
+          }}
+        >
+          Itens reais
+        </Btn>
+      </Row>
+      <Segmented
+        label="Decorações de época"
+        value={dev.decor === null ? null : dev.decor ? 'on' : 'off'}
+        options={[
+          { id: 'on', label: 'Ligadas' },
+          { id: 'off', label: 'Desligadas' },
+        ]}
+        onChange={(v) => dev.set({ decor: v === null ? null : v === 'on' })}
+      />
+      <p className="m-0 text-[11.5px] text-muted">O coelho da lua passa uma vez por visita: recarregue a página para ver de novo.</p>
     </Section>
   )
 }

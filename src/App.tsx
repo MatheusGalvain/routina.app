@@ -6,6 +6,7 @@ import { useSyncTodayPlan } from './store/useSyncTodayPlan'
 import { useCompanionProgress } from './store/useCompanion'
 import { useTrophyProgress } from './store/useTrophies'
 import { useSceneItemProgress } from './store/useCorner'
+import { useEventProgress } from './store/useEvents'
 import { SceneDefs } from './data/scenes'
 import { PetCelebration } from './components/pets/PetCelebration'
 import { useAuth } from './store/useAuth'
@@ -134,6 +135,7 @@ function SignedIn() {
   useSyncTodayPlan()
   useCompanionProgress()
   useTrophyProgress()
+  useEventProgress()
   useSceneItemProgress()
   useReturnAfterLogin()
   useFirstAccessOnboarding()
