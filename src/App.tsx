@@ -301,7 +301,7 @@ function ProfileButton() {
             className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-panel ${isActive ? 'border-accent' : 'border-line group-hover:border-line-2'}`}
           >
             <span className="sr-only sm:hidden">Meu perfil</span>
-            <Pet kind={pet.kind} phase={pet.phase} accessories={pet.accessories} sleeping={pet.sleeping} size={32} interactive={false} float={false} />
+            <Pet kind={pet.kind} phase={pet.phase} adultDetail={pet.adultDetail} accessories={pet.accessories} sleeping={pet.sleeping} size={32} interactive={false} float={false} />
           </span>
         </>
       )}

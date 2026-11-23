@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { usePetEvents, type PetEvent } from '../../store/usePetEvents'
 import { chooseFavorite, useCompanionView } from '../../store/useCompanion'
 import { useRotina } from '../../store/useRotina'
@@ -336,10 +337,16 @@ function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'pha
   let message: string
   let accessories = view.accessories
   let phase = view.phase
+  let adultDetail = view.adultDetail
   const item = event.type === 'unlock' ? ACCESSORY_BY_ID[event.accessory] : null
+  // Nova fase: a celebração mostra a fase nova; o pet do app segue a aparência escolhida.
+  const fixed = event.type === 'phase' && view.appearance !== 'auto'
+  const previous = event.type === 'phase' ? PHASES[Math.max(0, PHASES.findIndex((p) => p.id === event.phase) - 1)] : null
+  const navigate = useNavigate()
 
   if (event.type === 'phase') {
     phase = event.phase
+    if (event.phase === 'adulto') adultDetail = view.showAdultDetail
     const phaseName = PHASES.find((p) => p.id === event.phase)?.name ?? ''
     kicker = 'Nova fase'
     title = `${name} agora é ${phaseName.toLowerCase()}!`
@@ -349,6 +356,7 @@ function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'pha
         : event.phase === 'jovem'
           ? 'Olha só, cresci! Obrigado por cuidar de mim todos esses dias.'
           : 'Oi! Vamos crescer juntos, um dia de cada vez.'
+    if (fixed) message += ` Você escolheu me deixar ${PHASES.find((p) => p.id === view.appearance)?.name.toLowerCase()}, então continuo assim.`
   } else {
     kicker = 'Acessório desbloqueado'
     title = item!.name
@@ -412,7 +420,7 @@ function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'pha
             ))}
           </svg>
           <motion.div initial={{ scale: 0.6 }} animate={{ scale: [0.6, 1.12, 1] }} transition={{ duration: 0.7, delay: 0.1 }}>
-            <Pet kind={kind} state="concluido" phase={phase} accessories={accessories} size={150} interactive={false} />
+            <Pet kind={kind} state="concluido" phase={phase} adultDetail={adultDetail} accessories={accessories} size={150} interactive={false} />
           </motion.div>
         </div>
 
@@ -440,6 +448,33 @@ function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'pha
               </button>
               <button type="button" onClick={onClose} className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-soft hover:bg-panel-2">
                 Depois
+              </button>
+            </>
+          ) : event.type === 'phase' && view.kind ? (
+            <>
+              {/* Ver como ficou: passa a acompanhar a evolução e abre a aparência na aba Pet. */}
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  if (fixed) useRotina.getState().setAppearance('auto')
+                  onClose()
+                  navigate('/pet#aparencia')
+                }}
+                className="min-h-11 rounded-full bg-ok px-5 py-2.5 text-sm font-bold text-ink"
+              >
+                Ver como ficou
+              </button>
+              {/* Manter como estava: fixa a aparência anterior (se ainda acompanhava a evolução). */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!fixed && previous) useRotina.getState().setAppearance(previous.id)
+                  onClose()
+                }}
+                className="min-h-11 rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-soft hover:bg-panel-2"
+              >
+                Manter como estava
               </button>
             </>
           ) : (

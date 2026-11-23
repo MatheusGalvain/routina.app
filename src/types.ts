@@ -150,10 +150,17 @@ export type CornerLayout = [Placed | null, Placed | null, Placed | null, Placed 
 export type CornerLayouts = Record<SceneId, CornerLayout>
 
 /** O pet favorito (companheiro). */
+/** Aparência escolhida: uma fase já conquistada, ou 'auto' (segue a fase conquistada). */
+export type PetAppearance = 'auto' | PetPhase
+
 export interface Companion {
   kind: PetKind | null
   name: string
   equipped: Partial<Record<Slot, AccessoryId>>
+  /** Aparência escolhida (a fase conquistada continua em petProgress e nunca regride). */
+  appearance: PetAppearance
+  /** Mostrar o detalhe de adulto da espécie (depois de conquistar a fase adulto), em qualquer aparência. */
+  showAdultDetail: boolean
 }
 
 /** Progresso do companheiro que nunca regride. */

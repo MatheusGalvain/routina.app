@@ -9,6 +9,13 @@ import { DizzyStars, Hearts, RestZ, SpecialBehind, SpecialFront, YawnMouth } fro
 
 const INK = '#0A0D14'
 
+/** Tamanho do corpo e dos olhos em cada fase. */
+const PHASE_LOOK: Record<PetPhase, { scale: number; eyes: number }> = {
+  filhote: { scale: 0.8, eyes: 1.3 },
+  jovem: { scale: 0.9, eyes: 1.12 },
+  adulto: { scale: 1, eyes: 1 },
+}
+
 /** Brilho da pupila: bolinha branca ou, com `star`, uma estrelinha de 4 pontas e um pontinho de luz embaixo. */
 function Shine({ x, y, star, bottom }: { x: number; y: number; star: boolean; bottom: number }) {
   if (!star) return <circle cx={x} cy={y} r={1.7} fill="#fff" />
@@ -110,6 +117,8 @@ interface PetProps {
   /** Dormindo: olhos fechados e "z" flutuando. */
   sleeping?: boolean
   phase?: PetPhase
+  /** Detalhe de adulto da espécie (rabo, coroinha…). Padrão: só na fase adulto. */
+  adultDetail?: boolean
   /** Acessórios a desenhar (no máximo um por slot). */
   accessories?: AccessoryId[]
   size?: number
@@ -146,6 +155,7 @@ export function Pet({
   mood,
   sleeping = false,
   phase = 'jovem',
+  adultDetail,
   accessories = [],
   size = 120,
   float = true,
@@ -335,8 +345,10 @@ export function Pet({
   })
   const anchorOf = { cabeca: species.anchors.head, rosto: species.anchors.eyes, pescoco: species.anchors.neck, mao: species.anchors.hand }
   // A coroinha do sapinho adulto sai quando ele usa algo na cabeça.
-  const adult = phase === 'adulto' && !(kind === 'sapinho' && items.some((i) => i.slot === 'cabeca'))
-  const baby = phase === 'filhote'
+  const adult = (adultDetail ?? phase === 'adulto') && !(kind === 'sapinho' && items.some((i) => i.slot === 'cabeca'))
+  // Cada fase tem um tamanho (apoiado na mesma base, y = 108) e olhos proporcionais:
+  // filhote 80% com olhos grandes, jovem 90%, adulto inteiro. O detalhe de adulto é à parte (adultDetail).
+  const grow = PHASE_LOOK[phase]
   const { head } = species.anchors
 
   // Ritmo por estado.
@@ -411,7 +423,7 @@ export function Pet({
           >
             <motion.g animate={controls}>
               {/* Filhote: 80% do tamanho, apoiado na mesma base. */}
-              <g transform={baby ? 'translate(12 21.6) scale(0.8)' : undefined}>
+              <g transform={grow.scale === 1 ? undefined : `translate(${60 * (1 - grow.scale)} ${108 * (1 - grow.scale)}) scale(${grow.scale})`}>
                 {!silhouette && species.behind?.()}
                 {/*
                   As camadas das brincadeiras ficam em AnimatePresence próprios: o AnimatePresence initial={false}
@@ -426,7 +438,7 @@ export function Pet({
                   {species.body(species.colors, adult)}
                   <motion.g animate={eyeAnim} transition={eyeTransition}>
                     {species.eyes.map(([cx, cy], i) => (
-                      <Eye key={i} cx={cx} cy={cy} side={i} style={eyeStyle} blink={blink} scale={baby ? 1.3 : 1} star={species.starEyes} />
+                      <Eye key={i} cx={cx} cy={cy} side={i} style={eyeStyle} blink={blink} scale={grow.eyes} star={species.starEyes} />
                     ))}
                   </motion.g>
                   <AnimatePresence>{play.idle?.type === 'yawn' && !silhouette && <YawnMouth key={`bocejo-${play.idle.id}`} kind={kind} />}</AnimatePresence>

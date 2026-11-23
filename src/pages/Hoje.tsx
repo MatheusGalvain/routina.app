@@ -117,7 +117,7 @@ export function Hoje() {
             <div className="relative grid h-[220px] w-full place-items-center">
               <div className="absolute h-[200px] w-[200px] rounded-full border transition-colors duration-500" style={{ borderColor: `${look.color}30` }} />
               <div className="absolute h-[160px] w-[160px] rounded-full border transition-colors duration-500" style={{ borderColor: `${look.color}22` }} />
-              <Pet kind={pet.kind} state={pet.state} sleeping={pet.sleeping} phase={pet.phase} accessories={pet.accessories} size={140} play />
+              <Pet kind={pet.kind} state={pet.state} sleeping={pet.sleeping} phase={pet.phase} adultDetail={pet.adultDetail} accessories={pet.accessories} size={140} play />
             </div>
             <p className="m-0 font-mono text-xs tracking-[0.2em] uppercase transition-colors duration-500" style={{ color: pet.sleeping ? 'var(--color-noite)' : textColor(look.color) }}>
               {pet.name && pet.isCompanion ? `${pet.name} · ` : ''}

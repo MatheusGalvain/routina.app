@@ -3,7 +3,7 @@ import { useRotina } from './useRotina'
 import { useDevOverrides } from './useDevOverrides'
 import { usePetEvents } from './usePetEvents'
 import { computeStats } from '../lib/stats'
-import { SECRET_DAYS, SECRET_UNLOCK, phaseFor, phaseIndex } from '../lib/companion'
+import { SECRET_DAYS, SECRET_UNLOCK, phaseFor, phaseIndex, shownPhase } from '../lib/companion'
 import { dayKey } from '../lib/dates'
 import { PET_BY_STATE } from '../components/pets/pets'
 import { ACCESSORIES, type UnlockStats } from '../data/accessories'
@@ -97,7 +97,11 @@ export function useCompanionView() {
 
   const activeDays = Math.max(progress.peakActiveDays, stats.activeDays)
   const kind = dev.species ?? companion.kind
-  const phase = dev.phase ?? phaseFor(activeDays)
+  // Fase conquistada (pelos dias ativos, nunca regride) x aparência escolhida.
+  // A fase forçada pelo painel dev vale por cima da escolha.
+  const conqueredPhase = phaseFor(activeDays)
+  const phase = dev.phase ?? shownPhase(conqueredPhase, companion.appearance)
+  const adultDetail = dev.phase ? dev.phase === 'adulto' : conqueredPhase === 'adulto' && companion.showAdultDetail
   const unlocked = dev.unlockAll ? null : new Set(progress.unlocked)
   const accessories = Object.values(companion.equipped).filter((id): id is AccessoryId => !!id && (!unlocked || unlocked.has(id)))
   // Dorme depois de 2+ dias sem dia ativo, até concluir um bloco hoje (ou ser acordado pelo botão do Início).
@@ -108,7 +112,23 @@ export function useCompanionView() {
   const secretUnlocked = dev.secretPet || progress.unlocked.includes(SECRET_UNLOCK)
   const sleeping = dev.state ? dev.state === 'dormindo' : sleepy
 
-  return { kind, name: companion.name, phase, activeDays, accessories, unlockedIds, secretUnlocked, sleepy, sleeping, stats, forcedState: dev.state }
+  return {
+    kind,
+    name: companion.name,
+    phase,
+    conqueredPhase,
+    appearance: companion.appearance,
+    showAdultDetail: companion.showAdultDetail,
+    adultDetail,
+    activeDays,
+    accessories,
+    unlockedIds,
+    secretUnlocked,
+    sleepy,
+    sleeping,
+    stats,
+    forcedState: dev.state,
+  }
 }
 
 /**
@@ -129,6 +149,7 @@ export function useShownPet(autoState: PetState, reacting = false) {
     state,
     sleeping,
     phase: isCompanion ? view.phase : ('jovem' as const),
+    adultDetail: isCompanion ? view.adultDetail : false,
     accessories: isCompanion ? view.accessories : [],
   }
 }

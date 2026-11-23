@@ -70,12 +70,17 @@ export const blockLogRow = (uid: string, date: string, blockId: string, l: Block
 
 export const taskRow = (uid: string, blockId: string, date: string): Row => ({ user_id: uid, block_id: blockId, date })
 
-/** Sem `withProgress`, só espécie, nome e acessórios (o progresso fica como está no servidor). */
-export const companionRow = (uid: string, c: Companion, p: PetProgress, withProgress: boolean): Row => ({
+/**
+ * Sem `withProgress`, só espécie, nome, acessórios e aparência (o progresso fica como está no servidor).
+ * `withLook`: inclui aparência e detalhe de adulto (colunas da migration 010). Só vai quando a pessoa
+ * mexeu nisso, para quem ainda não rodou a migration não perder a gravação do resto do pet.
+ */
+export const companionRow = (uid: string, c: Companion, p: PetProgress, withProgress: boolean, withLook = true): Row => ({
   user_id: uid,
   kind: c.kind,
   name: clip(c.name, 24),
   equipped: c.equipped,
+  ...(withLook ? { appearance: c.appearance, show_adult_detail: c.showAdultDetail } : {}),
   ...(withProgress
     ? { peak_active_days: p.peakActiveDays, seen_phase: p.seenPhase, unlocked: p.unlocked, progress_initialized: p.initialized }
     : {}),
@@ -233,8 +238,15 @@ export function toStore(r: RemoteData) {
 
   const c = r.companion
   const companion: Companion = c
-    ? { kind: (c.kind as Companion['kind']) ?? null, name: String(c.name ?? ''), equipped: (c.equipped as Partial<Record<Slot, AccessoryId>>) ?? {} }
-    : { kind: null, name: '', equipped: {} }
+    ? {
+        kind: (c.kind as Companion['kind']) ?? null,
+        name: String(c.name ?? ''),
+        equipped: (c.equipped as Partial<Record<Slot, AccessoryId>>) ?? {},
+        // Sem as colunas (migration 010 não aplicada): segue a fase e mostra o detalhe.
+        appearance: (['auto', 'filhote', 'jovem', 'adulto'] as const).find((a) => a === c.appearance) ?? 'auto',
+        showAdultDetail: c.show_adult_detail !== false,
+      }
+    : { kind: null, name: '', equipped: {}, appearance: 'auto', showAdultDetail: true }
   const petProgress: PetProgress = c
     ? {
         initialized: !!c.progress_initialized,

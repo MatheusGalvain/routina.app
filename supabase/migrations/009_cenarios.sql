@@ -55,6 +55,9 @@ alter table public.corner_slots
 alter table public.corner_slots drop constraint if exists corner_slots_pkey;
 alter table public.corner_slots add primary key (user_id, scene_id, slot);
 
+-- A API (PostgREST) passa a enxergar as colunas e a tabela novas na hora.
+notify pgrst, 'reload schema';
+
 -- Conferência: falha a migration se alguma tabela pública ficar sem RLS.
 do $$
 declare

@@ -11,10 +11,12 @@ import { useShownPet } from '../store/useCompanion'
 import { useTrophyView } from '../store/useTrophies'
 import { TIERS, TROPHIES, Trophy, trophyTitle } from '../data/trophies'
 import { Icon } from '../components/ui/ui'
+import { Switch } from '../components/ui/Switch'
 import { HelpButton, HelpPet } from '../components/help/HelpButton'
 import type { HelpKey } from '../data/help'
 import { Pet } from '../components/pets/Pet'
 import { STATE_STYLE } from '../components/pets/pets'
+import { PHASES, phaseIndex } from '../lib/companion'
 import { canVibrate, usePetPrefs, type MotionPref } from '../store/usePetPrefs'
 import { useReducedMotion } from 'framer-motion'
 
@@ -119,7 +121,7 @@ function Header() {
           kind={pet.kind}
           state={pet.state}
           sleeping={pet.sleeping}
-          phase={pet.phase}
+          phase={pet.phase} adultDetail={pet.adultDetail}
           accessories={pet.accessories}
           size={96}
           play
@@ -175,6 +177,11 @@ function Header() {
         </div>
       )}
 
+      {pet.isCompanion && (
+        <p className="m-0 rounded-full border border-ok/30 bg-ok/10 px-3 py-1 font-mono text-[12px] text-ok">
+          {PHASES[phaseIndex(pet.conqueredPhase)].name} · {pet.activeDays} {pet.activeDays === 1 ? 'dia ativo' : 'dias ativos'}
+        </p>
+      )}
       {since && <p className="m-0 text-sm text-muted">No Habbit Do desde {since}</p>}
     </section>
   )
@@ -231,37 +238,6 @@ function Showcase({ openCollection }: { openCollection: () => void }) {
         Ver coleção completa
       </button>
     </Card>
-  )
-}
-
-/** Interruptor acessível (role="switch"), com o rótulo e a explicação ligados a ele. */
-function Switch({ id, label, hint, checked, disabled, onChange }: { id: string; label: string; hint: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <span id={`${id}-rotulo`} className="text-sm font-semibold text-soft">
-          {label}
-        </span>
-        <span id={`${id}-dica`} className="text-[13px] text-muted">
-          {hint}
-        </span>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-labelledby={`${id}-rotulo`}
-        aria-describedby={`${id}-dica`}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={`relative h-8 w-14 shrink-0 rounded-full border transition-colors disabled:opacity-40 ${checked ? 'border-accent bg-accent' : 'border-line-strong bg-panel-2'}`}
-      >
-        <span
-          aria-hidden="true"
-          className={`absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full transition-all ${checked ? 'left-[26px] bg-ink' : 'left-1 bg-muted'}`}
-        />
-      </button>
-    </div>
   )
 }
 

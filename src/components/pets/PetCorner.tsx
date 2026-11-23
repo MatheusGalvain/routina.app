@@ -120,7 +120,7 @@ export function PetCorner({ autoState, legend = true, editable = false }: { auto
                         kind={pet.kind}
                         state={pet.state}
                         sleeping={pet.sleeping}
-                        phase={pet.phase}
+                        phase={pet.phase} adultDetail={pet.adultDetail}
                         accessories={pet.accessories}
                         size={petSize}
                         play

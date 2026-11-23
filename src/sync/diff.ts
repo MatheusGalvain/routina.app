@@ -55,7 +55,10 @@ export function diff(uid: string, prev: RotinaState, next: RotinaState, enqueue:
 
   if (prev.companion !== next.companion || prev.petProgress !== next.petProgress) {
     // Com simulação ativa, o progresso calculado é falso: sobe só espécie, nome e acessórios.
-    enqueue('companion', 'upsert', companionRow(uid, next.companion, next.petProgress, !hasDevDays(next)))
+    const c = next.companion
+    const p = prev.companion
+    const withLook = c.appearance !== 'auto' || !c.showAdultDetail || p.appearance !== c.appearance || p.showAdultDetail !== c.showAdultDetail
+    enqueue('companion', 'upsert', companionRow(uid, c, next.petProgress, !hasDevDays(next), withLook))
   }
 
   // Troféus: só acrescenta (um nível conquistado nunca é perdido).

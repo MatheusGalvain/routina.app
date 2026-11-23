@@ -21,7 +21,7 @@ export function useIsMobile() {
 /** O pet que explica: o favorito acordado, ou o gatinho sem favorito. */
 export function HelpPet({ size = 48 }: { size?: number }) {
   const pet = useShownPet('neutro', true)
-  return <Pet kind={pet.kind} state="neutro" phase={pet.phase} accessories={pet.accessories} size={size} interactive={false} />
+  return <Pet kind={pet.kind} state="neutro" phase={pet.phase} adultDetail={pet.adultDetail} accessories={pet.accessories} size={size} interactive={false} />
 }
 
 /** Corpo do balão: o pet, o texto e os exemplos (tipos de bloco). */

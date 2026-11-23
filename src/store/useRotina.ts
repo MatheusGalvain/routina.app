@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
-import type { AccessoryId, Area, AreaId, Block, CornerLayout, CornerLayouts, DefaultAreaKey, UserTemplate, BlockLog, Companion, DayLog, PetKind, PetProgress, PlanEntry, Routine, SceneItemMap, Slot, TrophyMap, TrophyUnlock } from '../types'
+import type { AccessoryId, Area, AreaId, Block, CornerLayout, CornerLayouts, DefaultAreaKey, UserTemplate, BlockLog, Companion, DayLog, PetAppearance, PetKind, PetProgress, PlanEntry, Routine, SceneItemMap, Slot, TrophyMap, TrophyUnlock } from '../types'
 import type { TrophyId } from '../data/trophies'
 import { EMPTY_LAYOUT, EMPTY_LAYOUTS } from '../lib/corner'
 import { DEFAULT_SCENE, type SceneId, type SceneItemId } from '../data/scenes'
@@ -36,7 +36,7 @@ const scopedStorage: StateStorage = {
   },
 }
 
-export const DEFAULT_COMPANION: Companion = { kind: null, name: '', equipped: {} }
+export const DEFAULT_COMPANION: Companion = { kind: null, name: '', equipped: {}, appearance: 'auto', showAdultDetail: true }
 export const DEFAULT_PROGRESS: PetProgress = { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
 
 export interface RotinaState {
@@ -110,6 +110,8 @@ export interface RotinaState {
 
   setCompanionKind: (kind: PetKind | null) => void
   setCompanionName: (name: string) => void
+  setAppearance: (appearance: PetAppearance) => void
+  setShowAdultDetail: (show: boolean) => void
   /** Equipa um acessório no slot (ou tira, com `null`). */
   equip: (slot: Slot, id: AccessoryId | null) => void
   updateProgress: (patch: Partial<PetProgress>) => void
@@ -342,6 +344,8 @@ export const useRotina = create<RotinaState>()(
 
         setCompanionKind: (kind) => set({ companion: { ...get().companion, kind } }),
         setCompanionName: (name) => set({ companion: { ...get().companion, name } }),
+        setAppearance: (appearance) => set({ companion: { ...get().companion, appearance } }),
+        setShowAdultDetail: (showAdultDetail) => set({ companion: { ...get().companion, showAdultDetail } }),
         equip: (slot, id) => {
           const equipped = { ...get().companion.equipped }
           if (id) equipped[slot] = id
@@ -368,7 +372,7 @@ export const useRotina = create<RotinaState>()(
     },
     {
       name: LEGACY_KEY,
-      version: 7,
+      version: 8,
       storage: createJSONStorage(() => scopedStorage),
       // Só carrega o cache depois do login, quando já se sabe de quem são os dados.
       skipHydration: true,
@@ -417,6 +421,8 @@ export function migrate(state: Partial<RotinaState>, version: number) {
     const { cornerSlots: _drop, ...rest } = state as Partial<RotinaState> & { cornerSlots?: unknown }
     state = { ...rest, scene: DEFAULT_SCENE, sceneItems: state.sceneItems ?? {}, cornerLayouts: { ...EMPTY_LAYOUTS, cosmos } }
   }
+  // v7 → v8: aparência escolhida do pet (padrão: acompanha a fase conquistada) e detalhe de adulto.
+  if (version < 8) state = { ...state, companion: { ...DEFAULT_COMPANION, ...state.companion } }
   return state as RotinaState
 }
 

@@ -10,7 +10,7 @@ export function NaoEncontrada() {
     <section className="mx-auto flex w-full max-w-[520px] flex-col items-center gap-5 rounded-[22px] border border-line bg-panel px-6 py-10 text-center">
       <div className="relative">
         <motion.div animate={{ rotate: [-8, 6, -8] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} style={{ transformOrigin: '50% 90%' }}>
-          <Pet kind={pet.kind} state="atencao" mood="meh" phase={pet.phase} accessories={pet.accessories} size={130} interactive={false} />
+          <Pet kind={pet.kind} state="atencao" mood="meh" phase={pet.phase} adultDetail={pet.adultDetail} accessories={pet.accessories} size={130} interactive={false} />
         </motion.div>
         {[
           { x: -14, y: 4, size: 26, delay: 0 },

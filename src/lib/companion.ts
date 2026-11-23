@@ -1,4 +1,4 @@
-import type { PetPhase, PetUnlockId } from '../types'
+import type { PetAppearance, PetPhase, PetUnlockId } from '../types'
 
 /** Marca do coelho na lista de desbloqueios (fica para sempre, como os acessórios). */
 export const SECRET_UNLOCK: PetUnlockId = 'pet:coelho'
@@ -20,6 +20,18 @@ export function phaseFor(activeDays: number): PetPhase {
   for (const p of PHASES) if (activeDays >= p.min) phase = p.id
   return phase
 }
+
+/**
+ * Fase que aparece: a escolhida, se já foi conquistada; 'auto' (ou uma escolha ainda não conquistada)
+ * segue a fase conquistada.
+ */
+export function shownPhase(conquered: PetPhase, appearance: PetAppearance): PetPhase {
+  if (appearance === 'auto') return conquered
+  return phaseIndex(appearance) <= phaseIndex(conquered) ? appearance : conquered
+}
+
+/** Dias ativos que faltam para conquistar uma fase (0 se já conquistou). */
+export const daysToPhase = (phase: PetPhase, activeDays: number) => Math.max(0, PHASES[phaseIndex(phase)].min - activeDays)
 
 /** Próxima fase e quantos dias ativos faltam (null se já é adulto). */
 export function nextPhase(activeDays: number) {

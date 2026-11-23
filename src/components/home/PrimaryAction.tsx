@@ -111,7 +111,7 @@ function DaySummary({ items, onClose, openToday }: { items: TodayItem[]; onClose
   return (
     <Modal title="Como foi o dia" onClose={onClose}>
       <div className="flex flex-col items-center gap-2 text-center">
-        <Pet kind={pet.kind} state="concluido" phase={pet.phase} accessories={pet.accessories} size={110} interactive={false} />
+        <Pet kind={pet.kind} state="concluido" phase={pet.phase} adultDetail={pet.adultDetail} accessories={pet.accessories} size={110} interactive={false} />
         <p className="m-0 text-sm text-soft">{pet.name && pet.isCompanion ? `${pet.name} está comemorando com você!` : 'Que dia bom!'}</p>
       </div>
       <div className="flex items-center gap-4 rounded-2xl bg-panel-2 p-4">
@@ -234,7 +234,7 @@ export function PrimaryActionButton({ items }: { items: TodayItem[] }) {
           animate={waking ? { y: [0, -10, 0, -4, 0], rotate: [0, -8, 8, 0] } : { y: 0, rotate: 0 }}
           transition={{ duration: 0.9, ease: 'easeOut' }}
         >
-          <Pet kind={pet.kind} state={pet.state} sleeping={pet.sleeping} phase={pet.phase} accessories={pet.accessories} size={40} interactive={false} float={false} />
+          <Pet kind={pet.kind} state={pet.state} sleeping={pet.sleeping} phase={pet.phase} adultDetail={pet.adultDetail} accessories={pet.accessories} size={40} interactive={false} float={false} />
         </motion.span>
         <AnimatePresence mode="wait">
           <motion.p
