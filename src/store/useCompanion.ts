@@ -5,7 +5,7 @@ import { usePetEvents } from './usePetEvents'
 import { computeStats } from '../lib/stats'
 import { SECRET_DAYS, SECRET_UNLOCK, phaseFor, phaseIndex, shownPhase } from '../lib/companion'
 import { dayKey } from '../lib/dates'
-import { PET_BY_STATE } from '../components/pets/pets'
+import { DEFAULT_PET } from '../components/pets/pets'
 import { ACCESSORIES, type UnlockStats } from '../data/accessories'
 import type { Stats } from '../lib/stats'
 import type { AccessoryId, PetKind, PetState, UnlockId } from '../types'
@@ -132,8 +132,9 @@ export function useCompanionView() {
 }
 
 /**
- * O pet que aparece num estado do dia. Com favorito, é sempre ele vestindo o estado
- * (e dormindo se andou parado); sem favorito, o pet de cada estado, como antes.
+ * O pet que aparece num estado do dia: o favorito vestindo o estado (e dormindo se andou parado).
+ * Sem favorito, é sempre o mesmo (DEFAULT_PET) em todo lugar, para o cantinho e o Início não
+ * mostrarem pets diferentes.
  * `reacting` = reação rápida em andamento (concluiu/pulou), que acorda o pet.
  */
 export function useShownPet(autoState: PetState, reacting = false) {
@@ -145,7 +146,7 @@ export function useShownPet(autoState: PetState, reacting = false) {
   return {
     ...view,
     isCompanion,
-    kind: view.kind ?? PET_BY_STATE[state],
+    kind: view.kind ?? DEFAULT_PET,
     state,
     sleeping,
     phase: isCompanion ? view.phase : ('jovem' as const),

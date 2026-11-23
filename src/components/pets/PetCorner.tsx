@@ -97,8 +97,6 @@ export function PetCorner({ autoState, legend = true, editable = false }: { auto
   return (
     <div className="flex flex-wrap items-start gap-5">
       <div className="flex min-w-0 flex-[3_1_420px] flex-col gap-3">
-        {editing && <ScenePicker current={scene} areas={shown} days={days} seed={seed} />}
-
         <div ref={stageRef} className="overflow-hidden rounded-[18px] border border-line">
           <SceneStage
             scene={scene}
@@ -183,11 +181,14 @@ export function PetCorner({ autoState, legend = true, editable = false }: { auto
           />
         </div>
 
+        {/* Modo edição: as prévias dos cenários ficam logo abaixo da cena. */}
+        {editing && <ScenePicker current={scene} areas={shown} days={days} seed={seed} />}
+
         {editable && (
           <div className="flex flex-wrap items-center gap-3">
             <p className="m-0 min-w-[200px] flex-1 rounded-2xl border border-line-2 bg-panel-2 px-4 py-3 text-sm text-soft">
               {editing
-                ? 'Escolha o cenário acima. Toque num espaço para colocar um troféu ou um item deste cenário; arraste para trocar de lugar.'
+                ? 'Escolha o cenário nas prévias logo acima. Toque num espaço para colocar um troféu ou um item deste cenário; arraste para trocar de lugar.'
                 : `Cada cenário guarda a própria montagem. ${sceneInfo.description}`}
             </p>
             <button

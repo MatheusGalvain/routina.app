@@ -254,14 +254,8 @@ export const SPECIES: Record<PetKind, SpeciesDef> = {
   },
 }
 
-export const PET_BY_STATE: Record<PetState, BasePetKind> = {
-  neutro: 'gatinho',
-  concluido: 'sapinho',
-  foco: 'polvinho',
-  atencao: 'pintinho',
-  pulado: 'ourico',
-  descanso: 'corujinha',
-}
+/** Sem favorito, o app inteiro mostra este pet (o mesmo da entrada e do onboarding), vestindo o estado do dia. */
+export const DEFAULT_PET: BasePetKind = 'gatinho'
 
 export const PET_ORDER: BasePetKind[] = ['sapinho', 'ourico', 'gatinho', 'pintinho', 'polvinho', 'corujinha']
 
