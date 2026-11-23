@@ -1,6 +1,7 @@
 import type { RotinaState } from '../store/useRotina'
 import type { Row, Table } from './rows'
-import { areaRows, blockLogRow, templateRows, companionRow, dayRow, slotRow, structureRows, taskRow, trophyRows } from './rows'
+import { areaRows, blockLogRow, templateRows, companionRow, dayRow, sceneItemRows, slotRow, structureRows, taskRow, trophyRows } from './rows'
+import { SCENES } from '../data/scenes'
 
 export type Emit = (table: Table, kind: 'upsert' | 'delete', row: Row) => void
 
@@ -77,11 +78,25 @@ export function diff(uid: string, prev: RotinaState, next: RotinaState, enqueue:
     for (const id of a.keys()) if (!b.has(id)) enqueue('user_templates', 'delete', { id })
   }
 
-  if (prev.cornerSlots !== next.cornerSlots) {
-    next.cornerSlots.forEach((s, i) => {
-      if (same(prev.cornerSlots[i], s)) return
-      if (s) enqueue('corner_slots', 'upsert', slotRow(uid, i, s))
-      else enqueue('corner_slots', 'delete', { slot: i })
-    })
+  // Montagem do cantinho: um registro por espaço preenchido, por cenário.
+  if (prev.cornerLayouts !== next.cornerLayouts) {
+    for (const { id: scene } of SCENES) {
+      const a = prev.cornerLayouts[scene]
+      const b = next.cornerLayouts[scene]
+      if (a === b) continue
+      b.forEach((s, i) => {
+        if (same(a?.[i] ?? null, s)) return
+        if (s) enqueue('corner_slots', 'upsert', slotRow(uid, scene, i, s))
+        else enqueue('corner_slots', 'delete', { scene_id: scene, slot: i })
+      })
+    }
   }
+
+  // Itens de cenário: só acrescenta (um item desbloqueado nunca é perdido).
+  if (prev.sceneItems !== next.sceneItems) {
+    const a = sceneItemRows(uid, prev.sceneItems)
+    for (const [key, row] of sceneItemRows(uid, next.sceneItems)) if (!same(a.get(key), row)) enqueue('user_scene_items', 'upsert', row)
+  }
+
+  if (prev.scene !== next.scene) enqueue('profiles', 'upsert', { user_id: uid, scene: next.scene })
 }

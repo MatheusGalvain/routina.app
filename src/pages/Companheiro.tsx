@@ -8,6 +8,8 @@ import { ACCESSORIES, SLOT_NAMES } from '../data/accessories'
 import { chooseFavorite, unlockStats } from '../store/useCompanion'
 import { PetCorner } from '../components/pets/PetCorner'
 import { TrophyCollection } from '../components/pets/TrophyCollection'
+import { SceneCollection } from '../components/pets/SceneCollection'
+import { useState, type KeyboardEvent } from 'react'
 
 /** Aba "Pet": escolher o favorito, dar um nome e cuidar dos acessórios. */
 export function Companheiro() {
@@ -76,8 +78,7 @@ export function Companheiro() {
 
       <div id="colecao" className="scroll-mt-4">
       <Panel title="Coleção" icon="box" color="var(--color-alerta)" help="colecao">
-        <p className="m-0 text-sm text-muted">Cada troféu tem 4 níveis. Os que você conquista ficam para sempre, e você escolhe quais expor no cantinho.</p>
-        <TrophyCollection />
+        <CollectionTabs />
       </Panel>
       </div>
 
@@ -210,5 +211,59 @@ function Accessories() {
         })}
       </ul>
     </Panel>
+  )
+}
+
+type CollectionTab = 'trofeus' | 'cenarios'
+const COLLECTION_TABS: { id: CollectionTab; label: string }[] = [
+  { id: 'trofeus', label: 'Troféus' },
+  { id: 'cenarios', label: 'Cenários' },
+]
+
+/** Coleção em abas (role tablist; setas trocam de aba): troféus e itens de cenário. */
+function CollectionTabs() {
+  const [tab, setTab] = useState<CollectionTab>('trofeus')
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+    e.preventDefault()
+    const next = tab === 'trofeus' ? 'cenarios' : 'trofeus'
+    setTab(next)
+    document.getElementById(`colecao-aba-${next}`)?.focus()
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <div role="tablist" aria-label="Coleção" className="flex gap-1 self-start rounded-full border border-line bg-ink p-1" onKeyDown={onKey}>
+        {COLLECTION_TABS.map((t) => (
+          <button
+            key={t.id}
+            id={`colecao-aba-${t.id}`}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            aria-controls="colecao-painel"
+            tabIndex={tab === t.id ? 0 : -1}
+            onClick={() => setTab(t.id)}
+            className={`min-h-10 rounded-full px-4 text-[13px] font-semibold ${tab === t.id ? 'bg-accent text-ink' : 'text-muted hover:text-soft'}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div id="colecao-painel" role="tabpanel" aria-labelledby={`colecao-aba-${tab}`} className="flex flex-col gap-3">
+        {tab === 'trofeus' ? (
+          <>
+            <p className="m-0 text-sm text-muted">Cada troféu tem 4 níveis. Os que você conquista ficam para sempre, e você escolhe quais expor no cantinho.</p>
+            <TrophyCollection />
+          </>
+        ) : (
+          <>
+            <p className="m-0 text-sm text-muted">
+              Cada cenário tem 6 itens. Os de área chegam com 10 dias cuidando daquela área; você coloca no cantinho em "Editar cantinho".
+            </p>
+            <SceneCollection />
+          </>
+        )}
+      </div>
+    </div>
   )
 }

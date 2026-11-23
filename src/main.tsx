@@ -2,7 +2,7 @@
 import './lib/storageKeys'
 // Depois: o Supabase lê a sessão da URL e guardamos o erro do link, antes do roteador redirecionar.
 import './lib/authUrl'
-import { StrictMode } from 'react'
+import { StrictMode, useEffect } from 'react'
 import { MotionConfig } from 'framer-motion'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
@@ -16,6 +16,10 @@ import './index.css'
  */
 function Root() {
   const motion = usePetPrefs((s) => s.motion)
+  // As animações de ambiente em CSS (cenários) leem a escolha pelo atributo no <html>.
+  useEffect(() => {
+    document.documentElement.dataset.motion = motion
+  }, [motion])
   return (
     <MotionConfig reducedMotion={MOTION_CONFIG[motion]}>
       <RouterProvider router={router} />

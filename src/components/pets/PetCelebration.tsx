@@ -7,8 +7,9 @@ import { ACCESSORY_BY_ID } from '../../data/accessories'
 import { PHASES } from '../../lib/companion'
 import { Pet } from './Pet'
 import { TIERS, Trophy, trophyTitle, type TrophyId, type TrophyTier } from '../../data/trophies'
-import { exposeTrophy } from '../../lib/corner'
-import { currentSlots, writeSlots } from '../../store/useTrophies'
+import { expose } from '../../lib/corner'
+import { chooseScene, currentLayout, currentScene, writeLayout } from '../../store/useCorner'
+import { ITEM_BY_ID, SCENE_BY_ID, SceneItem, type SceneItemId } from '../../data/scenes'
 import { SPECIES, STATE_STYLE, textColor } from './pets'
 
 const PARTICLES = Array.from({ length: 18 }, (_, i) => {
@@ -30,6 +31,8 @@ export function PetCelebration() {
           <SecretArrival key={event.id} onClose={shift} />
         ) : event.type === 'trophy' ? (
           <TrophyArrival key={event.id} trophy={event.trophy} tier={event.tier} onClose={shift} />
+        ) : event.type === 'item' ? (
+          <ItemArrival key={event.id} item={event.item} onClose={shift} />
         ) : (
           <Celebration key={event.id} event={event} onClose={shift} />
         ))}
@@ -98,13 +101,98 @@ function TrophyArrival({ trophy, tier, onClose }: { trophy: TrophyId; tier: Trop
             type="button"
             autoFocus
             onClick={() => {
-              writeSlots(exposeTrophy(currentSlots(), trophy, tier))
+              writeLayout(expose(currentLayout(), { kind: 'trophy', id: trophy, tier }))
               onClose()
             }}
             className="min-h-11 rounded-full px-5 py-2.5 text-sm font-bold text-ink"
             style={{ background: tier === 4 ? 'var(--color-noite)' : color }}
           >
             Expor no cantinho
+          </button>
+          <button type="button" onClick={onClose} className="min-h-11 rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-soft hover:bg-panel-2">
+            Depois
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+/**
+ * Aviso de item de cenário novo (mesmo jeito do troféu): o item entra caindo, com um brilho.
+ * "Colocar no cantinho" põe o item no cenário dele e mostra esse cenário.
+ */
+function ItemArrival({ item, onClose }: { item: SceneItemId; onClose: () => void }) {
+  const def = ITEM_BY_ID[item]
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="item-title"
+        aria-describedby="item-desc"
+        className="relative flex w-full max-w-[380px] flex-col items-center gap-3 overflow-hidden rounded-[26px] border border-line bg-panel px-6 pt-6 pb-6 text-center"
+        initial={{ scale: 0.9, y: 16 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.94, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative grid h-[170px] w-full place-items-center">
+          <motion.div
+            aria-hidden="true"
+            className="absolute h-[160px] w-[160px] rounded-full"
+            style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--color-noite) 30%, transparent) 0%, transparent 68%)' }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.35, ease: 'easeOut' }}
+          />
+          <motion.div
+            initial={{ y: -90, opacity: 0, rotate: -12, scale: 0.7 }}
+            animate={{ y: 0, opacity: 1, rotate: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 170, damping: 13, delay: 0.15 }}
+          >
+            <SceneItem id={item} size={120} />
+          </motion.div>
+          <motion.div
+            aria-hidden="true"
+            className="absolute bottom-[14px] h-[8px] w-[90px] rounded-[50%] bg-black/50 blur-[3px]"
+            initial={{ scaleX: 0.3, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.35 }}
+          />
+        </div>
+        <h2 id="item-title" className="m-0 text-xl font-extrabold">
+          Novo item: {def.name}
+        </h2>
+        <p id="item-desc" className="m-0 text-sm text-muted">
+          Do cenário {SCENE_BY_ID[def.scene].name}. {def.hint}.
+        </p>
+        <div className="mt-1 flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            autoFocus
+            onClick={() => {
+              writeLayout(expose(currentLayout(def.scene), { kind: 'item', id: item }), def.scene)
+              if (currentScene() !== def.scene) chooseScene(def.scene)
+              onClose()
+            }}
+            className="min-h-11 rounded-full bg-noite px-5 py-2.5 text-sm font-bold text-ink"
+          >
+            Colocar no cantinho
           </button>
           <button type="button" onClick={onClose} className="min-h-11 rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-soft hover:bg-panel-2">
             Depois

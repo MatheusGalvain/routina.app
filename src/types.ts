@@ -1,4 +1,5 @@
 import type { TrophyId, TrophyTier } from './data/trophies'
+import type { SceneId, SceneItemId } from './data/scenes'
 
 export type BlockType = 'habito' | 'contador' | 'tarefa'
 
@@ -128,14 +129,25 @@ export interface TrophyUnlock {
 /** Troféus conquistados: id → níveis desbloqueados (nunca são perdidos). */
 export type TrophyMap = Partial<Record<TrophyId, TrophyUnlock[]>>
 
-/** Um troféu exposto num espaço do cantinho (pode ser um nível menor que o maior conquistado). */
-export interface CornerSlot {
-  trophyId: TrophyId
-  tier: TrophyTier
+/** Item de cenário desbloqueado e quando. */
+export interface SceneItemUnlock {
+  unlockedAt: string
 }
 
+/** Itens de cenário desbloqueados: id → data (nunca são perdidos). */
+export type SceneItemMap = Partial<Record<SceneItemId, SceneItemUnlock>>
+
+/**
+ * O que ocupa um espaço do cantinho: um troféu (num nível, pode ser menor que o maior conquistado)
+ * ou um item do cenário.
+ */
+export type Placed = { kind: 'trophy'; id: TrophyId; tier: TrophyTier } | { kind: 'item'; id: SceneItemId }
+
 /** Os 4 espaços do chão do cantinho: 2 à esquerda e 2 à direita do pet. */
-export type CornerSlots = [CornerSlot | null, CornerSlot | null, CornerSlot | null, CornerSlot | null]
+export type CornerLayout = [Placed | null, Placed | null, Placed | null, Placed | null]
+
+/** Cada cenário guarda a própria montagem. */
+export type CornerLayouts = Record<SceneId, CornerLayout>
 
 /** O pet favorito (companheiro). */
 export interface Companion {

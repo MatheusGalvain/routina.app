@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
-import type { AccessoryId, Area, AreaId, Block, DefaultAreaKey, UserTemplate, BlockLog, Companion, CornerSlots, DayLog, PetKind, PetProgress, PlanEntry, Routine, Slot, TrophyMap, TrophyUnlock } from '../types'
+import type { AccessoryId, Area, AreaId, Block, CornerLayout, CornerLayouts, DefaultAreaKey, UserTemplate, BlockLog, Companion, DayLog, PetKind, PetProgress, PlanEntry, Routine, SceneItemMap, Slot, TrophyMap, TrophyUnlock } from '../types'
 import type { TrophyId } from '../data/trophies'
-import { EMPTY_SLOTS } from '../lib/corner'
+import { EMPTY_LAYOUT, EMPTY_LAYOUTS } from '../lib/corner'
+import { DEFAULT_SCENE, type SceneId, type SceneItemId } from '../data/scenes'
 import { TEMPLATES } from '../data/templates'
 import { AREA_ALLOWED, AREA_NAME_MAX, AREA_PALETTE, DEFAULT_AREAS, MAX_AREAS, ROUTINE_COLORS, normalizeAreas, pastelArea, pastelRoutine, removedDefaults, sameName } from '../data/areas'
 import { APP_KEY } from '../lib/storageKeys'
@@ -52,8 +53,12 @@ export interface RotinaState {
   petProgress: PetProgress
   /** Troféus conquistados, com a data de cada nível. */
   trophies: TrophyMap
-  /** Os 4 espaços de troféus do cantinho. */
-  cornerSlots: CornerSlots
+  /** Cenário do cantinho. */
+  scene: SceneId
+  /** Itens de cenário desbloqueados (nunca são perdidos). */
+  sceneItems: SceneItemMap
+  /** Os 4 espaços do chão, por cenário (cada cenário guarda a própria montagem). */
+  cornerLayouts: CornerLayouts
   /** Dia (AAAA-MM-DD) em que a pessoa acordou o pet pelo botão do Início. Só neste aparelho. */
   wokenOn: string | null
 
@@ -110,7 +115,10 @@ export interface RotinaState {
   updateProgress: (patch: Partial<PetProgress>) => void
   /** Acrescenta níveis conquistados (os que já existem ficam como estão). */
   addTrophies: (list: { id: TrophyId; unlock: TrophyUnlock }[]) => void
-  setCornerSlots: (slots: CornerSlots) => void
+  setScene: (scene: SceneId) => void
+  /** Acrescenta itens desbloqueados (os que já existem ficam como estão). */
+  addSceneItems: (ids: SceneItemId[], at: string) => void
+  setCornerLayout: (scene: SceneId, layout: CornerLayout) => void
 }
 
 /** Rotina onde entram as tarefas criadas pelo botão "Adicionar algo para hoje". */
@@ -140,7 +148,9 @@ export const useRotina = create<RotinaState>()(
         companion: DEFAULT_COMPANION,
         petProgress: DEFAULT_PROGRESS,
         trophies: {},
-        cornerSlots: EMPTY_SLOTS,
+        scene: DEFAULT_SCENE,
+        sceneItems: {},
+        cornerLayouts: EMPTY_LAYOUTS,
         wokenOn: null,
 
         addArea: (name, color) => {
@@ -347,12 +357,18 @@ export const useRotina = create<RotinaState>()(
           }
           set({ trophies })
         },
-        setCornerSlots: (cornerSlots) => set({ cornerSlots }),
+        setScene: (scene) => set({ scene }),
+        addSceneItems: (ids, at) => {
+          const sceneItems = { ...get().sceneItems }
+          for (const id of ids) sceneItems[id] ??= { unlockedAt: at }
+          set({ sceneItems })
+        },
+        setCornerLayout: (scene, layout) => set({ cornerLayouts: { ...get().cornerLayouts, [scene]: layout } }),
       }
     },
     {
       name: LEGACY_KEY,
-      version: 6,
+      version: 7,
       storage: createJSONStorage(() => scopedStorage),
       // Só carrega o cache depois do login, quando já se sabe de quem são os dados.
       skipHydration: true,
@@ -383,13 +399,24 @@ export function migrate(state: Partial<RotinaState>, version: number) {
     state = { ...state, logs, companion: state.companion ?? DEFAULT_COMPANION, petProgress: state.petProgress ?? DEFAULT_PROGRESS }
   }
   // v2 → v3: troféus e espaços do cantinho.
-  if (version < 3) state = { ...state, trophies: state.trophies ?? {}, cornerSlots: state.cornerSlots ?? EMPTY_SLOTS }
+  if (version < 3) state = { ...state, trophies: state.trophies ?? {} }
   // v3 → v4: áreas da vida viram dados da pessoa (começa com as 8 padrão).
   if (version < 4) state = { ...state, areas: state.areas?.length ? state.areas : DEFAULT_AREAS }
   // v4 → v5: modelos de rotina da pessoa.
   if (version < 5) state = { ...state, templates: state.templates ?? [] }
   // v5 → v6: nova identidade (pastel) nas cores salvas de áreas, rotinas e modelos.
   if (version < 6) state = withPastelColors(state)
+  // v6 → v7: cenários. Os troféus dos 4 espaços (cornerSlots) vão para a montagem do Cosmos,
+  // que é o cenário padrão (o antigo céu de constelações foi removido).
+  if (version < 7) {
+    const old = (state as { cornerSlots?: ({ trophyId: string; tier: number } | null)[] }).cornerSlots ?? []
+    const cosmos = EMPTY_LAYOUT.map((_, i) => {
+      const s = old[i]
+      return s ? { kind: 'trophy', id: s.trophyId, tier: s.tier } : null
+    }) as CornerLayout
+    const { cornerSlots: _drop, ...rest } = state as Partial<RotinaState> & { cornerSlots?: unknown }
+    state = { ...rest, scene: DEFAULT_SCENE, sceneItems: state.sceneItems ?? {}, cornerLayouts: { ...EMPTY_LAYOUTS, cosmos } }
+  }
   return state as RotinaState
 }
 

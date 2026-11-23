@@ -1,6 +1,7 @@
-import type { AccessoryId, Area, Block, UserTemplate, BlockLog, Companion, CornerSlot, CornerSlots, DayLog, PetProgress, PetPhase, Routine, Slot, TrophyMap, UnlockId } from '../types'
+import type { AccessoryId, Area, Block, UserTemplate, BlockLog, Companion, CornerLayout, CornerLayouts, DayLog, PetProgress, PetPhase, Placed, Routine, SceneItemMap, Slot, TrophyMap, UnlockId } from '../types'
 import { TROPHY_BY_ID, type TrophyId, type TrophyTier } from '../data/trophies'
-import { EMPTY_SLOTS } from '../lib/corner'
+import { EMPTY_LAYOUTS } from '../lib/corner'
+import { DEFAULT_SCENE, isItemId, isSceneId, type SceneId } from '../data/scenes'
 import { AREA_NAME_MAX, DEFAULT_AREAS, normalizeAreas, pastelArea, pastelRoutine } from '../data/areas'
 
 /**
@@ -8,7 +9,19 @@ import { AREA_NAME_MAX, DEFAULT_AREAS, normalizeAreas, pastelArea, pastelRoutine
  * Tudo puro: recebe dados e devolve dados.
  */
 
-export type Table = 'profiles' | 'routines' | 'blocks' | 'day_logs' | 'block_logs' | 'completed_tasks' | 'companion' | 'user_trophies' | 'corner_slots' | 'user_areas' | 'user_templates'
+export type Table =
+  | 'profiles'
+  | 'routines'
+  | 'blocks'
+  | 'day_logs'
+  | 'block_logs'
+  | 'completed_tasks'
+  | 'companion'
+  | 'user_trophies'
+  | 'corner_slots'
+  | 'user_areas'
+  | 'user_templates'
+  | 'user_scene_items'
 export type Row = Record<string, unknown>
 
 const clip = (s: string | undefined | null, max: number) => (s ?? '').slice(0, max)
@@ -108,7 +121,22 @@ export const templateRows = (uid: string, templates: UserTemplate[]) => new Map(
 /** Uma linha por área, com o id como chave. */
 export const areaRows = (uid: string, areas: Area[]) => new Map(areas.map((a) => [a.id, areaRow(uid, a)]))
 
-export const slotRow = (uid: string, slot: number, s: CornerSlot): Row => ({ user_id: uid, slot, trophy_id: s.trophyId, tier: s.tier })
+/** Um espaço do cantinho de um cenário: troféu (id + nível) ou item. */
+export const slotRow = (uid: string, scene: SceneId, slot: number, p: Placed): Row => ({
+  user_id: uid,
+  scene_id: scene,
+  slot,
+  trophy_id: p.kind === 'trophy' ? p.id : null,
+  tier: p.kind === 'trophy' ? p.tier : null,
+  item_id: p.kind === 'item' ? p.id : null,
+})
+
+/** Um registro por item de cenário desbloqueado. */
+export function sceneItemRows(uid: string, map: SceneItemMap) {
+  const out = new Map<string, Row>()
+  for (const [id, u] of Object.entries(map)) if (u) out.set(id, { user_id: uid, item_id: id, unlocked_at: u.unlockedAt })
+  return out
+}
 
 /** Rotinas e blocos (com a ordem) a partir do store. Rotinas do painel dev ficam de fora. */
 export function structureRows(uid: string, routines: Routine[]) {
@@ -134,6 +162,8 @@ export interface RemoteData {
     display_name: string | null
     /** Falta se a migration 007 não foi aplicada. */
     onboarding_done?: boolean
+    /** Falta se a migration 009 não foi aplicada. */
+    scene?: string | null
     created_at: string
     updated_at: string
   } | null
@@ -150,6 +180,8 @@ export interface RemoteData {
   areas: Row[] | null
   /** `null` = não deu para ler (migration 006 não aplicada): o store mantém o que tem. */
   templates: Row[] | null
+  /** `null` = não deu para ler (migration 009 não aplicada): o store mantém o que tem. */
+  sceneItems: Row[] | null
 }
 
 const num = (v: unknown) => (v === null || v === undefined ? undefined : Number(v))
@@ -213,7 +245,7 @@ export function toStore(r: RemoteData) {
     : { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
 
   // Troféus de ids que o app não conhece mais são ignorados.
-  const extra: { trophies?: TrophyMap; cornerSlots?: CornerSlots; areas?: Area[]; templates?: UserTemplate[] } = {}
+  const extra: { trophies?: TrophyMap; cornerLayouts?: CornerLayouts; areas?: Area[]; templates?: UserTemplate[]; sceneItems?: SceneItemMap; scene?: SceneId } = {}
   if (r.templates) {
     extra.templates = [...r.templates]
       .sort((a, c) => Number(a.position) - Number(c.position))
@@ -249,14 +281,24 @@ export function toStore(r: RemoteData) {
     extra.trophies = trophies
   }
   if (r.slots) {
-    const slots = [...EMPTY_SLOTS] as CornerSlots
+    // Sem a coluna scene_id (migration 009 não aplicada), tudo é do Cosmos (o cenário padrão).
+    const layouts: CornerLayouts = { cosmos: [...EMPTY_LAYOUTS.cosmos] as CornerLayout, floresta: [...EMPTY_LAYOUTS.floresta] as CornerLayout }
     for (const s of r.slots) {
+      const scene: SceneId = isSceneId(s.scene_id) ? s.scene_id : DEFAULT_SCENE
       const i = Number(s.slot)
-      const id = String(s.trophy_id) as TrophyId
-      if (i >= 0 && i < 4 && TROPHY_BY_ID[id]) slots[i] = { trophyId: id, tier: Number(s.tier) as TrophyTier }
+      if (!(i >= 0 && i < 4)) continue
+      const trophy = s.trophy_id ? (String(s.trophy_id) as TrophyId) : null
+      if (trophy && TROPHY_BY_ID[trophy] && s.tier != null) layouts[scene][i] = { kind: 'trophy', id: trophy, tier: Number(s.tier) as TrophyTier }
+      else if (isItemId(s.item_id)) layouts[scene][i] = { kind: 'item', id: s.item_id }
     }
-    extra.cornerSlots = slots
+    extra.cornerLayouts = layouts
   }
+  if (r.sceneItems) {
+    const items: SceneItemMap = {}
+    for (const it of r.sceneItems) if (isItemId(it.item_id)) items[it.item_id] = { unlockedAt: String(it.unlocked_at) }
+    extra.sceneItems = items
+  }
+  if (r.profile && isSceneId(r.profile.scene)) extra.scene = r.profile.scene
 
   return { routines, logs, completedTasks, companion, petProgress, ...extra }
 }

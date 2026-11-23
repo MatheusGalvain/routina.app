@@ -70,13 +70,16 @@ export const HELP = {
   },
   colecao: {
     title: 'Coleção',
-    text: ['Aqui ficam os troféus que a gente conquista juntos.', 'Cada um tem 4 níveis, e nenhum nível conquistado se perde.'],
+    text: [
+      'Aqui ficam os troféus e os itens de cenário que a gente conquista juntos.',
+      'Troféus têm 4 níveis; itens chegam com 10 dias cuidando de uma área. Nada conquistado se perde.',
+    ],
   },
   cantinho: {
     title: 'Cantinho',
     text: [
-      'Este é o meu cantinho. Cada dia em que você cuida de uma área acende estrelas no céu.',
-      'Na aba Pet, em "Editar cantinho", você escolhe quais troféus ficam aqui comigo.',
+      'Este é o meu cantinho. As áreas que você cuidou na semana viram constelações no cosmos ou vaga-lumes na floresta.',
+      'Na aba Pet, em "Editar cantinho", você escolhe o cenário e os troféus e itens que ficam aqui comigo.',
     ],
   },
   perfil: {

@@ -74,7 +74,7 @@ async function fetchOptional(table: string, uid: string): Promise<Row[] | null> 
 }
 
 async function loadRemote(uid: string): Promise<RemoteData> {
-  const [profile, routines, blocks, dayLogs, blockLogs, tasks, companion, trophies, slots, areas, templates] = await Promise.all([
+  const [profile, routines, blocks, dayLogs, blockLogs, tasks, companion, trophies, slots, areas, templates, sceneItems] = await Promise.all([
     // select('*'): uma coluna nova que ainda não existe no servidor não derruba o carregamento.
     supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle(),
     fetchAll('routines', uid),
@@ -87,10 +87,11 @@ async function loadRemote(uid: string): Promise<RemoteData> {
     fetchOptional('corner_slots', uid),
     fetchOptional('user_areas', uid),
     fetchOptional('user_templates', uid),
+    fetchOptional('user_scene_items', uid),
   ])
   if (profile.error) throw profile.error
   if (companion.error) throw companion.error
-  return { profile: profile.data, routines, blocks, dayLogs, blockLogs, tasks, companion: companion.data, trophies, slots, areas, templates }
+  return { profile: profile.data, routines, blocks, dayLogs, blockLogs, tasks, companion: companion.data, trophies, slots, areas, templates, sceneItems }
 }
 
 /** Conta sem áreas no servidor (primeiro login): grava as 8 padrão. Os ids fixos tornam isso seguro em dois aparelhos. */
@@ -308,6 +309,7 @@ export async function exportMyData() {
     pet: remote.companion ? strip([remote.companion])[0] : null,
     trofeus: remote.trophies ? strip(remote.trophies) : [],
     cantinho: remote.slots ? strip(remote.slots) : [],
+    itens_de_cenario: remote.sceneItems ? strip(remote.sceneItems) : [],
     areas_da_vida: remote.areas ? strip(remote.areas) : [],
     modelos_de_rotina: remote.templates ? strip(remote.templates) : [],
   }

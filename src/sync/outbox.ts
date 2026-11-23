@@ -22,9 +22,10 @@ const PK: Record<Table, string[]> = {
   completed_tasks: ['block_id'],
   companion: [],
   user_trophies: ['trophy_id', 'tier'],
-  corner_slots: ['slot'],
+  corner_slots: ['scene_id', 'slot'],
   user_areas: ['id'],
   user_templates: ['id'],
+  user_scene_items: ['item_id'],
 }
 const CONFLICT: Record<Table, string> = {
   profiles: 'user_id',
@@ -35,13 +36,14 @@ const CONFLICT: Record<Table, string> = {
   completed_tasks: 'user_id,block_id',
   companion: 'user_id',
   user_trophies: 'user_id,trophy_id,tier',
-  corner_slots: 'user_id,slot',
+  corner_slots: 'user_id,scene_id,slot',
   user_areas: 'user_id,id',
   user_templates: 'user_id,id',
+  user_scene_items: 'user_id,item_id',
 }
 // Pais antes dos filhos ao gravar; filhos antes dos pais ao apagar.
-const UPSERT_ORDER: Table[] = ['profiles', 'user_areas', 'routines', 'blocks', 'day_logs', 'block_logs', 'completed_tasks', 'companion', 'user_trophies', 'corner_slots', 'user_templates']
-const DELETE_ORDER: Table[] = ['block_logs', 'completed_tasks', 'blocks', 'day_logs', 'routines', 'corner_slots', 'user_trophies', 'user_areas', 'user_templates']
+const UPSERT_ORDER: Table[] = ['profiles', 'user_areas', 'routines', 'blocks', 'day_logs', 'block_logs', 'completed_tasks', 'companion', 'user_trophies', 'user_scene_items', 'corner_slots', 'user_templates']
+const DELETE_ORDER: Table[] = ['block_logs', 'completed_tasks', 'blocks', 'day_logs', 'routines', 'corner_slots', 'user_trophies', 'user_scene_items', 'user_areas', 'user_templates']
 
 const DEBOUNCE_MS = 600
 const BACKOFF_S = [2, 5, 10, 20, 30]
@@ -151,6 +153,14 @@ async function send(table: Table, kind: 'upsert' | 'delete', rows: Row[]): Promi
     }
     return null
   }
+  // Espaço do cantinho: cenário + número do espaço.
+  if (table === 'corner_slots') {
+    for (const r of rows) {
+      const { error } = await supabase.from(table).delete().eq('user_id', uid!).eq('scene_id', String(r.scene_id)).eq('slot', Number(r.slot))
+      if (error) return error
+    }
+    return null
+  }
   if (table === 'user_trophies') {
     for (const r of rows) {
       const { error } = await supabase.from(table).delete().eq('user_id', uid!).eq('trophy_id', String(r.trophy_id)).eq('tier', Number(r.tier))
@@ -158,7 +168,7 @@ async function send(table: Table, kind: 'upsert' | 'delete', rows: Row[]): Promi
     }
     return null
   }
-  const col = table === 'day_logs' ? 'date' : table === 'completed_tasks' ? 'block_id' : table === 'corner_slots' ? 'slot' : 'id'
+  const col = table === 'day_logs' ? 'date' : table === 'completed_tasks' ? 'block_id' : table === 'user_scene_items' ? 'item_id' : 'id'
   const { error } = await supabase.from(table).delete().eq('user_id', uid!).in(col, rows.map((r) => String(r[col])))
   return error
 }

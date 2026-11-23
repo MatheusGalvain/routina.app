@@ -15,8 +15,9 @@ import { dayKey } from '../lib/dates'
 import { Icon } from '../components/ui/ui'
 import { APP_KEY } from '../lib/storageKeys'
 import { TIERS, TIER_LIST, TROPHIES, trophyTitle, type TrophyId, type TrophyTier } from '../data/trophies'
-import { EMPTY_SLOTS, tiersOf } from '../lib/corner'
-import type { CornerSlots, TrophyMap } from '../types'
+import { EMPTY_LAYOUT, EMPTY_LAYOUTS, tiersOf } from '../lib/corner'
+import type { CornerLayout, SceneItemMap, TrophyMap } from '../types'
+import { ITEM_BY_ID, SCENES, SCENE_ITEMS, type SceneItemId } from '../data/scenes'
 import type { AreaId } from '../types'
 import { clearDev, simulateActiveDays, simulateArea, simulateIdle, simulateStreak, testRoutine } from './simulate'
 
@@ -112,6 +113,7 @@ export default function DevPanel() {
               <Simulation onStatus={setStatus} />
               <Overrides />
               <Trophies onStatus={setStatus} />
+              <Scenes onStatus={setStatus} />
               <Safety onStatus={setStatus} />
             </div>
             <p aria-live="polite" className="m-0 min-h-[38px] border-t border-line px-4 py-2.5 font-mono text-[11.5px] text-soft">
@@ -359,7 +361,7 @@ function Overrides() {
         <Btn onClick={() => push({ type: 'secret' })}>Disparar chegada do coelho</Btn>
       </Row>
       <div className="flex flex-col gap-1.5">
-        <span className="text-[12px] text-muted">Dias por área no céu do cantinho</span>
+        <span className="text-[12px] text-muted">Dias por área na semana (constelações do cosmos e vaga-lumes da floresta)</span>
         {areas.map((a) => (
           <div key={a.id} className="flex items-center gap-2">
             <span className="w-16 text-[12px]" style={{ color: a.color }}>
@@ -420,7 +422,7 @@ function Trophies({ onStatus }: { onStatus: (s: string) => void }) {
   const push = usePetEvents((s) => s.push)
   const [id, setId] = useState<TrophyId>(TROPHIES[0].id)
   const [tier, setTier] = useState<TrophyTier>(2)
-  const simulating = !!(dev.trophies || dev.slots)
+  const simulating = !!(dev.trophies || dev.layouts)
   const select = 'rounded-lg border border-line bg-panel px-2 py-1.5 text-[12.5px] text-soft'
 
   return (
@@ -439,7 +441,7 @@ function Trophies({ onStatus }: { onStatus: (s: string) => void }) {
         </Btn>
         <Btn
           onClick={() => {
-            dev.set({ trophies: {}, slots: EMPTY_SLOTS })
+            dev.set({ trophies: {}, layouts: EMPTY_LAYOUTS })
             onStatus('Troféus limpos (simulado).')
           }}
         >
@@ -487,13 +489,14 @@ function Trophies({ onStatus }: { onStatus: (s: string) => void }) {
             let map = shownTrophies()
             if (!TROPHIES.some((t) => tiersOf(map, t.id).length)) map = withTiers({}, TROPHIES.flatMap((t) => TIER_LIST.map((n) => [t.id, n] as [TrophyId, TrophyTier])))
             const owned = TROPHIES.filter((t) => tiersOf(map, t.id).length).sort(() => Math.random() - 0.5)
-            const slots = EMPTY_SLOTS.map((_, i) => {
+            const layout = EMPTY_LAYOUT.map((_, i) => {
               const t = owned[i]
               if (!t) return null
               const tiers = tiersOf(map, t.id)
-              return { trophyId: t.id, tier: tiers[Math.floor(Math.random() * tiers.length)] }
-            }) as CornerSlots
-            dev.set({ trophies: map, slots })
+              return { kind: 'trophy', id: t.id, tier: tiers[Math.floor(Math.random() * tiers.length)] }
+            }) as CornerLayout
+            const scene = dev.scene ?? useRotina.getState().scene
+            dev.set({ trophies: map, layouts: { ...(dev.layouts ?? useRotina.getState().cornerLayouts), [scene]: layout } })
             onStatus('Espaços preenchidos com uma combinação aleatória (simulado).')
           }}
         >
@@ -502,8 +505,97 @@ function Trophies({ onStatus }: { onStatus: (s: string) => void }) {
         <Btn
           disabled={!simulating}
           onClick={() => {
-            dev.set({ trophies: null, slots: null })
+            dev.set({ trophies: null, layouts: null })
             onStatus('De volta aos troféus reais.')
+          }}
+        >
+          Voltar aos reais
+        </Btn>
+      </Row>
+    </Section>
+  )
+}
+
+/** Todos os itens de cenário, desbloqueados agora (simulado). */
+const allItems = (): SceneItemMap => Object.fromEntries(SCENE_ITEMS.map((i) => [i.id, { unlockedAt: new Date().toISOString() }]))
+
+/**
+ * Cenários e itens simulados: ficam só em useDevOverrides (sem persist). Enquanto houver simulação,
+ * o cantinho, a gaveta e a coleção mostram e editam a cópia simulada; nada vai para o Supabase.
+ * Os dias por área (constelações e vaga-lumes) ficam em "Atalhos de visualização".
+ */
+function Scenes({ onStatus }: { onStatus: (s: string) => void }) {
+  const dev = useDevOverrides()
+  const push = usePetEvents((s) => s.push)
+  const realScene = useRotina((s) => s.scene)
+  const [item, setItem] = useState<SceneItemId>(SCENE_ITEMS[0].id)
+  const simulating = !!(dev.scene || dev.sceneItems || dev.layouts)
+  const select = 'rounded-lg border border-line bg-panel px-2 py-1.5 text-[12.5px] text-soft'
+  const scene = dev.scene ?? realScene
+
+  return (
+    <Section title="Cenários e itens (só neste aparelho)">
+      <p className="m-0 text-[11.5px] text-muted">
+        {simulating ? 'Simulando: o cantinho e a coleção mostram o cenário e os itens de teste.' : 'Mostrando o cenário e os itens reais.'}
+      </p>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[12px] text-muted">Cenário</span>
+        <Row>
+          {SCENES.map((s) => (
+            <Btn key={s.id} pressed={scene === s.id} onClick={() => dev.set({ scene: s.id })}>
+              {s.name}
+            </Btn>
+          ))}
+        </Row>
+      </div>
+      <Row>
+        <Btn
+          onClick={() => {
+            dev.set({ sceneItems: allItems() })
+            onStatus('Todos os itens de cenário desbloqueados (simulado).')
+          }}
+        >
+          Desbloquear todos os itens
+        </Btn>
+        <Btn
+          onClick={() => {
+            dev.set({ sceneItems: {}, layouts: EMPTY_LAYOUTS })
+            onStatus('Itens de cenário limpos (simulado).')
+          }}
+        >
+          Limpar itens
+        </Btn>
+      </Row>
+      <Row>
+        <select aria-label="Item do aviso" value={item} onChange={(e) => setItem(e.target.value as SceneItemId)} className={select}>
+          {SCENES.map((s) => (
+            <optgroup key={s.id} label={s.name}>
+              {SCENE_ITEMS.filter((i) => i.scene === s.id).map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        <Btn
+          onClick={() => {
+            // O aviso tem "Colocar no cantinho": liga a simulação antes, para não gravar na montagem real.
+            const base = dev.sceneItems ?? useRotina.getState().sceneItems
+            dev.set({ sceneItems: { ...base, [item]: base[item] ?? { unlockedAt: new Date().toISOString() } } })
+            push({ type: 'item', item })
+            onStatus(`Aviso de item novo: ${ITEM_BY_ID[item].name}.`)
+          }}
+        >
+          Disparar aviso de item novo
+        </Btn>
+      </Row>
+      <Row>
+        <Btn
+          disabled={!simulating}
+          onClick={() => {
+            dev.set({ scene: null, sceneItems: null, layouts: null })
+            onStatus('De volta ao cenário e aos itens reais.')
           }}
         >
           Voltar aos reais

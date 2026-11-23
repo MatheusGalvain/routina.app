@@ -52,15 +52,47 @@ body {
 }
 
 /* Estrelas acesas do cantinho piscando devagar. */
+/*
+ * Animações de ambiente dos cenários do cantinho (src/components/scenes, src/data/scenes.tsx).
+ * Desligam com movimento reduzido: pelo aparelho (prefers-reduced-motion), a não ser que o Perfil
+ * diga "Sempre animar" (html[data-motion="sempre"]), ou pelo Perfil em "Reduzir".
+ */
+@keyframes sc-tw { 50% { opacity: 0.2; } }
+@keyframes sc-ff {
+  0%, 100% { opacity: 0.15; transform: translate(0, 0); }
+  50% { opacity: 1; transform: translate(var(--x, 6px), var(--y, -10px)); }
+}
+@keyframes sc-drift { to { transform: translateX(40px); } }
+@keyframes sc-shoot {
+  0%, 72% { opacity: 0; transform: translate(0, 0); }
+  76% { opacity: 1; }
+  92%, 100% { opacity: 0; transform: translate(-220px, 90px); }
+}
+@keyframes sc-flick { 50% { transform: scaleY(0.9) scaleX(1.05); } }
+@keyframes sc-glowpulse { 50% { opacity: 0.55; } }
+
+.sc-tw { animation: sc-tw var(--d, 3s) ease-in-out var(--dl, 0s) infinite; }
+.sc-ff { animation: sc-ff var(--d, 4s) ease-in-out var(--dl, 0s) infinite; }
+.sc-mist { animation: sc-drift 18s ease-in-out infinite alternate; }
+.sc-mist-b { animation-duration: 24s; animation-direction: alternate-reverse; }
+.sc-shoot { opacity: 0; animation: sc-shoot 7s linear infinite; }
+.sc-flick { animation: sc-flick 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center bottom; }
+.sc-glowpulse { animation: sc-glowpulse 2.8s ease-in-out infinite; }
+
+/* Brilho do troféu de cristal. */
 @keyframes twinkle {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
 }
-.twinkle {
-  animation: twinkle 4s ease-in-out infinite;
-}
+.twinkle { animation: twinkle 4s ease-in-out infinite; }
+html[data-motion='reduzir'] .twinkle { animation: none; }
 @media (prefers-reduced-motion: reduce) {
-  .twinkle { animation: none; }
+  html:not([data-motion='sempre']) .twinkle { animation: none; }
+}
+
+html[data-motion='reduzir'] .sc-anim { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion='sempre']) .sc-anim { animation: none !important; }
 }
 
 :focus-visible {

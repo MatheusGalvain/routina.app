@@ -4,35 +4,14 @@ import { useDevOverrides } from './useDevOverrides'
 import { usePetEvents } from './usePetEvents'
 import { useStats } from './useCompanion'
 import { hasDev } from '../lib/devData'
-import { validSlots } from '../lib/corner'
 import { TROPHIES, earnedTier, type TrophyId, type TrophyTier } from '../data/trophies'
-import type { CornerSlots, TrophyMap, TrophyUnlock } from '../types'
+import type { TrophyMap, TrophyUnlock } from '../types'
 
-/**
- * Troféus que a tela mostra e espaços do cantinho. Com as sobrescritas do painel dev,
- * tudo vem de lá e as edições vão para lá (nunca para o store real nem para o Supabase).
- */
+/** Troféus que a tela mostra (os simulados pelo painel dev, se houver). */
 export function useTrophyView() {
   const real = useRotina((s) => s.trophies)
-  const realSlots = useRotina((s) => s.cornerSlots)
   const dev = useDevOverrides((s) => s.trophies)
-  const devSlots = useDevOverrides((s) => s.slots)
-  const trophies = dev ?? real
-  return { trophies, slots: validSlots(devSlots ?? realSlots, trophies), simulated: !!(dev || devSlots) }
-}
-
-/** Grava os espaços (no painel dev, se ele estiver simulando). */
-export function writeSlots(next: CornerSlots) {
-  const d = useDevOverrides.getState()
-  if (d.trophies || d.slots) d.set({ slots: next })
-  else useRotina.getState().setCornerSlots(next)
-}
-
-/** Espaços atuais, fora de componentes. */
-export function currentSlots(): CornerSlots {
-  const d = useDevOverrides.getState()
-  const trophies = d.trophies ?? useRotina.getState().trophies
-  return validSlots(d.slots ?? useRotina.getState().cornerSlots, trophies)
+  return { trophies: dev ?? real, simulated: !!dev }
 }
 
 /** Níveis que as estatísticas já garantem mas ainda não estão no mapa. */

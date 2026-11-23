@@ -5,6 +5,8 @@ import { useShownPet } from './store/useCompanion'
 import { useSyncTodayPlan } from './store/useSyncTodayPlan'
 import { useCompanionProgress } from './store/useCompanion'
 import { useTrophyProgress } from './store/useTrophies'
+import { useSceneItemProgress } from './store/useCorner'
+import { SceneDefs } from './data/scenes'
 import { PetCelebration } from './components/pets/PetCelebration'
 import { useAuth } from './store/useAuth'
 import { Icon } from './components/ui/ui'
@@ -126,11 +128,14 @@ function SignedIn() {
   useSyncTodayPlan()
   useCompanionProgress()
   useTrophyProgress()
+  useSceneItemProgress()
   useReturnAfterLogin()
   useFirstAccessOnboarding()
 
   return (
     <>
+      {/* Desenhos dos cenários e itens (usados por id em todo o app). */}
+      <SceneDefs />
       <Outlet />
       <PetCelebration />
       <Toaster />

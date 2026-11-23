@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { AreaId, CornerSlots, PetKind, PetPhase, PetState, TrophyMap } from '../types'
+import type { AreaId, CornerLayouts, PetKind, PetPhase, PetState, SceneItemMap, TrophyMap } from '../types'
+import type { SceneId } from '../data/scenes'
 
 export type ForcedState = PetState | 'dormindo'
 
@@ -12,8 +13,12 @@ interface DevOverrides {
   secretPet: boolean
   /** Troféus de mentira (só neste aparelho). `null` = os reais. */
   trophies: TrophyMap | null
-  /** Espaços do cantinho de mentira. `null` = os reais. */
-  slots: CornerSlots | null
+  /** Montagens do cantinho de mentira. `null` = as reais. */
+  layouts: CornerLayouts | null
+  /** Cenário de mentira. `null` = o real. */
+  scene: SceneId | null
+  /** Itens de cenário de mentira. `null` = os reais. */
+  sceneItems: SceneItemMap | null
   /** Dias (0–7) por área no céu do cantinho. */
   corner: Partial<Record<AreaId, number>>
   set: (patch: Partial<Omit<DevOverrides, 'set' | 'setCorner'>>) => void
@@ -31,7 +36,9 @@ export const useDevOverrides = create<DevOverrides>()((set, get) => ({
   unlockAll: false,
   secretPet: false,
   trophies: null,
-  slots: null,
+  layouts: null,
+  scene: null,
+  sceneItems: null,
   corner: {},
   set: (patch) => set(patch),
   setCorner: (area, days) => {
