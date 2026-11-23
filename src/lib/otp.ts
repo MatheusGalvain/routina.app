@@ -2,11 +2,11 @@
  * Login por código (OTP do e-mail).
  *
  * OTP_LENGTH precisa ser igual ao "Email OTP Length" do Supabase
- * (Authentication → Sign In / Providers → Email). O padrão do Supabase é 6; se mudar lá,
+ * (Authentication → Sign In / Providers → Email). Este projeto usa 8; se mudar lá,
  * defina VITE_OTP_LENGTH com o mesmo número.
  */
 const envLength = Number(import.meta.env.VITE_OTP_LENGTH)
-export const OTP_LENGTH = Number.isInteger(envLength) && envLength >= 6 && envLength <= 10 ? envLength : 6
+export const OTP_LENGTH = Number.isInteger(envLength) && envLength >= 6 && envLength <= 10 ? envLength : 8
 
 /** O mesmo e-mail no envio e na verificação: sem espaços e em minúsculas. */
 export const normalizeEmail = (email: string) => email.trim().toLowerCase()
