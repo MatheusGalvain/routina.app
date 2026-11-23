@@ -57,7 +57,12 @@ export function RootLayout() {
 
   useEffect(() => {
     if (renaming) return
-    if (!hash) return window.scrollTo({ top: 0 })
+    // Sem `return window.scrollTo(...)`: no Chrome ele devolve uma Promise, e o React
+    // trataria isso como a limpeza do efeito ("l is not a function" ao trocar de página).
+    if (!hash) {
+      window.scrollTo({ top: 0 })
+      return
+    }
     // A página pode estar carregando: procura a âncora por até 2 s.
     let tries = 0
     const timer = window.setInterval(() => {
