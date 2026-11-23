@@ -85,9 +85,9 @@ export const removedDefaults = (areas: Area[]) => DEFAULT_AREAS.filter((d) => !a
 export const normalizeAreas = (areas: Area[]) => [...areas].sort((a, b) => a.position - b.position).map((a, position) => (a.position === position ? a : { ...a, position }))
 
 export const BLOCK_TYPES = [
-  { id: 'habito', name: 'Hábito', hint: 'marca feito ou não, todo dia' },
-  { id: 'contador', name: 'Contador', hint: 'soma até uma meta (água, páginas…)' },
   { id: 'tarefa', name: 'Tarefa', hint: 'some depois de feita' },
+  { id: 'contador', name: 'Contador', hint: 'soma até uma meta (água, páginas…)' },
+  { id: 'habito', name: 'Hábito', hint: 'marca feito ou não, todo dia' },
 ] as const
 
 /** Cores de rotina e modelo: os tons de atenção, destaque, concluído, pulado, descanso e Estudo. */
