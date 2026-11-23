@@ -1,5 +1,5 @@
 import { useId, type CSSProperties, type ReactNode } from 'react'
-import { useReducedMotion } from 'framer-motion'
+import { useReducedMotionPref } from '../store/usePetPrefs'
 import type { DefaultAreaKey } from '../types'
 import type { Stats } from '../lib/stats'
 import { crescent } from './accessories'
@@ -204,7 +204,7 @@ const SPARKS: [number, number, number][] = [
  */
 export function Trophy({ id, tier, size = 48, silhouette = false, className = '' }: { id: TrophyId; tier: TrophyTier; size?: number; silhouette?: boolean; className?: string }) {
   const gid = `crystal-${useId().replace(/:/g, '')}`
-  const reduce = useReducedMotion()
+  const reduce = useReducedMotionPref()
   const crystal = tier === 4 && !silhouette
   const vars = {
     '--t': silhouette ? '#161B27' : crystal ? `url(#${gid})` : TIERS[tier].color,

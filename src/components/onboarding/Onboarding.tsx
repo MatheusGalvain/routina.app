@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { useAreas, useRotina } from '../../store/useRotina'
-import { useOnboarding, type OnboardingStep } from '../../store/useOnboarding'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { chooseFavorite } from '../../store/useCompanion'
 import { setOnboardingDone } from '../../sync/session'
 import { TEMPLATES } from '../../data/templates'
@@ -11,6 +11,8 @@ import { Pet } from '../pets/Pet'
 import { PETS, PET_ORDER } from '../pets/pets'
 import { Icon } from '../ui/ui'
 import type { BasePetKind, Block } from '../../types'
+
+type OnboardingStep = 1 | 2 | 3
 
 const PET_NAME_MAX = 24
 /** O bloco da primeira vitória "do zero". Vai para Corpo (ou a primeira área, se Corpo foi excluída). */
@@ -184,7 +186,7 @@ function StepFirstWin({ routineId, petKind, onDone }: { routineId: string | null
 
   return (
     <div className="flex flex-col items-center gap-5 text-center">
-      <Pet kind={petKind} state={won ? 'concluido' : 'foco'} size={120} interactive={false} />
+      <Pet kind={petKind} state={won ? 'concluido' : 'foco'} size={120} play label={`${PETS[petKind].name}: toque, toque várias vezes ou segure para fazer carinho`} />
       <div className="flex w-full max-w-[420px] items-center gap-3 rounded-2xl border border-line bg-panel-2 px-4 py-3.5 text-left">
         <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 ${won ? 'border-ok bg-ok text-ink' : 'border-line-strong text-transparent'}`} aria-hidden="true">
           <Icon name="check" size={18} />
@@ -222,82 +224,77 @@ const TITLES: Record<OnboardingStep, { title: string; sub: string }> = {
   3: { title: 'Sua primeira vitória', sub: 'Vamos marcar um bloco fácil agora mesmo.' },
 }
 
+const parseStep = (v: string | null): OnboardingStep => (v === '2' ? 2 : v === '3' ? 3 : 1)
+
 /**
- * Onboarding de primeiro acesso, em tela cheia: adotar o pet, escolher como começar e a primeira vitória.
+ * Rota /bem-vindo: onboarding de primeiro acesso, em tela cheia (sem o header do app).
+ * O passo fica na URL (?passo=1|2|3, e &rotina=<id> no 3), então recarregar não perde o lugar.
+ * &completo=1 (painel dev) passa pelos 3 passos mesmo se a pessoa já tem rotina.
  * "Pular por enquanto" em todos os passos; pulando ou concluindo, fica salvo no perfil e não volta sozinho.
  */
-export function Onboarding({ onFinish }: { onFinish: () => void }) {
-  const { open, step, routineId, full, goTo, close } = useOnboarding()
+export function BemVindo() {
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
   const kind = useRotina((s) => s.companion.kind)
   const hasRoutines = useRotina((s) => s.routines.some((r) => !r.dev))
   const titleRef = useRef<HTMLHeadingElement>(null)
 
-  useEffect(() => {
-    if (open) titleRef.current?.focus()
-  }, [open, step])
+  const asked = parseStep(params.get('passo'))
+  const routineId = params.get('rotina')
+  const full = params.get('completo') === '1'
+  // Sem pet, começa pelo passo 1; o passo 3 precisa da rotina escolhida no 2.
+  const step: OnboardingStep = !kind ? 1 : asked === 3 && !routineId ? 2 : asked
 
-  // Sem rolar a página de trás enquanto o onboarding está aberto.
-  useEffect(() => {
-    if (!open) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [open])
+  const goTo = (next: OnboardingStep, rotina?: string) => {
+    const p = new URLSearchParams({ passo: String(next) })
+    if (rotina) p.set('rotina', rotina)
+    if (full) p.set('completo', '1')
+    setParams(p)
+  }
 
-  const end = (finished: boolean) => {
+  useEffect(() => {
+    titleRef.current?.focus()
+  }, [step])
+
+  const end = () => {
     setOnboardingDone()
-    close()
-    if (finished) onFinish()
+    navigate('/', { replace: true })
   }
   const petKind: BasePetKind = kind && kind !== 'coelho' ? kind : 'gatinho'
   const t = TITLES[step]
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="onb-title"
-          className="fixed inset-0 z-[90] overflow-y-auto bg-ink"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <div className="mx-auto flex min-h-full w-full max-w-[640px] flex-col gap-6 px-4 pt-5 pb-10 sm:px-6 sm:pt-8">
-            <div className="flex items-center justify-between gap-3">
-              <Progress step={step} />
-              <button type="button" onClick={() => end(false)} className="min-h-11 rounded-full px-3 text-sm font-semibold text-muted hover:text-soft">
-                Pular por enquanto
-              </button>
-            </div>
+    <motion.div className="min-h-screen bg-ink" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <main className="mx-auto flex min-h-full w-full max-w-[640px] flex-col gap-6 px-4 pt-5 pb-10 sm:px-6 sm:pt-8">
+        <div className="flex items-center justify-between gap-3">
+          <Progress step={step} />
+          <button type="button" onClick={end} className="min-h-11 rounded-full px-3 text-sm font-semibold text-muted hover:text-soft">
+            Pular por enquanto
+          </button>
+        </div>
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={step}
-                className="flex flex-col gap-6"
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
-                transition={{ duration: 0.2 }}
-              >
-                <header className="flex flex-col gap-1.5">
-                  <h1 id="onb-title" ref={titleRef} tabIndex={-1} className="m-0 text-[28px] leading-tight font-extrabold tracking-tight outline-none sm:text-[34px]">
-                    {t.title}
-                  </h1>
-                  <p className="m-0 text-muted">{t.sub}</p>
-                </header>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            className="flex flex-col gap-6"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.2 }}
+          >
+            <header className="flex flex-col gap-1.5">
+              <h1 ref={titleRef} tabIndex={-1} className="m-0 text-[28px] leading-tight font-extrabold tracking-tight outline-none sm:text-[34px]">
+                {t.title}
+              </h1>
+              <p className="m-0 text-muted">{t.sub}</p>
+            </header>
 
-                {step === 1 && <StepAdopt onNext={() => (hasRoutines && !full ? end(true) : goTo(2))} />}
-                {step === 2 && <StepStart onPicked={(id) => goTo(3, id)} />}
-                {step === 3 && <StepFirstWin routineId={routineId} petKind={petKind} onDone={() => end(true)} />}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            {step === 1 && <StepAdopt onNext={() => (hasRoutines && !full ? end() : goTo(2))} />}
+            {step === 2 && <StepStart onPicked={(id) => goTo(3, id)} />}
+            {step === 3 && <StepFirstWin routineId={routineId} petKind={petKind} onDone={end} />}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+    </motion.div>
   )
 }

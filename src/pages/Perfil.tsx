@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom'
+import { useTour } from '../components/help/Tour'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRotina } from '../store/useRotina'
 import { useAuth, signOut } from '../store/useAuth'
@@ -13,6 +15,8 @@ import { HelpButton, HelpPet } from '../components/help/HelpButton'
 import type { HelpKey } from '../data/help'
 import { Pet } from '../components/pets/Pet'
 import { STATE_STYLE } from '../components/pets/pets'
+import { canVibrate, usePetPrefs, type MotionPref } from '../store/usePetPrefs'
+import { useReducedMotion } from 'framer-motion'
 
 /** Fusos mais usados no Brasil e em Portugal. */
 const TIMEZONES: { id: string; label: string }[] = [
@@ -51,7 +55,15 @@ function Card({ title, children, id, help }: { title: string; children: ReactNod
 }
 
 /** Perfil pessoal e privado: quem é, números, vitrine de troféus e configurações. */
-export function Perfil({ openPrivacy, openCollection, startTour }: { openPrivacy: () => void; openCollection: () => void; startTour: () => void }) {
+export function Perfil() {
+  const navigate = useNavigate()
+  const openPrivacy = () => navigate('/privacidade')
+  const openCollection = () => navigate('/pet#colecao')
+  // O tour passa pelos "?" da tela Início.
+  const startTour = () => {
+    navigate('/')
+    useTour.getState().start()
+  }
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5">
       <Header />
@@ -110,6 +122,7 @@ function Header() {
           phase={pet.phase}
           accessories={pet.accessories}
           size={96}
+          play
           label={`Seu pet: ${pet.sleeping ? 'dormindo' : look.title}`}
         />
       </div>
@@ -221,6 +234,93 @@ function Showcase({ openCollection }: { openCollection: () => void }) {
   )
 }
 
+/** Interruptor acessível (role="switch"), com o rótulo e a explicação ligados a ele. */
+function Switch({ id, label, hint, checked, disabled, onChange }: { id: string; label: string; hint: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span id={`${id}-rotulo`} className="text-sm font-semibold text-soft">
+          {label}
+        </span>
+        <span id={`${id}-dica`} className="text-[13px] text-muted">
+          {hint}
+        </span>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={`${id}-rotulo`}
+        aria-describedby={`${id}-dica`}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={`relative h-8 w-14 shrink-0 rounded-full border transition-colors disabled:opacity-40 ${checked ? 'border-accent bg-accent' : 'border-line-strong bg-panel-2'}`}
+      >
+        <span
+          aria-hidden="true"
+          className={`absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full transition-all ${checked ? 'left-[26px] bg-ink' : 'left-1 bg-muted'}`}
+        />
+      </button>
+    </div>
+  )
+}
+
+const MOTION_OPTIONS: { id: MotionPref; label: string }[] = [
+  { id: 'sistema', label: 'Seguir o aparelho' },
+  { id: 'sempre', label: 'Sempre animar' },
+  { id: 'reduzir', label: 'Reduzir' },
+]
+
+/** Animações, sons e vibração. Ficam salvos neste aparelho. */
+function PetPrefsFields() {
+  const { sound, vibrate, motion, set } = usePetPrefs()
+  const vibrates = canVibrate()
+  const systemReduces = useReducedMotion()
+  return (
+    <fieldset className="m-0 flex flex-col gap-4 border-0 border-t border-line p-0 pt-4">
+      <legend className="sr-only">Animações, sons e vibração</legend>
+      <p className="m-0 text-sm font-bold">Animações, sons e vibração</p>
+      <div className="flex flex-col gap-2">
+        <span id="pref-mov-rotulo" className="text-sm font-semibold text-soft">
+          Animações
+        </span>
+        <div role="radiogroup" aria-labelledby="pref-mov-rotulo" aria-describedby="pref-mov-dica" className="flex flex-wrap gap-1 rounded-full border border-line bg-ink p-1">
+          {MOTION_OPTIONS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={motion === o.id}
+              onClick={() => set({ motion: o.id })}
+              className={`min-h-10 flex-1 rounded-full px-3 text-[13px] font-semibold whitespace-nowrap ${motion === o.id ? 'bg-accent text-ink' : 'text-muted hover:text-soft'}`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <span id="pref-mov-dica" className="text-[13px] text-muted">
+          {motion === 'sistema'
+            ? systemReduces
+              ? 'Seu aparelho pede menos movimento, então o pet não pula nem gira. Escolha "Sempre animar" para ver tudo.'
+              : 'Seu aparelho permite animações: o pet pula, gira e acompanha o mouse.'
+            : motion === 'sempre'
+              ? 'Pulos, giros e todas as animações ligados, mesmo se o aparelho pedir menos movimento.'
+              : 'Sem pulos nem giros: o pet só muda de expressão.'}
+        </span>
+      </div>
+      <Switch id="pref-som" label="Sons do pet" hint="Bipes curtos quando você brinca com ele." checked={sound} onChange={(v) => set({ sound: v })} />
+      <Switch
+        id="pref-vibrar"
+        label="Vibração"
+        hint={vibrates ? 'Uma vibração curta nos combos de toques e no carinho.' : 'Este aparelho ou navegador não vibra.'}
+        checked={vibrate && vibrates}
+        disabled={!vibrates}
+        onChange={(v) => set({ vibrate: v })}
+      />
+    </fieldset>
+  )
+}
+
 function Settings({ openPrivacy }: { openPrivacy: () => void }) {
   const email = useAuth((s) => s.session?.user.email)
   const timezone = useSession((s) => s.profile?.timezone) ?? 'America/Sao_Paulo'
@@ -265,6 +365,8 @@ function Settings({ openPrivacy }: { openPrivacy: () => void }) {
           ))}
         </select>
       </label>
+
+      <PetPrefsFields />
 
       <div className="flex flex-col gap-2 border-t border-line pt-4">
         <p className="m-0 text-sm text-muted">

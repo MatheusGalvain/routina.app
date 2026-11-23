@@ -1,8 +1,11 @@
 import { AnimatePresence, motion, useAnimationControls } from 'framer-motion'
+import { useReducedMotionPref } from '../../store/usePetPrefs'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AccessoryId, PetKind, PetPhase, PetState } from '../../types'
 import { ACCESSORY_BY_ID, SLOT_ORDER } from '../../data/accessories'
 import { SPECIES, STATE_STYLE, type EyeStyle } from './pets'
+import { PLAY_SLOW, usePetInteraction } from './usePetInteraction'
+import { DizzyStars, Hearts, RestZ, SpecialBehind, SpecialFront, YawnMouth } from './PetPlayLayers'
 
 const INK = '#0A0D14'
 
@@ -20,7 +23,21 @@ function Shine({ x, y, star, bottom }: { x: number; y: number; star: boolean; bo
 
 function Eye({ cx, cy, style, side, blink, scale, star = false }: { cx: number; cy: number; style: EyeStyle; side: number; blink: boolean; scale: number; star?: boolean }) {
   let shape
-  if (style === 'happy') shape = <path d={`M${cx - 7},${cy + 3} Q${cx},${cy - 6} ${cx + 7},${cy + 3}`} fill="none" stroke={INK} strokeWidth={3.5} strokeLinecap="round" />
+  if (style === 'spiral')
+    // Tonto: espiral girando no lugar do olho.
+    shape = (
+      <motion.path
+        d={`M${cx},${cy} m0.5,0 a0.9,0.9 0 0 1 -1.8,0 a2,2 0 0 1 4,0 a3.2,3.2 0 0 1 -6.4,0 a4.4,4.4 0 0 1 8.8,0`}
+        fill="none"
+        stroke={INK}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        // Gira no centro da própria caixa (o padrão do framer-motion em SVG).
+        animate={{ rotate: side === 0 ? 360 : -360 }}
+        transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
+      />
+    )
+  else if (style === 'happy') shape = <path d={`M${cx - 7},${cy + 3} Q${cx},${cy - 6} ${cx + 7},${cy + 3}`} fill="none" stroke={INK} strokeWidth={3.5} strokeLinecap="round" />
   else if (style === 'closed') shape = <path d={`M${cx - 6},${cy} Q${cx},${cy + 5} ${cx + 6},${cy}`} fill="none" stroke={INK} strokeWidth={3.5} strokeLinecap="round" />
   else if (style === 'meh')
     // Sem graça: pálpebra reta caída sobre o olho, sem sobrancelha franzida.
@@ -102,6 +119,11 @@ interface PetProps {
   onPoke?: () => void
   /** false = só desenho (para usar dentro de outro botão). */
   interactive?: boolean
+  /**
+   * Pet grande que dá para brincar: combos de toques, carinho segurando, comportamentos parados
+   * e olhos que seguem o mouse (ver usePetInteraction). Sem isso, o toque só aperta e volta.
+   */
+  play?: boolean
   /** Nome falado por leitores de tela. */
   label?: string
   /** Só a forma escura, com um brilho leve em volta (pet ainda desconhecido). */
@@ -115,6 +137,8 @@ interface PetProps {
  * num balão de emoção de ~2 s quando muda e no ritmo: pulinho ao concluir,
  * flutuar lento no descanso e balanço leve no foco.
  * Trocar de espécie (`kind`) faz a troca com o efeito de sumir e aparecer.
+ * Com `play`, ganha as brincadeiras de usePetInteraction; com prefers-reduced-motion,
+ * pulos e giros viram só mudanças de expressão.
  */
 export function Pet({
   kind,
@@ -127,6 +151,7 @@ export function Pet({
   float = true,
   onPoke,
   interactive = true,
+  play: playful = false,
   label,
   silhouette = false,
   className = '',
@@ -134,10 +159,29 @@ export function Pet({
   const species = SPECIES[kind]
   const current = state ?? species.homeState
   const look = STATE_STYLE[current]
-  const eyeStyle: EyeStyle = sleeping ? 'closed' : (mood ?? look.eyeStyle)
+  const reduced = useReducedMotionPref()
+  const rootRef = useRef<HTMLElement>(null)
+  const canPlay = interactive && playful && !silhouette
+  const { play, bind } = usePetInteraction({ enabled: canPlay, paused: sleeping || silhouette, reduced, ref: rootRef, onTap: onPoke })
+  const reaction = play.reaction?.type
+
+  // Expressão: as brincadeiras mandam nos olhos enquanto duram.
+  let eyeStyle: EyeStyle = sleeping ? 'closed' : (mood ?? look.eyeStyle)
+  if (!sleeping) {
+    if (play.dizzy) eyeStyle = 'spiral'
+    else if (play.resting) eyeStyle = 'closed'
+    else if (play.petting || reaction === 'thanks') eyeStyle = 'happy'
+    else if (play.idle?.type === 'yawn') eyeStyle = 'closed'
+    else if (reaction === 'special' && kind === 'ourico') eyeStyle = 'closed'
+    // Sem movimento: o pulo e o giro aparecem como olhos felizes.
+    else if (reduced && (reaction === 'hop' || reaction === 'spin' || reaction === 'special')) eyeStyle = 'happy'
+  }
+
   const [blink, setBlink] = useState(false)
   const controls = useAnimationControls()
   const hopControls = useAnimationControls()
+  const reactControls = useAnimationControls()
+  const shadowControls = useAnimationControls()
   const hops = species.idle === 'hop' && float && !sleeping && !silhouette
 
   // Pulinho curto de vez em quando, no lugar do flutuar.
@@ -159,18 +203,29 @@ export function Pet({
     return () => window.clearTimeout(timer)
   }, [hops, size])
 
+  const blinkOnce = () => {
+    setBlink(true)
+    window.setTimeout(() => setBlink(false), 140)
+  }
   useEffect(() => {
     let timer: number
     const schedule = () => {
       timer = window.setTimeout(() => {
-        setBlink(true)
-        window.setTimeout(() => setBlink(false), 140)
+        blinkOnce()
         schedule()
       }, 2200 + Math.random() * 3500)
     }
     schedule()
     return () => window.clearTimeout(timer)
   }, [])
+
+  // Piscar duas vezes (comportamento parado).
+  useEffect(() => {
+    if (play.idle?.type !== 'blink2') return
+    blinkOnce()
+    const t = window.setTimeout(blinkOnce, 300 * PLAY_SLOW)
+    return () => window.clearTimeout(t)
+  }, [play.idle?.id])
 
   // Balão de emoção e pulinho quando o estado (ou o sono) muda — não na primeira renderização.
   const emotionKey = sleeping ? 'dormindo' : current
@@ -190,10 +245,89 @@ export function Pet({
     return () => window.clearTimeout(t)
   }, [emotionKey])
 
+  const squash = () => controls.start({ scale: [1, 1.14, 0.9, 1.04, 1], rotate: [0, -6, 5, 0, 0], transition: { duration: 0.55 * PLAY_SLOW } })
   const poke = () => {
-    controls.start({ scale: [1, 1.14, 0.9, 1.04, 1], rotate: [0, -6, 5, 0, 0], transition: { duration: 0.55 } })
+    void squash()
     onPoke?.()
   }
+
+  // Movimento de cada brincadeira (com reduced motion o framer-motion pula as transformações).
+  useEffect(() => {
+    if (!play.reaction) return
+    const s = size
+    const shadow = (scale: number[], duration: number, times?: number[]) =>
+      shadowControls.start({ opacity: [0, 0.5, 0.35, 0.5, 0], scaleX: scale, transition: { duration: duration * PLAY_SLOW, times } })
+    switch (play.reaction.type) {
+      case 'squash':
+        void squash()
+        break
+      case 'hop':
+        void reactControls.start({
+          y: [0, s * 0.04, -s * 0.34, 0, -s * 0.06, 0],
+          scaleY: [1, 0.86, 1.08, 0.92, 1.02, 1],
+          scaleX: [1, 1.1, 0.94, 1.06, 0.99, 1],
+          transition: { duration: 0.8 * PLAY_SLOW, times: [0, 0.12, 0.45, 0.72, 0.86, 1], ease: 'easeOut' },
+        })
+        void shadow([1, 1.1, 0.45, 1.1, 1], 0.8, [0, 0.12, 0.45, 0.72, 1])
+        break
+      case 'spin':
+        void reactControls
+          .start({
+            y: [0, s * 0.04, -s * 0.38, -s * 0.38, 0, 0],
+            rotate: [0, 0, 120, 300, 360, 360],
+            scaleY: [1, 0.85, 1.05, 1.05, 0.9, 1],
+            transition: { duration: 0.9 * PLAY_SLOW, times: [0, 0.12, 0.4, 0.62, 0.85, 1], ease: 'easeInOut' },
+          })
+          .then(() => reactControls.set({ rotate: 0 }))
+        void shadow([1, 1.1, 0.4, 0.4, 1.1], 0.9, [0, 0.12, 0.4, 0.62, 1])
+        break
+      case 'dizzy':
+        void reactControls.start({ rotate: [0, -9, 8, -7, 6, -4, 0], x: [0, -3, 3, -2, 2, 0, 0], transition: { duration: 2 * PLAY_SLOW, ease: 'easeInOut' } })
+        break
+      case 'thanks':
+        void reactControls.start({ y: [0, -s * 0.14, 0, -s * 0.04, 0], transition: { duration: 0.6 * PLAY_SLOW, ease: 'easeOut' } })
+        break
+      case 'special':
+        // Gatinho: o corpo fica parado; só o rabinho balança (camada SpecialBehind).
+        if (kind === 'gatinho') break
+        if (kind === 'sapinho') void reactControls.start({ rotate: [0, 0, 7, 7, 0], x: [0, 0, s * 0.03, s * 0.03, 0], transition: { duration: 1.2 * PLAY_SLOW, times: [0, 0.35, 0.55, 0.7, 1] } })
+        // Polvinho: dá um impulso para cima enquanto a tinta fica para trás.
+        else if (kind === 'polvinho')
+          void reactControls.start({ y: [0, s * 0.04, -s * 0.24, -s * 0.2, 0], scaleY: [1, 0.85, 1.1, 1, 1], transition: { duration: 1.5 * PLAY_SLOW, times: [0, 0.12, 0.4, 0.7, 1], ease: 'easeInOut' } })
+        else if (kind === 'pintinho') void reactControls.start({ y: [0, -s * 0.07, 0, -s * 0.07, 0, -s * 0.07, 0], transition: { duration: 0.9 * PLAY_SLOW } })
+        else if (kind === 'ourico')
+          void reactControls
+            .start({
+              scale: [1, 0.78, 0.78, 0.78, 1],
+              rotate: [0, 0, 360, 720, 720],
+              x: [0, 0, s * 0.22, s * 0.22, 0],
+              transition: { duration: 1.6 * PLAY_SLOW, times: [0, 0.15, 0.5, 0.8, 1], ease: 'easeInOut' },
+            })
+            .then(() => reactControls.set({ rotate: 0 }))
+        else if (kind === 'corujinha') void reactControls.start({ rotate: [0, -12, -12, 12, 12, 0], transition: { duration: 1.5 * PLAY_SLOW, ease: 'easeInOut' } })
+        else if (kind === 'coelho') {
+          void reactControls.start({
+            y: [0, s * 0.04, -s * 0.3, 0, 0],
+            scaleY: [1, 0.86, 1.08, 0.92, 1],
+            transition: { duration: 0.9 * PLAY_SLOW, times: [0, 0.12, 0.45, 0.75, 1], ease: 'easeOut' },
+          })
+          void shadow([1, 1.1, 0.5, 1.1, 1], 0.9, [0, 0.12, 0.45, 0.75, 1])
+        }
+        break
+    }
+  }, [play.reaction?.id])
+
+  // Para onde os olhos olham: olhar para os lados, a corujinha girando a cabeça ou o mouse.
+  const owlTurn = reaction === 'special' && kind === 'corujinha'
+  const eyeAnim =
+    play.idle?.type === 'look'
+      ? { x: [0, -3.2, -3.2, 3.2, 3.2, 0], y: 0 }
+      : owlTurn
+        ? { x: [0, -8, -8, 8, 8, 0], y: 0 }
+        : play.dizzy || play.petting || sleeping
+          ? { x: 0, y: 0 }
+          : { x: play.look.x, y: play.look.y }
+  const eyeTransition = play.idle?.type === 'look' || owlTurn ? { duration: (owlTurn ? 1.5 : 2.1) * PLAY_SLOW, ease: 'easeInOut' as const } : { type: 'spring' as const, stiffness: 180, damping: 18 }
 
   const items = SLOT_ORDER.flatMap((slot) => {
     const id = accessories.find((a) => ACCESSORY_BY_ID[a]?.slot === slot)
@@ -209,16 +343,34 @@ export function Pet({
   const resting = sleeping || current === 'descanso'
   const swaying = !sleeping && current === 'foco'
   const floatDuration = sleeping ? 5.5 : resting ? 5 : 3.2
+  const special = reaction === 'special' && !silhouette
 
   const Wrapper = interactive ? 'button' : 'div'
+  const status = play.resting ? 'descansando um pouquinho' : play.dizzy ? 'tonto' : sleeping ? 'dormindo' : look.title
   return (
     <Wrapper
+      ref={rootRef as never}
       {...(interactive
-        ? { type: 'button' as const, onClick: poke, 'aria-label': label ?? `${species.name}: ${sleeping ? 'dormindo' : look.title}` }
+        ? {
+            type: 'button' as const,
+            onClick: canPlay ? undefined : poke,
+            'aria-label': label ?? `${species.name}: ${status}`,
+            ...(canPlay ? bind : {}),
+          }
         : { 'aria-hidden': true })}
-      className={`relative shrink-0 rounded-full bg-transparent p-0 ${interactive ? 'cursor-pointer' : ''} ${className}`}
+      className={`relative shrink-0 rounded-full bg-transparent p-0 ${interactive ? 'cursor-pointer' : ''} ${canPlay ? 'touch-pan-y select-none [-webkit-touch-callout:none]' : ''} ${className}`}
       style={{ width: size, height: size }}
     >
+      {/* Sombra no chão: aparece nos pulos e encolhe enquanto o pet está no ar. */}
+      {canPlay && (
+        <motion.span
+          aria-hidden="true"
+          className="pointer-events-none absolute rounded-full bg-black/60 blur-[2px]"
+          style={{ left: '30%', width: '40%', bottom: '7%', height: '5%' }}
+          initial={{ opacity: 0 }}
+          animate={shadowControls}
+        />
+      )}
       <motion.div
         className="h-full w-full"
         style={{ transformOrigin: '50% 88%' }}
@@ -229,6 +381,14 @@ export function Pet({
         }}
       >
        <motion.div className="h-full w-full" style={{ transformOrigin: '50% 90%' }} animate={hopControls}>
+        <motion.div className="h-full w-full" style={{ transformOrigin: '50% 72%' }} animate={reactControls}>
+         {/* Carinho: inclina para o lado do toque e encolhe um tiquinho. */}
+         <motion.div
+           className="h-full w-full"
+           style={{ transformOrigin: '50% 90%' }}
+           animate={{ rotate: play.petting ? play.lean * 9 : 0, scale: play.petting ? 0.97 : 1 }}
+           transition={{ type: 'spring', stiffness: 140, damping: 18 }}
+         >
         <AnimatePresence mode="wait" initial={false}>
           <motion.svg
             key={kind}
@@ -253,22 +413,36 @@ export function Pet({
               {/* Filhote: 80% do tamanho, apoiado na mesma base. */}
               <g transform={baby ? 'translate(12 21.6) scale(0.8)' : undefined}>
                 {!silhouette && species.behind?.()}
+                {/*
+                  As camadas das brincadeiras ficam em AnimatePresence próprios: o AnimatePresence initial={false}
+                  da troca de espécie (acima) faria tudo que aparece depois já nascer no fim da animação (invisível).
+                */}
+                <AnimatePresence>{special && <SpecialBehind key={`atras-${play.reaction!.id}`} kind={kind} colors={species.colors} />}</AnimatePresence>
                 <motion.g
                   animate={{ scaleY: [1, resting ? 1.05 : 1.035, 1], scaleX: [1, 0.985, 1] }}
                   transition={{ duration: resting ? 4 : 2.6, repeat: Infinity, ease: 'easeInOut' }}
                   style={{ originY: 1 }}
                 >
                   {species.body(species.colors, adult)}
-                  {species.eyes.map(([cx, cy], i) => (
-                    <Eye key={i} cx={cx} cy={cy} side={i} style={eyeStyle} blink={blink} scale={baby ? 1.3 : 1} star={species.starEyes} />
-                  ))}
+                  <motion.g animate={eyeAnim} transition={eyeTransition}>
+                    {species.eyes.map(([cx, cy], i) => (
+                      <Eye key={i} cx={cx} cy={cy} side={i} style={eyeStyle} blink={blink} scale={baby ? 1.3 : 1} star={species.starEyes} />
+                    ))}
+                  </motion.g>
+                  <AnimatePresence>{play.idle?.type === 'yawn' && !silhouette && <YawnMouth key={`bocejo-${play.idle.id}`} kind={kind} />}</AnimatePresence>
                   {items.map((it) => (
                     <g key={it.id}>{it.draw(anchorOf[it.slot], species.colors.color)}</g>
                   ))}
                 </motion.g>
+                <AnimatePresence>{special && <SpecialFront key={`frente-${play.reaction!.id}`} kind={kind} species={species} />}</AnimatePresence>
                 <AnimatePresence>
                   {bubble && !silhouette && <EmotionBubble key={bubble.id} x={head.x - 22} y={head.y - 30} emotion={bubble.emotion} ring={look.color} />}
                 </AnimatePresence>
+                <AnimatePresence>
+                  {play.dizzy && <DizzyStars key="tonto" head={head} />}
+                  {play.resting && <RestZ key="descanso" head={head} />}
+                </AnimatePresence>
+                <Hearts hearts={play.hearts} head={head} />
               </g>
             </motion.g>
             {sleeping &&
@@ -289,6 +463,8 @@ export function Pet({
               ))}
           </motion.svg>
         </AnimatePresence>
+         </motion.div>
+        </motion.div>
        </motion.div>
       </motion.div>
     </Wrapper>

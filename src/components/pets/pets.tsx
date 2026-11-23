@@ -3,8 +3,8 @@ import type { BasePetKind, PetKind, PetState, SecretPetKind } from '../../types'
 import type { Anchor } from '../../data/accessories'
 import { BunnyBody, Stardust } from './Bunny'
 
-/** `meh` = sem graça (olhos meio fechados, sem sobrancelha). `angry` só aparece nas historinhas. */
-export type EyeStyle = 'open' | 'happy' | 'closed' | 'angry' | 'squint' | 'meh'
+/** `meh` = sem graça (olhos meio fechados, sem sobrancelha). `angry` só aparece nas historinhas. `spiral` = tonto (brincadeira). */
+export type EyeStyle = 'open' | 'happy' | 'closed' | 'angry' | 'squint' | 'meh' | 'spiral'
 
 /** Cores do corpo da espécie (fixas: o estado não muda o corpo). */
 export interface PetColors {

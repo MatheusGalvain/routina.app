@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { useRotina } from '../store/useRotina'
 import { dayProgress, getDayItems } from '../lib/today'
@@ -29,7 +30,9 @@ function cellStyle(c: DayCell) {
   return { background: `color-mix(in srgb, var(--color-ok) ${Math.round(strength * 100)}%, var(--color-panel-2))`, color: c.pct >= 0.5 ? 'var(--color-ink)' : undefined }
 }
 
-export function Historico({ goToday }: { goToday: () => void }) {
+export function Historico() {
+  const navigate = useNavigate()
+  const goToday = () => navigate('/hoje')
   const today = nowInTz()
   const todayKey = dayKey(today)
   const routines = useRotina((s) => s.routines)

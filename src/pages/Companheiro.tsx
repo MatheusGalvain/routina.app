@@ -68,9 +68,11 @@ export function Companheiro() {
         </label>
       </Panel>
 
-      <Panel title="Cantinho" icon="sparkle" color="var(--color-noite)" help="cantinho">
-        <PetCorner autoState="neutro" legend={false} />
-      </Panel>
+      <div id="cantinho" className="scroll-mt-4">
+        <Panel title="Cantinho" icon="sparkle" color="var(--color-noite)" help="cantinho">
+          <PetCorner autoState="neutro" legend={false} editable />
+        </Panel>
+      </div>
 
       <div id="colecao" className="scroll-mt-4">
       <Panel title="Coleção" icon="box" color="var(--color-alerta)" help="colecao">
@@ -111,7 +113,7 @@ function PhaseCard() {
     <section className="flex flex-wrap items-center gap-6 rounded-[22px] border border-line bg-panel p-6">
       <div className="relative grid h-[170px] w-[170px] shrink-0 place-items-center">
         <div className="absolute h-[160px] w-[160px] rounded-full border border-fg/15" />
-        <Pet kind={kind} state={view.forcedState && view.forcedState !== 'dormindo' ? view.forcedState : 'neutro'} phase={view.phase} sleeping={view.sleeping} accessories={view.accessories} size={130} />
+        <Pet kind={kind} state={view.forcedState && view.forcedState !== 'dormindo' ? view.forcedState : 'neutro'} phase={view.phase} sleeping={view.sleeping} accessories={view.accessories} size={130} play />
       </div>
       <div className="flex min-w-[220px] flex-1 flex-col gap-3">
         <div className="flex items-center gap-2" role="list" aria-label="Fases">

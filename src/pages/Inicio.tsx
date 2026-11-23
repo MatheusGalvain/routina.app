@@ -11,7 +11,10 @@ import { Pet } from '../components/pets/Pet'
 import { PETS, PET_ORDER, textColor } from '../components/pets/pets'
 import { PetStory } from '../components/pets/PetStory'
 import { PetCorner } from '../components/pets/PetCorner'
-import { PrimaryActionButton, type TodayTarget } from '../components/home/PrimaryAction'
+import { PrimaryActionButton } from '../components/home/PrimaryAction'
+import { useGoToday } from '../lib/navigation'
+import { editorPath } from '../lib/slug'
+import { useNavigate } from 'react-router-dom'
 import { HelpButton } from '../components/help/HelpButton'
 import type { BasePetKind } from '../types'
 
@@ -157,7 +160,11 @@ function TemplatesPanel({ apply, openTemplate }: { apply: (keyOrId: string) => v
   )
 }
 
-export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: TodayTarget) => void; openRoutine: (id: string) => void; openTemplate: (id: string) => void }) {
+export function Inicio() {
+  const navigate = useNavigate()
+  const goToday = useGoToday()
+  const openRoutine = (id: string) => navigate(editorPath(id))
+  const openTemplate = openRoutine
   const now = nowInTz()
   const date = dayKey(now)
   const routines = useRotina((s) => s.routines)
@@ -183,6 +190,25 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
 
   const items = useMemo(() => getTodayItems(routines, dayLog, completedTasks, now, date), [routines, dayLog, completedTasks, date])
   const done = items.filter((i) => i.done).length
+  /**
+   * Áreas organizadas pelo dia: primeiro as que ainda têm algo para fazer hoje (mais pendências antes),
+   * depois as que já fecharam o dia e por último as sem nada hoje. Empates seguem a ordem da pessoa.
+   */
+  const areaCards = useMemo(() => {
+    const group = (c: { total: number; pending: number }) => (c.pending > 0 ? 0 : c.total > 0 ? 1 : 2)
+    return areas
+      .map((area, position) => {
+        const list = items.filter((i) => i.block.areaId === area.id)
+        return {
+          area,
+          position,
+          total: list.length,
+          ok: list.filter((i) => i.done).length,
+          pending: list.filter((i) => !i.done && !i.skipped).length,
+        }
+      })
+      .sort((x, y) => group(x) - group(y) || y.pending - x.pending || x.position - y.position)
+  }, [areas, items])
   const next = items.find((i) => !i.done && !i.skipped)
 
   return (
@@ -192,7 +218,7 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
           <Logo />
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2.5">
-              <h1 className="m-0 text-[44px] leading-none font-extrabold tracking-tight">
+              <h1 className="m-0 lg:text-[45px] text-[35px] leading-none font-extrabold tracking-tight">
                 Habbit <span className="text-accent">Do</span>
               </h1>
               <HelpButton k="inicio" />
@@ -200,7 +226,7 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
             <p className="m-0 text-muted">{greeting(now)}! Pronto para organizar o seu dia?</p>
           </div>
         </div>
-        <PrimaryActionButton items={items} goToday={goToday} />
+        <PrimaryActionButton items={items} />
       </header>
 
       <Panel title={companion.kind ? `Cantinho ${companion.name ? `de ${companion.name}` : 'do seu pet'}` : 'Cantinho do pet'} icon="paw" color="var(--color-accent)" help="cantinho">
@@ -295,27 +321,45 @@ export function Inicio({ goToday, openRoutine, openTemplate }: { goToday: (t?: T
           }
         >
           <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
-            {areas.map((a) => {
-              const list = items.filter((i) => i.block.areaId === a.id)
-              const ok = list.filter((i) => i.done).length
-              return (
-                <div key={a.id} className="flex flex-col gap-3 rounded-xl bg-panel-2 p-3.5">
-                  <div className="flex items-center justify-between">
-                    <strong className="flex min-w-0 items-center gap-2 text-sm [overflow-wrap:anywhere]">
-                      <span className="h-2 w-2 shrink-0 rounded-[3px]" style={{ background: a.color }} />
-                      {a.name}
-                    </strong>
-                    {list.length > 0 && ok === list.length && (
-                      <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-ok text-ink" aria-label="Concluído hoje">
-                        <Icon name="check" size={12} />
-                      </span>
-                    )}
-                  </div>
-                  <Bar pct={list.length ? ok / list.length : 0} color={a.color} />
-                  <span className="font-mono text-[11.5px] text-muted">{list.length ? `${ok}/${list.length} hoje` : 'nada hoje'}</span>
+            {areaCards.map(({ area: a, total, ok, pending }) => (
+              <motion.div
+                key={a.id}
+                layout
+                transition={{ type: 'spring', stiffness: 140, damping: 24 }}
+                className="flex flex-col gap-3 rounded-xl border-2 bg-panel-2 p-3.5"
+                // Com algo para fazer hoje: contorno e um fundo bem leve na cor da área.
+                style={
+                  pending
+                    ? {
+                        borderColor: a.color,
+                        background: `color-mix(in srgb, ${a.color} 7%, var(--color-panel-2))`,
+                        boxShadow: `0 0 18px color-mix(in srgb, ${a.color} 18%, transparent)`,
+                      }
+                    : { borderColor: 'transparent' }
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="flex min-w-0 items-center gap-2 text-sm [overflow-wrap:anywhere]">
+                    <span className="h-2 w-2 shrink-0 rounded-[3px]" style={{ background: a.color }} />
+                    {a.name}
+                  </strong>
+                  {total > 0 && pending === 0 && (
+                    <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-ok text-ink" aria-label="Concluído hoje">
+                      <Icon name="check" size={12} />
+                    </span>
+                  )}
                 </div>
-              )
-            })}
+                <Bar pct={total ? ok / total : 0} color={a.color} />
+                <span className="flex flex-wrap items-center justify-between gap-x-2 font-mono text-[11.5px] text-muted">
+                  <span>{total ? `${ok}/${total} hoje` : 'nada hoje'}</span>
+                  {pending > 0 && (
+                    <span className="font-sans text-[12px] font-semibold text-soft">
+                      {pending === 1 ? '1 para fazer' : `${pending} para fazer`}
+                    </span>
+                  )}
+                </span>
+              </motion.div>
+            ))}
           </div>
         </Panel>
 

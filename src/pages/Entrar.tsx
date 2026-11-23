@@ -3,36 +3,11 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, GOOGLE_ENABLED, redirectTo } from '../lib/supabase'
 import { Logo } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
-import { Privacidade } from './Privacidade'
+import { URL_ERROR } from '../lib/authUrl'
 import { Footer } from '../components/ui/Footer'
 
 /** Intervalo mínimo entre e-mails para o mesmo endereço (padrão do Supabase). */
 const RESEND_SECONDS = 60
-
-/**
- * Lê o que voltou na URL ao abrir o link do e-mail sem conseguir entrar:
- * link expirado/usado, ou link aberto em OUTRO aparelho (o acesso fica preso ao
- * navegador que pediu; nesse caso, o código de 6 dígitos resolve).
- */
-function readUrlError() {
-  const hash = new URLSearchParams(window.location.hash.slice(1))
-  const query = new URLSearchParams(window.location.search)
-  const errorCode = hash.get('error_code') ?? query.get('error_code')
-  const hasError = !!(errorCode || hash.get('error') || query.get('error'))
-  const strayCode = query.has('code')
-  if (!hasError && !strayCode) return null
-  // Limpa a URL para a mensagem não reaparecer ao recarregar.
-  window.history.replaceState(null, '', window.location.pathname)
-  if (errorCode === 'otp_expired')
-    return 'Esse link expirou ou já foi usado. Use o código de 6 dígitos do e-mail mais recente, ou peça um novo acesso abaixo.'
-  if (strayCode)
-    return 'Esse link foi aberto em um aparelho diferente de onde você pediu o acesso. No outro aparelho, digite o código de 6 dígitos do e-mail. Ou peça um acesso novo aqui.'
-  return 'Não deu para entrar com esse link. Tente pedir outro.'
-}
-
-// Lido uma única vez, quando o app abre: a função limpa a URL, então chamá-la de novo
-// (o React chama inicializadores duas vezes no modo dev) apagaria a mensagem.
-const URL_ERROR = readUrlError()
 
 /** Traduz o erro do Supabase. `wait` = segundos que o servidor pede para esperar. */
 function friendly(message: string): { text: string; wait?: number } {
@@ -58,7 +33,6 @@ export function Entrar() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(URL_ERROR)
   const [cooldown, setCooldown] = useState(0)
-  const [privacy, setPrivacy] = useState(false)
   const [code, setCode] = useState('')
   const [verifying, setVerifying] = useState(false)
 
@@ -105,16 +79,6 @@ export function Entrar() {
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectTo() } })
     if (error) setError(friendly(error.message).text)
   }
-
-  if (privacy)
-    return (
-      <div className="flex min-h-screen flex-col">
-        <main className="flex-1 px-4 py-8">
-          <Privacidade onBack={() => setPrivacy(false)} />
-        </main>
-        <Footer onPrivacy={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
-      </div>
-    )
 
   const bubble = sentTo ? 'Prontinho! Agora é só abrir o seu e-mail.' : 'Oi! Que bom te ver por aqui. Vamos organizar o seu dia?'
 
@@ -258,12 +222,7 @@ export function Entrar() {
           Ao entrar, suas rotinas ficam salvas na sua conta e sincronizadas entre aparelhos.
         </p>
       </main>
-      <Footer
-        onPrivacy={() => {
-          setPrivacy(true)
-          window.scrollTo({ top: 0 })
-        }}
-      />
+      <Footer />
     </div>
   )
 }

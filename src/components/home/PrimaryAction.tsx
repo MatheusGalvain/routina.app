@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAreas, useRotina } from '../../store/useRotina'
-import { useOnboarding } from '../../store/useOnboarding'
+import { useNavigate } from 'react-router-dom'
+import { useGoToday } from '../../lib/navigation'
 import { useShownPet, useStats } from '../../store/useCompanion'
 import { getPrimaryAction, type PrimaryActionType } from '../../lib/primaryAction'
 import { dayKey, nowInTz } from '../../lib/dates'
@@ -10,8 +11,7 @@ import { Pet } from '../pets/Pet'
 import { Icon, ProgressRing } from '../ui/ui'
 import type { TodayItem } from '../../types'
 
-/** Onde abrir o Hoje: num bloco (rola até ele) ou no campo da revisão da noite. */
-export type TodayTarget = { blockId?: string; review?: boolean }
+export type { TodayTarget } from '../../lib/navigation'
 
 /** Janela simples (gaveta no celular, centralizada no computador). Fecha com Esc ou tocando fora. */
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -162,7 +162,9 @@ function DaySummary({ items, onClose, openToday }: { items: TodayItem[]; onClose
  * Botão principal do Início, com um balão do pet em cima. O texto e a ação vêm de
  * getPrimaryAction (src/lib/primaryAction.ts), conforme o momento da pessoa.
  */
-export function PrimaryActionButton({ items, goToday }: { items: TodayItem[]; goToday: (t?: TodayTarget) => void }) {
+export function PrimaryActionButton({ items }: { items: TodayItem[] }) {
+  const navigate = useNavigate()
+  const goToday = useGoToday()
   const now = nowInTz()
   const date = dayKey(now)
   const hasFavoritePet = useRotina((s) => !!s.companion.kind)
@@ -204,7 +206,8 @@ export function PrimaryActionButton({ items, goToday }: { items: TodayItem[]; go
   const run = (a: PrimaryActionType) => {
     switch (a.type) {
       case 'onboarding':
-        return useOnboarding.getState().show(a.step)
+        // Onboarding não concluído: abre /bem-vindo no passo que falta.
+        return navigate(`/bem-vindo?passo=${a.step}`)
       case 'wakePet':
         return setWaking(true)
       case 'quickTask':

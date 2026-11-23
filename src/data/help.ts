@@ -76,7 +76,7 @@ export const HELP = {
     title: 'Cantinho',
     text: [
       'Este é o meu cantinho. Cada dia em que você cuida de uma área acende estrelas no céu.',
-      'Em "Editar cantinho" você escolhe quais troféus ficam aqui comigo.',
+      'Na aba Pet, em "Editar cantinho", você escolhe quais troféus ficam aqui comigo.',
     ],
   },
   perfil: {

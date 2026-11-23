@@ -67,3 +67,10 @@ body {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+/* Editor de rotina no celular: a barra "Salvar rotina" fica fixa embaixo; o fim da página (rodapé) não some atrás dela. */
+@media (max-width: 639px) {
+  body:has([data-save-bar]) {
+    padding-bottom: 104px;
+  }
+}

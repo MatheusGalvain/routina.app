@@ -1,0 +1,269 @@
+<title>Cenários do Pet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: um cartão por cenário (ilustração em camadas + itens), interface pastel no #141414 */
+:root{--bg:#141414;--card:#1C1C1C;--card2:#232323;--line:#2C2C2C;--fg:#F2F0ED;--muted:#A3A09B;--accent:#A9BFFF;
+  --sans:"Inter",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans)}
+.wrap{max-width:1000px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+h1{margin:0;font-size:28px;letter-spacing:-.02em;text-wrap:balance}
+h2{margin:0;font-size:18px}
+.lead{margin:6px 0 0;color:var(--muted);font-size:15px;max-width:64ch;line-height:1.55}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.stage{display:block;width:100%;max-width:100%;aspect-ratio:2/1;touch-action:pan-y}
+.body{padding:20px;display:flex;flex-direction:column;gap:14px;border-top:1px solid var(--line)}
+.body p{margin:0;color:var(--muted);font-size:14px;line-height:1.55;max-width:70ch}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.item{background:var(--card2);border-radius:12px;padding:12px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.item svg{width:60px;height:60px;overflow:visible}
+.item b{font-size:12.5px;font-weight:600}
+.item small{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.layer{transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+.pet{animation:float 3.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+.island{animation:float2 6s ease-in-out infinite}
+.blink{animation:blink 5s infinite;transform-box:fill-box;transform-origin:center}
+.mist{animation:drift 18s ease-in-out infinite alternate}
+.mist.b{animation-duration:24s;animation-direction:alternate-reverse}
+.ff{animation:ff var(--d,4s) ease-in-out var(--dl,0s) infinite}
+.tw{animation:tw var(--d,3s) ease-in-out var(--dl,0s) infinite}
+.shoot{animation:shoot 7s linear infinite}
+.flick{animation:flick 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center bottom}
+@keyframes float{50%{transform:translateY(-5px)}}
+@keyframes float2{50%{transform:translateY(-6px)}}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+@keyframes drift{to{transform:translateX(40px)}}
+@keyframes ff{0%,100%{opacity:.15;transform:translate(0,0)}50%{opacity:1;transform:translate(var(--x,6px),var(--y,-10px))}}
+@keyframes tw{50%{opacity:.2}}
+@keyframes shoot{0%,72%{opacity:0;transform:translate(0,0)}76%{opacity:1}92%,100%{opacity:0;transform:translate(-220px,90px)}}
+@keyframes flick{50%{transform:scaleY(.9) scaleX(1.05)}}
+@media (prefers-reduced-motion:reduce){.pet,.island,.blink,.mist,.ff,.tw,.shoot,.flick{animation:none}.layer{transition:none}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="blur2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="blur6" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="blur24" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="24"/></filter>
+    <filter id="glow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0"/></filter>
+
+    <g id="cat">
+      <path d="M22,56 L24,18 L46,36 Q60,32 74,36 L96,18 L98,56 C100,84 82,102 60,102 C38,102 20,84 22,56 Z" fill="#F1F3F6"/>
+      <path d="M30,30 L32,44 L41,38 Z M90,30 L88,44 L79,38 Z" fill="#F9C6D0" opacity=".7"/>
+      <g class="blink"><rect x="44.5" y="49" width="9" height="18" rx="4.5" fill="#0A0D14"/><rect x="66.5" y="49" width="9" height="18" rx="4.5" fill="#0A0D14"/><circle cx="50.9" cy="52.2" r="1.7" fill="#fff"/><circle cx="72.9" cy="52.2" r="1.7" fill="#fff"/></g>
+      <path d="M57,74 L63,74 L60,78 Z" fill="#F59AB0"/>
+    </g>
+
+    <!-- Floresta -->
+    <linearGradient id="fSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#08110F"/><stop offset=".55" stop-color="#10201B"/><stop offset="1" stop-color="#1C3229"/></linearGradient>
+    <radialGradient id="fMoon" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#F6F1E6" stop-opacity=".55"/><stop offset=".25" stop-color="#E8EFD8" stop-opacity=".18"/><stop offset="1" stop-color="#E8EFD8" stop-opacity="0"/></radialGradient>
+    <linearGradient id="fRay" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2F0ED" stop-opacity=".10"/><stop offset="1" stop-color="#F2F0ED" stop-opacity="0"/></linearGradient>
+    <linearGradient id="fGround" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1D3429"/><stop offset="1" stop-color="#0C1511"/></linearGradient>
+    <radialGradient id="fPool" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#FFD59E" stop-opacity=".22"/><stop offset="1" stop-color="#FFD59E" stop-opacity="0"/></radialGradient>
+
+    <!-- Cosmos -->
+    <linearGradient id="cSky" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#07060F"/><stop offset=".6" stop-color="#120D24"/><stop offset="1" stop-color="#1B1333"/></linearGradient>
+    <radialGradient id="cPlanet" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#FFE3CF"/><stop offset=".55" stop-color="#FFC9A8"/><stop offset="1" stop-color="#B9746A"/></radialGradient>
+    <radialGradient id="cShadow" cx="85%" cy="85%" r="70%"><stop offset="0" stop-color="#1B1333" stop-opacity=".85"/><stop offset="1" stop-color="#1B1333" stop-opacity="0"/></radialGradient>
+    <linearGradient id="cRock" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3A3054"/><stop offset=".35" stop-color="#2A2240"/><stop offset="1" stop-color="#140F22"/></linearGradient>
+    <linearGradient id="cRim" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#CDB8FF" stop-opacity="0"/><stop offset=".5" stop-color="#CDB8FF" stop-opacity=".7"/><stop offset="1" stop-color="#CDB8FF" stop-opacity="0"/></linearGradient>
+    <radialGradient id="cUnder" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#A9BFFF" stop-opacity=".35"/><stop offset="1" stop-color="#A9BFFF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="cTail" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".9"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+
+    <!-- Luz comum dos itens -->
+    <linearGradient id="hl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".45"/><stop offset=".5" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+    <linearGradient id="crystal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F1E6FF"/><stop offset=".5" stop-color="#A5D8FF"/><stop offset="1" stop-color="#FBCFE8"/></linearGradient>
+    <radialGradient id="warm" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#FFD59E" stop-opacity=".55"/><stop offset="1" stop-color="#FFD59E" stop-opacity="0"/></radialGradient>
+    <linearGradient id="capG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FAC4C4"/><stop offset="1" stop-color="#D9898F"/></linearGradient>
+    <linearGradient id="woodG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6E5440"/><stop offset=".5" stop-color="#9A7656"/><stop offset="1" stop-color="#5A4434"/></linearGradient>
+
+    <!-- Itens: 48x48, apoiados em y=48 -->
+    <symbol id="cogumelo" viewBox="0 0 48 48" overflow="visible"><path d="M19,28 C18,38 17,44 16,48 H32 C31,44 30,38 29,28 Z" fill="#EFE6D8"/><path d="M19,28 C18,38 17,44 16,48 H21 C21,40 21,34 22,28 Z" fill="#D8CBB6"/><path d="M5,29 C5,14 15,6 24,6 C33,6 43,14 43,29 C34,32 14,32 5,29 Z" fill="url(#capG)"/><path d="M5,29 C14,32 34,32 43,29 C40,33 8,33 5,29 Z" fill="#B87079"/><ellipse cx="16" cy="18" rx="3.4" ry="2.6" fill="#FFF3F0"/><ellipse cx="28" cy="13" rx="2.6" ry="2" fill="#FFF3F0"/><ellipse cx="33" cy="22" rx="2.2" ry="1.7" fill="#FFF3F0"/><path d="M9,22 C12,12 20,8 26,8" fill="none" stroke="#FFFFFF" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="lanterna" viewBox="0 0 48 48" overflow="visible"><circle cx="24" cy="27" r="22" fill="url(#warm)"/><path d="M24,1 C29,1 29,7 24,7" fill="none" stroke="#5B5550" stroke-width="2"/><path d="M15,13 L24,7 L33,13 Z" fill="#4E4843"/><rect x="15" y="13" width="18" height="4" rx="1.5" fill="#625B55"/><rect x="16.5" y="17" width="15" height="20" rx="3" fill="#FFE6B8"/><rect x="16.5" y="17" width="15" height="20" rx="3" fill="url(#hl)"/><path d="M24,22 C27,26 27,29 24,32 C21,29 21,26 24,22 Z" class="flick" fill="#FFB86B"/><path d="M16.5,23 H31.5 M24,17 V37" stroke="#4E4843" stroke-width="1.4"/><rect x="14" y="37" width="20" height="4" rx="1.5" fill="#625B55"/></symbol>
+    <symbol id="toco" viewBox="0 0 48 48" overflow="visible"><path d="M8,22 C8,34 6,44 4,48 H44 C42,44 40,34 40,22 Z" fill="url(#woodG)"/><ellipse cx="24" cy="22" rx="16" ry="5.5" fill="#D6B38E"/><ellipse cx="24" cy="22" rx="10" ry="3.4" fill="none" stroke="#A9835F" stroke-width="1.2"/><ellipse cx="24" cy="22" rx="4.5" ry="1.6" fill="none" stroke="#A9835F" stroke-width="1"/><path d="M30,20 C32,12 38,10 41,12 C38,13 34,15 32,20" fill="#A8E6B8"/><path d="M31,20 C29,13 24,11 21,13 C24,14 28,16 30,20" fill="#86C99B"/><path d="M4,48 C10,44 16,46 20,48 Z" fill="#7FB894"/></symbol>
+    <symbol id="fogueira" viewBox="0 0 48 48" overflow="visible"><circle cx="24" cy="30" r="22" fill="url(#warm)"/><g class="flick"><path d="M24,8 C31,17 35,22 33,30 C31.5,37 16.5,37 15,30 C13,23 19,19 24,8 Z" fill="#FF9F7A"/><path d="M24,17 C28,23 30,26 28.5,31 C27,35 21,35 19.5,31 C18,27 21,23 24,17 Z" fill="#FFD59E"/><path d="M24,25 C25.5,28 26,30 25,32 C24,33.5 23,33.5 22.8,32 C22.3,30 23,28 24,25 Z" fill="#FFF4DC"/></g><rect x="7" y="38" width="34" height="5.5" rx="2.75" fill="#7A5C45" transform="rotate(-12 24 41)"/><rect x="7" y="38" width="34" height="5.5" rx="2.75" fill="#5E4636" transform="rotate(12 24 41)"/><g fill="#6B6B6B"><ellipse cx="6" cy="46" rx="4" ry="2.4"/><ellipse cx="42" cy="46" rx="4" ry="2.4"/></g></symbol>
+    <symbol id="flores" viewBox="0 0 48 48" overflow="visible"><path d="M13,48 C13,40 12,34 14,29 M24,48 C24,38 25,30 24,21 M35,48 C35,42 36,37 34,32" fill="none" stroke="#6FA884" stroke-width="2.2" stroke-linecap="round"/><path d="M24,40 C18,38 16,34 17,31 C21,32 23,35 24,40 Z M24,36 C29,34 31,30 30,27 C27,28 25,31 24,36 Z" fill="#86C99B"/><g transform="translate(14 28)"><circle r="5.5" fill="#F7B8D6"/><circle r="2" fill="#FFE8B5"/></g><g transform="translate(24 19)"><circle cx="0" cy="-5" r="3.6" fill="#CDB8FF"/><circle cx="5" cy="-1" r="3.6" fill="#CDB8FF"/><circle cx="3" cy="4.5" r="3.6" fill="#CDB8FF"/><circle cx="-3" cy="4.5" r="3.6" fill="#CDB8FF"/><circle cx="-5" cy="-1" r="3.6" fill="#CDB8FF"/><circle r="2.4" fill="#FFE8B5"/></g><g transform="translate(34 31)"><circle r="4.6" fill="#FFD59E"/><circle r="1.6" fill="#FFF4DC"/></g></symbol>
+    <symbol id="pedra" viewBox="0 0 48 48" overflow="visible"><path d="M3,48 C2,38 8,28 18,26 C28,22 40,28 44,38 C45,42 45,46 45,48 Z" fill="#55575A"/><path d="M3,48 C2,38 8,28 18,26 C14,32 12,40 14,48 Z" fill="#6A6D70"/><path d="M9,33 C15,25 30,22 40,31 C34,29 26,29 20,31 C16,32 12,33 9,33 Z" fill="#94D4A6"/><path d="M12,30 C18,25 26,24 32,26" fill="none" stroke="#C6EED2" stroke-width="1.6" stroke-linecap="round"/><circle cx="34" cy="40" r="1.4" fill="#94D4A6"/></symbol>
+
+    <symbol id="telescopio" viewBox="0 0 48 48" overflow="visible"><g transform="rotate(-28 24 16)"><rect x="6" y="11" width="34" height="10" rx="5" fill="#A9BFFF"/><rect x="6" y="11" width="34" height="10" rx="5" fill="url(#hl)"/><rect x="36" y="9.5" width="7" height="13" rx="2.5" fill="#7E8FCC"/><rect x="2" y="13" width="6" height="6" rx="2" fill="#7E8FCC"/><rect x="20" y="11" width="3" height="10" fill="#D7E0FF"/></g><path d="M24,24 L13,48 M24,24 L35,48 M24,24 L24,48" stroke="#5B5770" stroke-width="2.4" stroke-linecap="round"/><circle cx="24" cy="24" r="3" fill="#7E8FCC"/></symbol>
+    <symbol id="planeta" viewBox="0 0 48 48" overflow="visible"><path d="M4,24 a20,6 -15 0 1 40,-6" fill="none" stroke="#CDB8FF" stroke-opacity=".55" stroke-width="2.6"/><circle cx="24" cy="20" r="12" fill="url(#cPlanet)"/><circle cx="24" cy="20" r="12" fill="url(#cShadow)"/><path d="M44,18 a20,6 -15 0 1 -40,6" fill="none" stroke="#CDB8FF" stroke-width="2.6"/><path d="M22,32 L26,32 L27,42 H21 Z" fill="#3D3650"/><rect x="15" y="42" width="18" height="6" rx="2.5" fill="#2E2840"/></symbol>
+    <symbol id="pote" viewBox="0 0 48 48" overflow="visible"><circle cx="24" cy="30" r="20" fill="#FFD59E" opacity=".12"/><rect x="15" y="6" width="18" height="6" rx="2" fill="#C9A27E"/><rect x="15" y="6" width="18" height="2.5" rx="1.2" fill="#E1C09F"/><path d="M13,15 C13,12 35,12 35,15 L37,40 C37,46 11,46 11,40 Z" fill="#A9BFFF" fill-opacity=".14" stroke="#C9D6FF" stroke-opacity=".55"/><path d="M15,18 C15,30 15,36 16,40" fill="none" stroke="#FFFFFF" stroke-opacity=".35" stroke-width="2" stroke-linecap="round"/><g filter="url(#glow)"><path d="M24,22 l1.8,4.4 4.6,.6 -3.4,3 .9,4.6 -3.9,-2.4 -3.9,2.4 .9,-4.6 -3.4,-3 4.6,-.6 Z" fill="#FFE2B0"/><circle cx="18" cy="37" r="1.4" fill="#FFE2B0"/><circle cx="30" cy="34" r="1.1" fill="#FFE2B0"/><circle cx="28" cy="40" r=".9" fill="#FFE2B0"/></g></symbol>
+    <symbol id="foguete" viewBox="0 0 48 48" overflow="visible"><path d="M20,36 Q24,50 28,36 Z" fill="#FFD59E" class="flick"/><path d="M24,3 C33,11 33,26 30,36 H18 C15,26 15,11 24,3 Z" fill="#F2F0ED"/><path d="M24,3 C28,7 31,14 31,22 C27,14 25,8 24,3 Z" fill="#FFFFFF" opacity=".6"/><path d="M24,3 C19,8 17,14 17,22 C17,27 18,32 18,36 H21 C20,28 20,14 24,3 Z" fill="#D4D0CA"/><circle cx="24" cy="18" r="4.6" fill="#7E8FCC"/><circle cx="24" cy="18" r="3.2" fill="#A9BFFF"/><circle cx="22.8" cy="16.8" r="1.1" fill="#FFFFFF"/><path d="M18,25 L9,37 L18,35 Z M30,25 L39,37 L30,35 Z" fill="#F4B4B4"/><path d="M24,28 V36" stroke="#F4B4B4" stroke-width="3"/></symbol>
+    <symbol id="cristal" viewBox="0 0 48 48" overflow="visible"><circle cx="24" cy="24" r="20" fill="#CDB8FF" opacity=".12"/><path d="M24,3 L35,18 L24,42 L13,18 Z" fill="url(#crystal)"/><path d="M24,3 L35,18 L24,22 Z" fill="#FFFFFF" opacity=".45"/><path d="M13,18 L24,22 L24,42 Z" fill="#7E8FCC" opacity=".25"/><path d="M15,10 L13,7 M33,10 L35,7" stroke="#F1E6FF" stroke-width="1.4" stroke-linecap="round"/><path d="M14,42 H34 L32,48 H16 Z" fill="#2E2840"/></symbol>
+    <symbol id="luaP" viewBox="0 0 48 48" overflow="visible"><circle cx="24" cy="20" r="20" fill="#FFD59E" opacity=".1"/><path d="M19,3 a17,17 0 1 0 21,24 a13,13 0 1 1 -21,-24 Z" fill="#FFE2B0"/><path d="M19,3 a17,17 0 0 0 -4,30 a17,17 0 0 1 4,-30 Z" fill="#FFF4DC" opacity=".6"/><circle cx="16" cy="24" r="2" fill="#E8C68E"/><circle cx="21" cy="31" r="1.4" fill="#E8C68E"/><rect x="16" y="42" width="16" height="6" rx="2.5" fill="#2E2840"/><path d="M23,36 H25 V42 H23 Z" fill="#2E2840"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>Novos cenários para o cantinho</h1>
+    <p class="lead">Duas cenas com profundidade de verdade: camadas com névoa, luz e sombra e um leve movimento quando você passa o mouse ou inclina a tela. As áreas da semana continuam aparecendo, como vaga-lumes na floresta e constelações no cosmos.</p>
+  </header>
+
+  <article class="card">
+    <svg class="stage" id="forest" viewBox="0 0 640 320" role="img" aria-label="Cenário Floresta: clareira à noite com lua, raios de luz, névoa, árvores em camadas, vaga-lumes e itens ao lado do pet">
+      <rect width="640" height="320" fill="url(#fSky)"/>
+      <g class="layer" data-depth="4">
+        <circle cx="500" cy="62" r="120" fill="url(#fMoon)"/>
+        <circle cx="500" cy="62" r="17" fill="#F6F1E6"/>
+        <circle cx="494" cy="57" r="3" fill="#E6DFD0"/><circle cx="505" cy="68" r="2" fill="#E6DFD0"/>
+        <g filter="url(#blur6)"><path d="M470,70 L330,320 L410,320 Z" fill="url(#fRay)"/><path d="M490,78 L420,320 L470,320 Z" fill="url(#fRay)"/><path d="M455,66 L230,320 L290,320 Z" fill="url(#fRay)" opacity=".7"/></g>
+      </g>
+      <g class="layer" data-depth="7" id="fFar"></g>
+      <g class="layer" data-depth="10"><ellipse class="mist" cx="240" cy="232" rx="260" ry="22" fill="#CFE3D8" opacity=".07" filter="url(#blur6)"/></g>
+      <g class="layer" data-depth="12" id="fMid"></g>
+      <g class="layer" data-depth="16"><ellipse class="mist b" cx="420" cy="252" rx="240" ry="16" fill="#CFE3D8" opacity=".08" filter="url(#blur6)"/></g>
+      <g class="layer" data-depth="18" id="fFlies"></g>
+      <g class="layer" data-depth="20">
+        <path d="M-20,258 C120,246 240,252 320,250 C420,248 520,244 660,256 V340 H-20 Z" fill="url(#fGround)"/>
+        <ellipse cx="320" cy="258" rx="180" ry="26" fill="url(#fPool)"/>
+        <g id="fGrass"></g>
+        <ellipse cx="320" cy="258" rx="50" ry="6" fill="#000" opacity=".45"/>
+        <use href="#lanterna" x="122" y="200" width="56" height="56"/>
+        <use href="#cogumelo" x="196" y="212" width="44" height="44"/>
+        <use href="#flores" x="404" y="214" width="42" height="42"/>
+        <use href="#fogueira" x="456" y="204" width="52" height="52"/>
+        <g class="pet"><use href="#cat" transform="translate(248 140) scale(1.2)"/></g>
+      </g>
+      <g class="layer" data-depth="28" id="fFront"></g>
+      <rect width="640" height="320" filter="url(#grain)" opacity=".6" pointer-events="none"/>
+    </svg>
+    <div class="body">
+      <span class="tag">Cenário · Floresta</span>
+      <h2>Clareira à noite</h2>
+      <p>Lua com raios atravessando a névoa, árvores em três camadas (as do fundo somem na neblina), grama que reage à luz da lanterna e da fogueirinha. Cada vaga-lume tem a cor de uma área da vida e brilha mais quanto mais dias ela foi cuidada.</p>
+      <div class="items">
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Cogumelo"><use href="#cogumelo"/></svg><b>Cogumelo</b><small>área Corpo</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Lanterna"><use href="#lanterna"/></svg><b>Lanterna</b><small>área Foco</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Toco com broto"><use href="#toco"/></svg><b>Toco com broto</b><small>área Casa</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Fogueirinha"><use href="#fogueira"/></svg><b>Fogueirinha</b><small>área Social</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Flores"><use href="#flores"/></svg><b>Flores</b><small>área Mente</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Pedra com musgo"><use href="#pedra"/></svg><b>Pedra com musgo</b><small>sequência</small></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="card">
+    <svg class="stage" id="cosmos" viewBox="0 0 640 320" role="img" aria-label="Cenário Cosmos: nebulosa, campo de estrelas, planeta com anel e o pet sobre uma ilhota flutuante com itens">
+      <rect width="640" height="320" fill="url(#cSky)"/>
+      <g class="layer" data-depth="3" filter="url(#blur24)" opacity=".9">
+        <ellipse cx="170" cy="120" rx="170" ry="70" fill="#CDB8FF" opacity=".16" transform="rotate(-18 170 120)"/>
+        <ellipse cx="300" cy="80" rx="140" ry="40" fill="#F7B8D6" opacity=".10" transform="rotate(-22 300 80)"/>
+        <ellipse cx="420" cy="170" rx="190" ry="55" fill="#A9BFFF" opacity=".12" transform="rotate(-12 420 170)"/>
+        <ellipse cx="90" cy="60" rx="80" ry="30" fill="#FFC9A8" opacity=".08"/>
+      </g>
+      <g class="layer" data-depth="5" id="cStars"></g>
+      <g class="layer" data-depth="7">
+        <path d="M110,96 L146,62 L186,82 L214,64" stroke="#CDB8FF" stroke-opacity=".3" fill="none"/>
+        <g filter="url(#glow)"><circle class="tw" cx="146" cy="62" r="2.8" fill="#E4D8FF"/><circle cx="186" cy="82" r="2" fill="#CDB8FF"/><circle cx="110" cy="96" r="2" fill="#CDB8FF"/><circle cx="214" cy="64" r="1.8" fill="#CDB8FF"/></g>
+        <path d="M352,118 L392,96 L404,126" stroke="#F4B4B4" stroke-opacity=".28" fill="none"/>
+        <g filter="url(#glow)"><circle class="tw" style="--dl:1s" cx="352" cy="118" r="2.6" fill="#F4B4B4"/><circle cx="392" cy="96" r="1.8" fill="#F4B4B4"/><circle cx="404" cy="126" r="1.6" fill="#F4B4B4" opacity=".6"/></g>
+      </g>
+      <g class="layer" data-depth="9">
+        <ellipse cx="532" cy="72" rx="64" ry="14" fill="none" stroke="#CDB8FF" stroke-opacity=".45" stroke-width="3" transform="rotate(-16 532 72)" stroke-dasharray="0 104 210"/>
+        <circle cx="532" cy="72" r="30" fill="url(#cPlanet)"/>
+        <circle cx="532" cy="72" r="30" fill="url(#cShadow)"/>
+        <path d="M512,62 C520,58 540,58 552,64" stroke="#FFF0E4" stroke-opacity=".35" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M471,88 A64,14 -16 0 0 593,56" fill="none" stroke="#CDB8FF" stroke-width="3" transform="rotate(0)"/>
+      </g>
+      <g class="shoot"><path d="M500,36 L420,70" stroke="url(#cTail)" stroke-width="2.4" stroke-linecap="round"/><circle cx="500" cy="36" r="2.2" fill="#FFFFFF" filter="url(#glow)"/></g>
+      <g class="layer" data-depth="18">
+        <g class="island">
+          <ellipse cx="320" cy="300" rx="170" ry="26" fill="url(#cUnder)"/>
+          <path d="M120,256 C180,248 460,248 520,256 C512,272 470,282 430,288 C400,304 360,316 320,318 C280,316 240,304 210,288 C170,282 128,272 120,256 Z" fill="url(#cRock)"/>
+          <path d="M120,256 C180,248 460,248 520,256 C460,262 180,262 120,256 Z" fill="#3E3459"/>
+          <path d="M150,254 C240,249 400,249 490,254" stroke="url(#cRim)" stroke-width="1.6" fill="none"/>
+          <g fill="#CDB8FF" opacity=".75"><path d="M236,292 l4,-10 4,10 Z"/><path d="M404,286 l3,-8 3,8 Z"/><path d="M300,306 l3,-7 3,7 Z"/></g>
+          <g fill="#2A2240"><circle cx="150" cy="296" r="6"/><circle cx="500" cy="290" r="4"/><circle cx="470" cy="304" r="3"/></g>
+          <ellipse cx="320" cy="256" rx="50" ry="6" fill="#000" opacity=".4"/>
+          <use href="#telescopio" x="140" y="198" width="56" height="56"/>
+          <use href="#pote" x="210" y="210" width="44" height="44"/>
+          <use href="#foguete" x="400" y="204" width="50" height="50"/>
+          <use href="#cristal" x="462" y="210" width="44" height="44"/>
+          <g class="pet"><use href="#cat" transform="translate(248 138) scale(1.2)"/></g>
+        </g>
+      </g>
+      <rect width="640" height="320" filter="url(#grain)" opacity=".6" pointer-events="none"/>
+    </svg>
+    <div class="body">
+      <span class="tag">Cenário · Cosmos</span>
+      <h2>Ilhota entre as estrelas</h2>
+      <p>O pet mora numa ilhota de pedra que flutua devagar, com luz azul por baixo e cristais nas bordas. Ao fundo, uma nebulosa em lilás, rosa e azul, um campo de estrelas que cintila, um planeta com anel e uma estrela cadente de vez em quando. As constelações das áreas ficam no céu.</p>
+      <div class="items">
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Telescópio"><use href="#telescopio"/></svg><b>Telescópio</b><small>área Estudo</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Planetinha"><use href="#planeta"/></svg><b>Planetinha</b><small>área Foco</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Pote de estrelas"><use href="#pote"/></svg><b>Pote de estrelas</b><small>área Sono</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Foguetinho"><use href="#foguete"/></svg><b>Foguetinho</b><small>blocos concluídos</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Cristal"><use href="#cristal"/></svg><b>Cristal</b><small>área Finanças</small></div>
+        <div class="item"><svg viewBox="0 0 48 48" role="img" aria-label="Lua"><use href="#luaP"/></svg><b>Lua</b><small>área Mente</small></div>
+      </div>
+    </div>
+  </article>
+</div>
+
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var seed = 7;
+  function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  function el(tag, attrs, parent) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); parent.appendChild(n); return n; }
+
+  // Árvore orgânica: tronco + copa feita de círculos sobrepostos
+  function tree(parent, x, base, h, color, trunk) {
+    el('rect', { x: x - h * 0.05, y: base - h * 0.45, width: h * 0.1, height: h * 0.45, rx: h * 0.03, fill: trunk }, parent);
+    var r = h * 0.28;
+    var pts = [[0, -0.62], [-0.32, -0.48], [0.32, -0.5], [-0.18, -0.8], [0.2, -0.78], [0, -0.95], [-0.42, -0.62], [0.42, -0.64]];
+    pts.forEach(function (p) { el('circle', { cx: x + p[0] * h * 0.6, cy: base + p[1] * h, r: r * (0.75 + rnd() * 0.4), fill: color }, parent); });
+  }
+  var far = document.getElementById('fFar'), mid = document.getElementById('fMid'), front = document.getElementById('fFront');
+  for (var i = 0; i < 9; i++) tree(far, 10 + i * 78 + rnd() * 30, 252, 120 + rnd() * 50, '#173027', '#152A22');
+  far.setAttribute('opacity', '.75'); far.setAttribute('filter', 'url(#blur2)');
+  [[40, 140], [110, 170], [520, 160], [600, 150], [570, 190]].forEach(function (t) { tree(mid, t[0], 256, t[1], '#1A3A2E', '#142B22'); });
+  [[-30, 320], [680, 300]].forEach(function (t) { tree(front, t[0], 340, t[1], '#0B1612', '#08100D'); });
+
+  // Grama: lâminas curvas com variação de tom
+  var grass = document.getElementById('fGrass');
+  for (var g = 0; g < 160; g++) {
+    var gx = rnd() * 640, gy = 254 + rnd() * 40, gh = 5 + rnd() * 11, lean = (rnd() - 0.5) * 8;
+    var near = Math.abs(gx - 320) < 200 ? 1 : 0;
+    var tones = near ? ['#2E5442', '#3A6650', '#4B7A60'] : ['#1F3B2F', '#264638', '#2C5040'];
+    el('path', { d: 'M' + gx + ',' + gy + ' q' + (lean / 2) + ',' + (-gh / 2) + ' ' + lean + ',' + (-gh), stroke: tones[Math.floor(rnd() * 3)], 'stroke-width': 1.4, fill: 'none', 'stroke-linecap': 'round' }, grass);
+  }
+
+  // Vaga-lumes nas cores das áreas (brilho = dias da área na semana)
+  var flies = document.getElementById('fFlies');
+  var areas = [['#CDB8FF', 6], ['#F4B4B4', 4], ['#A9BFFF', 3], ['#A6E3DA', 1]];
+  areas.forEach(function (a, ai) {
+    var count = 1 + a[1];
+    for (var f = 0; f < count; f++) {
+      var c = el('circle', { cx: 60 + rnd() * 520, cy: 70 + rnd() * 160, r: 1.6 + rnd() * 1.4, fill: a[0], filter: 'url(#glow)', 'class': 'ff', opacity: 0.2 + a[1] / 8 }, flies);
+      c.style.setProperty('--d', (3 + rnd() * 3) + 's'); c.style.setProperty('--dl', (rnd() * 4) + 's');
+      c.style.setProperty('--x', ((rnd() - 0.5) * 20) + 'px'); c.style.setProperty('--y', (-6 - rnd() * 12) + 'px');
+    }
+  });
+
+  // Campo de estrelas
+  var stars = document.getElementById('cStars');
+  for (var s = 0; s < 180; s++) {
+    var big = rnd() > 0.93, x = rnd() * 640, y = rnd() * 250;
+    var st = el('circle', { cx: x, cy: y, r: big ? 1.4 + rnd() : 0.4 + rnd() * 0.7, fill: ['#FFFFFF', '#E4D8FF', '#FFE8D6', '#D7E0FF'][Math.floor(rnd() * 4)], opacity: 0.3 + rnd() * 0.6 }, stars);
+    if (rnd() > 0.6) { st.setAttribute('class', 'tw'); st.style.setProperty('--d', (2 + rnd() * 4) + 's'); st.style.setProperty('--dl', (rnd() * 4) + 's'); }
+    if (big) {
+      el('path', { d: 'M' + (x - 5) + ',' + y + ' H' + (x + 5) + ' M' + x + ',' + (y - 5) + ' V' + (y + 5), stroke: '#FFFFFF', 'stroke-opacity': 0.35, 'stroke-width': 0.6 }, stars);
+    }
+  }
+
+  // Paralaxe leve
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduce) {
+    document.querySelectorAll('.stage').forEach(function (svg) {
+      var layers = svg.querySelectorAll('.layer');
+      function move(nx, ny) { layers.forEach(function (l) { var d = +l.dataset.depth || 0; l.style.transform = 'translate(' + (nx * d * 0.6) + 'px,' + (ny * d * 0.3) + 'px)'; }); }
+      svg.addEventListener('pointermove', function (e) { var r = svg.getBoundingClientRect(); move((e.clientX - r.left) / r.width - 0.5, (e.clientY - r.top) / r.height - 0.5); });
+      svg.addEventListener('pointerleave', function () { move(0, 0); });
+    });
+  }
+})();
+</script>

@@ -1,9 +1,13 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Reorder, useDragControls } from 'framer-motion'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { editorPath, findBySlug, looksLikeId, slugMap } from '../lib/slug'
 import { useAreas, useRotina } from '../store/useRotina'
 import { BLOCK_TYPES, ROUTINE_COLORS, WEEKDAYS, areaOf } from '../data/areas'
 import { Icon, Panel } from '../components/ui/ui'
 import { HelpButton } from '../components/help/HelpButton'
+import { LeaveDialog, SaveStatus, useLeaveGuard, useSaveState, waitForSave } from '../components/routines/SaveGuard'
+import { showToast } from '../components/ui/Toast'
 import type { AreaId, Block, BlockType, Routine, UserTemplate } from '../types'
 
 const inputCls = 'w-full rounded-lg border border-line bg-ink px-3 py-2.5 text-sm text-soft placeholder:text-muted'
@@ -191,13 +195,59 @@ function BlockRow({ target, block, index }: { target: EditorTarget; block: Block
   )
 }
 
-function Editor({ target, footer }: { target: EditorTarget; footer: ReactNode }) {
+/** Libera uma saída de propósito do editor (excluir, usar o modelo) sem o aviso de "ainda salvando". */
+type Leave = (go: () => void) => void
+
+function Editor({ target, footer }: { target: EditorTarget; footer: (leave: Leave) => ReactNode }) {
   const v = target.value
   const isTemplate = target.kind === 'template'
+  const noun = isTemplate ? 'modelo' : 'rotina'
+  const navigate = useNavigate()
   const toggleDay = (d: number) => target.update({ days: v.days.includes(d) ? v.days.filter((x) => x !== d) : [...v.days, d].sort() })
 
+  // Nome em rascunho: vazio não vai para o salvamento automático (fica o último nome válido) e mostra o erro.
+  const [name, setName] = useState(v.name)
+  const nameRef = useRef<HTMLInputElement>(null)
+  const nameError = name.trim() === '' ? `Dê um nome para a ${noun}.` : null
+  useEffect(() => {
+    // Nome mudou em outro aparelho: acompanha, a não ser que a pessoa esteja com o campo vazio.
+    if (name.trim() && v.name !== name) setName(v.name)
+  }, [v.name])
+
+  const saveState = useSaveState()
+  const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const { blocker, bypass, phase } = useLeaveGuard(saveState !== 'saved')
+  const leave: Leave = (go) => {
+    bypass.current = true
+    go()
+  }
+
+  const save = async () => {
+    if (nameError) {
+      nameRef.current?.focus()
+      return
+    }
+    setSaving(true)
+    setFailed(false)
+    const ok = await waitForSave()
+    setSaving(false)
+    if (!ok) return setFailed(true)
+    showToast(isTemplate ? 'Modelo salvo' : 'Rotina salva')
+    navigate('/rotinas')
+  }
+  useEffect(() => {
+    if (saveState === 'saved') setFailed(false)
+  }, [saveState])
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 pb-24 sm:pb-0">
+      {/* Estado do salvamento, sempre visível no topo enquanto edita. */}
+      <div className="sticky top-0 z-30 -mx-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-b-2xl bg-ink/90 px-1 py-1.5 backdrop-blur">
+        <span className="font-mono text-xs tracking-wider text-muted uppercase">Editando {noun}</span>
+        <SaveStatus state={saveState} />
+      </div>
+
       <div className="flex flex-col gap-4 rounded-[22px] border border-line bg-panel p-4 sm:p-6">
         {isTemplate && (
           <p className="m-0 flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider text-alerta uppercase">
@@ -205,10 +255,30 @@ function Editor({ target, footer }: { target: EditorTarget; footer: ReactNode })
             <span className="font-sans text-[12.5px] tracking-normal text-muted normal-case">Mudar o modelo não altera as rotinas já criadas com ele.</span>
           </p>
         )}
-        <label className="flex flex-col gap-1.5 text-xs text-muted">
-          {isTemplate ? 'Nome do modelo' : 'Nome da rotina'}
-          <input className={`${inputCls} text-lg font-bold`} value={v.name} onChange={(e) => target.update({ name: e.target.value })} />
-        </label>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`nome-${v.id}`} className="text-xs text-muted">
+            {isTemplate ? 'Nome do modelo' : 'Nome da rotina'}
+          </label>
+          <input
+            id={`nome-${v.id}`}
+            ref={nameRef}
+            className={`${inputCls} text-lg font-bold ${nameError ? 'border-erro' : ''}`}
+            value={name}
+            maxLength={80}
+            aria-invalid={!!nameError}
+            aria-describedby={nameError ? `nome-erro-${v.id}` : undefined}
+            onChange={(e) => {
+              setName(e.target.value)
+              if (e.target.value.trim()) target.update({ name: e.target.value })
+            }}
+          />
+          {nameError && (
+            <p id={`nome-erro-${v.id}`} className="m-0 flex items-center gap-1.5 text-[13px] text-erro">
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-erro" />
+              {nameError} Sem nome, ela não é salva.
+            </p>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
           <fieldset className="m-0 w-full border-0 p-0 sm:w-auto">
@@ -263,7 +333,31 @@ function Editor({ target, footer }: { target: EditorTarget; footer: ReactNode })
         <BlockForm onSave={(b) => target.setBlocks([...v.blocks, { ...b, id: newId() }])} />
       </Panel>
 
-      <div className="flex flex-wrap items-center gap-3">{footer}</div>
+      <div className="flex flex-wrap items-center gap-3">{footer(leave)}</div>
+
+      {/* Salvar e voltar: no fim do editor; no celular, barra fixa embaixo. */}
+      <div data-save-bar className="fixed inset-x-0 bottom-0 z-40 flex flex-col gap-1 border-t border-line bg-panel/95 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:z-auto sm:flex-row sm:items-center sm:gap-3 sm:rounded-[22px] sm:border sm:bg-panel sm:p-4">
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-accent px-6 text-[15px] font-bold text-ink disabled:opacity-70"
+        >
+          <Icon name="check" size={16} />
+          {saving ? 'Salvando…' : isTemplate ? 'Salvar modelo' : 'Salvar rotina'}
+        </button>
+        <p className="m-0 text-center text-[12.5px] text-muted sm:text-left" aria-live="polite">
+          {nameError
+            ? nameError
+            : failed
+              ? 'Ainda não deu para salvar na sua conta. Suas mudanças estão guardadas aqui e o app continua tentando.'
+              : 'Tudo é salvo automaticamente. Este botão espera terminar e volta para a lista.'}
+        </p>
+      </div>
+
+      {blocker.state === 'blocked' && phase !== 'idle' && (
+        <LeaveDialog done={phase === 'done'} error={saveState === 'error'} onStay={() => blocker.reset?.()} onLeave={() => blocker.proceed?.()} />
+      )}
     </div>
   )
 }
@@ -284,7 +378,7 @@ function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine;
   return (
     <Editor
       target={target}
-      footer={
+      footer={(leave) => (
         <>
           <button type="button" onClick={() => setSaved(saveAsTemplate(routine.id) ?? null)} className={`inline-flex items-center gap-2 ${ghostBtn}`}>
             <Icon name="box" size={15} /> Salvar como modelo
@@ -292,10 +386,11 @@ function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine;
           <button
             type="button"
             onClick={() => {
-              if (window.confirm(`Excluir a rotina "${routine.name}"?`)) {
-                deleteRoutine(routine.id)
-                onDeleted()
-              }
+              if (window.confirm(`Excluir a rotina "${routine.name}"?`))
+                leave(() => {
+                  deleteRoutine(routine.id)
+                  onDeleted()
+                })
             }}
             className={dangerBtn}
           >
@@ -305,14 +400,14 @@ function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine;
             {saved && (
               <>
                 Modelo salvo em Rotinas prontas.{' '}
-                <button type="button" onClick={() => openTemplate(saved)} className="font-semibold text-accent underline underline-offset-2">
+                <button type="button" onClick={() => leave(() => openTemplate(saved))} className="font-semibold text-accent underline underline-offset-2">
                   Editar o modelo
                 </button>
               </>
             )}
           </p>
         </>
-      }
+      )}
     />
   )
 }
@@ -329,13 +424,13 @@ function TemplateEditor({ template, onDeleted, onUsed }: { template: UserTemplat
   return (
     <Editor
       target={target}
-      footer={
+      footer={(leave) => (
         <>
           <button
             type="button"
             onClick={() => {
               const id = addTemplate(template.id)
-              if (id) onUsed(id)
+              if (id) leave(() => onUsed(id))
             }}
             className="min-h-11 rounded-full bg-ok px-4 text-sm font-bold text-ink"
           >
@@ -344,30 +439,27 @@ function TemplateEditor({ template, onDeleted, onUsed }: { template: UserTemplat
           <button
             type="button"
             onClick={() => {
-              if (window.confirm(`Excluir o modelo "${template.name}"? As rotinas criadas com ele continuam.`)) {
-                deleteTemplate(template.id)
-                onDeleted()
-              }
+              if (window.confirm(`Excluir o modelo "${template.name}"? As rotinas criadas com ele continuam.`))
+                leave(() => {
+                  deleteTemplate(template.id)
+                  onDeleted()
+                })
             }}
             className={dangerBtn}
           >
             Excluir modelo
           </button>
         </>
-      }
+      )}
     />
   )
 }
 
-/** O que está aberto no editor. `null` = a primeira rotina. */
-export type Selection = { kind: 'routine' | 'template'; id: string } | null
-
-function SideItem({ name, color, count, current, onClick }: { name: string; color: string; count: number; current: boolean; onClick: () => void }) {
+function SideItem({ name, color, count, current, to }: { name: string; color: string; count: number; current: boolean; to: string }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={current ? 'true' : undefined}
+    <Link
+      to={to}
+      aria-current={current ? 'page' : undefined}
       className={`flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${current ? 'bg-accent/15' : 'hover:bg-panel-2'}`}
     >
       <span className="flex min-w-0 items-center gap-2.5">
@@ -375,18 +467,42 @@ function SideItem({ name, color, count, current, onClick }: { name: string; colo
         <span className="[overflow-wrap:anywhere]">{name || 'Sem nome'}</span>
       </span>
       <span className="font-mono text-xs font-normal text-muted">{count}</span>
-    </button>
+    </Link>
   )
 }
 
-export function Rotinas({ selected, select }: { selected: Selection; select: (s: Selection) => void }) {
+/**
+ * /rotinas: a lista (rotinas e modelos) e, ao lado, um convite para escolher uma.
+ * /rotinas/:slug e /rotinas/modelos/:slug: o editor, pelo nome (ver lib/slug.ts).
+ * Renomear troca o endereço sem sair do editor; links antigos com o id ainda abrem.
+ */
+export function Rotinas({ kind = 'routine' }: { kind?: 'routine' | 'template' }) {
+  const { slug } = useParams()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const routines = useRotina((s) => s.routines)
   const templates = useRotina((s) => s.templates)
   const createRoutine = useRotina((s) => s.createRoutine)
   const createTemplate = useRotina((s) => s.createTemplate)
-  const template = selected?.kind === 'template' ? templates.find((t) => t.id === selected.id) : undefined
-  const routine = template ? undefined : (routines.find((r) => selected?.kind === 'routine' && r.id === selected.id) ?? routines[0])
-  const openTemplate = (id: string) => select({ kind: 'template', id })
+
+  const list: { id: string; name: string }[] = kind === 'template' ? templates : routines
+  const found = slug ? (findBySlug(list, slug) ?? (looksLikeId(slug) ? [...routines, ...templates].find((x) => x.id === slug) : undefined)) : undefined
+  // Renomeou (aqui ou em outro aparelho): o endereço antigo ainda aponta para o mesmo item até a URL ser trocada.
+  const last = useRef<{ slug: string; id: string } | null>(null)
+  const currentId = found?.id ?? (slug && last.current?.slug === slug ? last.current.id : undefined)
+  if (found && slug) last.current = { slug, id: found.id }
+  const routine = currentId ? routines.find((r) => r.id === currentId) : undefined
+  const template = currentId && !routine ? templates.find((t) => t.id === currentId) : undefined
+
+  const path = routine || template ? editorPath((routine ?? template)!.id) : null
+  useEffect(() => {
+    if (path && path !== decodeURI(pathname)) navigate(path, { replace: true, state: { rename: true } })
+  }, [path, pathname])
+
+  const open = (id: string) => navigate(editorPath(id))
+  const backToList = () => navigate('/rotinas', { replace: true })
+  const routineSlugs = slugMap(routines)
+  const templateSlugs = slugMap(templates)
 
   return (
     <div className="flex flex-wrap items-start gap-5">
@@ -399,9 +515,9 @@ export function Rotinas({ selected, select }: { selected: Selection; select: (s:
             <HelpButton k="rotinas" />
           </div>
           {routines.map((r) => (
-            <SideItem key={r.id} name={r.name} color={r.color} count={r.blocks.length} current={routine?.id === r.id} onClick={() => select({ kind: 'routine', id: r.id })} />
+            <SideItem key={r.id} name={r.name} color={r.color} count={r.blocks.length} current={routine?.id === r.id} to={`/rotinas/${routineSlugs.get(r.id)}`} />
           ))}
-          <button type="button" onClick={() => select({ kind: 'routine', id: createRoutine() })} className="mt-1 self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-ink">
+          <button type="button" onClick={() => open(createRoutine())} className="mt-1 self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-ink">
             + Nova rotina
           </button>
         </nav>
@@ -415,9 +531,9 @@ export function Rotinas({ selected, select }: { selected: Selection; select: (s:
           </div>
           {templates.length === 0 && <p className="m-0 px-2 text-[13px] text-muted">Salve uma rotina como modelo ou crie um do zero.</p>}
           {templates.map((t) => (
-            <SideItem key={t.id} name={t.name} color={t.color} count={t.blocks.length} current={template?.id === t.id} onClick={() => openTemplate(t.id)} />
+            <SideItem key={t.id} name={t.name} color={t.color} count={t.blocks.length} current={template?.id === t.id} to={`/rotinas/modelos/${templateSlugs.get(t.id)}`} />
           ))}
-          <button type="button" onClick={() => openTemplate(createTemplate())} className="mt-1 self-start rounded-full border border-line px-4 py-2 text-[13px] font-bold text-soft hover:bg-panel-2">
+          <button type="button" onClick={() => open(createTemplate())} className="mt-1 self-start rounded-full border border-line px-4 py-2 text-[13px] font-bold text-soft hover:bg-panel-2">
             + Novo modelo
           </button>
         </nav>
@@ -425,11 +541,29 @@ export function Rotinas({ selected, select }: { selected: Selection; select: (s:
 
       <div className="min-w-0 flex-[999_1_560px]">
         {template ? (
-          <TemplateEditor key={template.id} template={template} onDeleted={() => select(null)} onUsed={(id) => select({ kind: 'routine', id })} />
+          <TemplateEditor key={template.id} template={template} onDeleted={backToList} onUsed={open} />
         ) : routine ? (
-          <RoutineEditor key={routine.id} routine={routine} onDeleted={() => select(null)} openTemplate={openTemplate} />
+          <RoutineEditor key={routine.id} routine={routine} onDeleted={backToList} openTemplate={open} />
+        ) : slug ? (
+          <div className="flex flex-col items-start gap-3 rounded-[22px] border border-line bg-panel p-6 sm:p-8">
+            <h1 className="m-0 text-xl font-bold">Essa rotina não existe mais</h1>
+            <p className="m-0 text-muted">Ela pode ter sido excluída, aqui ou em outro aparelho.</p>
+            <Link to="/rotinas" className="min-h-11 content-center rounded-full border border-line px-4 text-sm font-semibold text-soft hover:bg-panel-2">
+              Ver minhas rotinas
+            </Link>
+          </div>
         ) : (
-          <div className="rounded-[22px] border border-line bg-panel p-8 text-muted">Crie sua primeira rotina para começar.</div>
+          <div className="flex flex-col items-start gap-3 rounded-[22px] border border-line bg-panel p-6 sm:p-8">
+            <h1 className="m-0 text-xl font-bold">{routines.length ? 'Escolha uma rotina para editar' : 'Crie sua primeira rotina'}</h1>
+            <p className="m-0 text-muted">
+              {routines.length ? 'Toque numa rotina ou num modelo da lista para abrir o editor.' : 'Uma rotina é a sua lista do dia, na ordem que fizer sentido.'}
+            </p>
+            {routines.length === 0 && (
+              <button type="button" onClick={() => open(createRoutine())} className="min-h-11 rounded-full bg-ok px-5 text-sm font-bold text-ink">
+                + Nova rotina
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

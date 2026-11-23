@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAreas, useRotina } from '../store/useRotina'
-import { useOnboarding } from '../store/useOnboarding'
+import { Link, useNavigate } from 'react-router-dom'
+import { usePetCommand, type PetCommand } from '../components/pets/usePetInteraction'
 import { reloadFromServer } from '../sync/session'
 import { flushNow } from '../sync/outbox'
 import { useDevOverrides, type ForcedState } from '../store/useDevOverrides'
@@ -105,6 +106,8 @@ export default function DevPanel() {
               </button>
             </header>
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">
+              <DevLinks onNavigate={() => setOpen(false)} />
+              <PetPlay />
               <StatsReadout />
               <Simulation onStatus={setStatus} />
               <Overrides />
@@ -118,6 +121,57 @@ export default function DevPanel() {
         )}
       </AnimatePresence>
     </>
+  )
+}
+
+/** Dispara as brincadeiras em todos os pets interativos da tela (Início, Hoje, Perfil, Pet, onboarding). */
+function PetPlay() {
+  const send = usePetCommand((s) => s.send)
+  const reactions: { id: PetCommand; label: string }[] = [
+    { id: 'squash', label: '1 toque' },
+    { id: 'hop', label: '3 toques' },
+    { id: 'special', label: 'Especial da espécie' },
+    { id: 'spin', label: '5 toques (giro)' },
+    { id: 'dizzy', label: '8 toques (tonto)' },
+    { id: 'pet', label: 'Carinho (2 s)' },
+  ]
+  const idle: { id: PetCommand; label: string }[] = [
+    { id: 'yawn', label: 'Bocejar' },
+    { id: 'look', label: 'Olhar para os lados' },
+    { id: 'blink2', label: 'Piscar duas vezes' },
+  ]
+  return (
+    <Section title="Brincadeiras do pet">
+      <p className="m-0 text-[11.5px] text-muted">Para ver o especial de outra espécie, troque a espécie nos atalhos de visualização.</p>
+      <Row>
+        {reactions.map((r) => (
+          <Btn key={r.id} onClick={() => send(r.id)}>
+            {r.label}
+          </Btn>
+        ))}
+      </Row>
+      <Row>
+        {idle.map((r) => (
+          <Btn key={r.id} onClick={() => send(r.id)}>
+            {r.label}
+          </Btn>
+        ))}
+      </Row>
+    </Section>
+  )
+}
+
+/** Páginas só de desenvolvimento (rotas /dev/...). */
+function DevLinks({ onNavigate }: { onNavigate: () => void }) {
+  const link = 'rounded-full border border-line px-3 py-1.5 text-[12px] font-semibold text-soft hover:bg-panel-2'
+  return (
+    <Section title="Páginas dev">
+      <Row>
+        <Link to="/dev" onClick={onNavigate} className={link}>Índice</Link>
+        <Link to="/dev/cantinho" onClick={onNavigate} className={link}>Cantinho</Link>
+        <Link to="/dev/pets" onClick={onNavigate} className={link}>Pets e estados</Link>
+      </Row>
+    </Section>
   )
 }
 
@@ -461,6 +515,7 @@ function Trophies({ onStatus }: { onStatus: (s: string) => void }) {
 
 function Safety({ onStatus }: { onStatus: (s: string) => void }) {
   const [confirming, setConfirming] = useState(false)
+  const navigate = useNavigate()
 
   return (
     <Section title="Segurança">
@@ -469,7 +524,7 @@ function Safety({ onStatus }: { onStatus: (s: string) => void }) {
       </p>
       <Row>
         <Btn onClick={() => void discardSimulation(onStatus)}>Restaurar dados reais (recarregar da conta)</Btn>
-        <Btn onClick={() => useOnboarding.getState().show(1, true)}>Refazer o onboarding</Btn>
+        <Btn onClick={() => navigate('/bem-vindo?passo=1&completo=1')}>Refazer o onboarding</Btn>
         {!confirming ? (
           <Btn tone="danger" onClick={() => setConfirming(true)}>
             Resetar tudo neste aparelho

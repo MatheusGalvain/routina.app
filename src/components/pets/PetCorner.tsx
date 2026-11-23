@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import type { Area, AreaId, PetState } from '../../types'
 import { useAreas } from '../../store/useRotina'
@@ -6,8 +7,8 @@ import { useShownPet } from '../../store/useCompanion'
 import { useDevOverrides } from '../../store/useDevOverrides'
 import { useCornerEdit } from '../../store/useCornerEdit'
 import { useTrophyView, writeSlots } from '../../store/useTrophies'
-import { TROPHIES, Trophy, trophyTitle } from '../../data/trophies'
-import { moveSlot, tiersOf } from '../../lib/corner'
+import { Trophy, trophyTitle } from '../../data/trophies'
+import { moveSlot } from '../../lib/corner'
 import { Icon } from '../ui/ui'
 import { Pet } from './Pet'
 import { SPECIES, STATE_STYLE } from './pets'
@@ -56,12 +57,14 @@ function slotAt(clientX: number, box: DOMRect) {
 /**
  * Cantinho do pet, em duas camadas:
  *  - céu com as constelações das 4 áreas mais cuidadas na semana;
- *  - chão com o pet no centro e 4 espaços para troféus (montados no modo "Editar cantinho").
+ *  - chão com o pet no centro e 4 espaços para troféus.
+ * `editable`: só na aba Pet aparece o "Editar cantinho" (montar os troféus). No Início ele mostra
+ * só o resultado, com a explicação ao lado e um link para arrumar na aba Pet.
  */
-export function PetCorner({ autoState, legend = true }: { autoState: PetState; legend?: boolean }) {
+export function PetCorner({ autoState, legend = true, editable = false }: { autoState: PetState; legend?: boolean; editable?: boolean }) {
   const pet = useShownPet(autoState)
   const forced = useDevOverrides((s) => s.corner)
-  const { trophies, slots } = useTrophyView()
+  const { slots } = useTrophyView()
   const areas = useAreas()
   const editing = useCornerEdit((s) => s.editing)
   const setEdit = useCornerEdit((s) => s.set)
@@ -75,7 +78,6 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
   const days = Object.fromEntries(areas.map((a) => [a.id, forced[a.id] ?? pet.stats.areaDays7[a.id] ?? 0])) as Record<AreaId, number>
   const shown = topAreas(areas, days)
   const petName = pet.isCompanion ? pet.name || SPECIES[pet.kind].name : 'seu pet'
-  const hasTrophies = TROPHIES.some((t) => tiersOf(trophies, t.id).length > 0)
   const trophySize = Math.round(width * 0.115)
   // Altura mínima de 44px para o toque; a largura encolhe em telas estreitas para não cobrir o pet.
   const boxH = Math.max(44, Math.round(trophySize * 1.3))
@@ -87,16 +89,6 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
         <div ref={ref} className="relative w-full overflow-hidden rounded-[18px] border border-line" style={{ aspectRatio: `${W} / ${H}` }}>
           <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full" role="img" aria-label={`Cantinho de ${petName}`}>
             <CornerSky areas={shown} days={days} aura={aura} shadows={SLOT_X.filter((_, i) => slots[i])} />
-            {!hasTrophies && !editing && (
-              <g style={{ fill: 'var(--color-muted)' }} fontSize="8.5" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
-                <text x="93" y={FLOOR + 18}>
-                  Seus troféus aparecem aqui.
-                </text>
-                <text x="307" y={FLOOR + 18}>
-                  Seus troféus aparecem aqui.
-                </text>
-              </g>
-            )}
           </svg>
 
           {/* Pés na linha do chão: o desenho do pet tem ~13% de folga embaixo. */}
@@ -109,6 +101,7 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
                 phase={pet.phase}
                 accessories={pet.accessories}
                 size={Math.round(width * 0.3)}
+                play
                 label={`${petName}: ${pet.sleeping ? 'dormindo' : 'cutucar'}`}
               />
             )}
@@ -162,6 +155,7 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
             })}
         </div>
 
+        {editable && (
         <div className="flex flex-wrap items-center gap-3">
           <p className="m-0 min-w-[200px] flex-1 rounded-2xl border border-line-2 bg-panel-2 px-4 py-3 text-sm text-soft">
             {editing
@@ -178,11 +172,23 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
             {editing ? 'Pronto' : 'Editar cantinho'}
           </button>
         </div>
+        )}
       </div>
 
       {legend && (
-        <ul className="m-0 grid min-w-0 flex-[2_1_240px] list-none grid-cols-2 gap-2 p-0" aria-label="Áreas nos últimos 7 dias">
-          {areas.map((area) => {
+        <div className="flex min-w-0 flex-[2_1_240px] flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <h3 id="cantinho-titulo" className="m-0 text-base font-bold">
+              O céu da sua semana
+            </h3>
+            <p className="m-0 text-[13.5px] leading-relaxed text-muted">
+              Aqui é a casinha de {petName}. Cada dia em que você conclui um bloco de uma área acende uma estrela na constelação dela, e as 4
+              áreas mais cuidadas nos últimos 7 dias aparecem no céu. No chão ficam os troféus que você escolheu expor.
+            </p>
+          </div>
+        <ul className="m-0 grid min-w-0 list-none grid-cols-2 gap-2 p-0" aria-labelledby="cantinho-titulo">
+          {/* Mais dias na semana primeiro; empate segue a ordem da pessoa. */}
+          {[...areas].sort((a, b) => days[b.id] - days[a.id]).map((area) => {
             const inSky = shown.some((a) => a.id === area.id)
             return (
               <li key={area.id} className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-xl bg-panel-2 px-3 py-2.5">
@@ -197,9 +203,15 @@ export function PetCorner({ autoState, legend = true }: { autoState: PetState; l
             )
           })}
         </ul>
+          {!editable && (
+            <Link to="/pet#cantinho" className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-full px-1 text-sm font-semibold text-accent hover:underline">
+              <Icon name="edit" size={14} /> Arrumar os troféus na aba Pet
+            </Link>
+          )}
+        </div>
       )}
 
-      <CornerDrawer />
+      {editable && <CornerDrawer />}
     </div>
   )
 }

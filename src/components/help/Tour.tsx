@@ -42,18 +42,23 @@ export function Tour() {
       const r = el.getBoundingClientRect()
       setRect({ top: r.top - PAD, left: r.left - PAD, width: r.width + PAD * 2, height: r.height + PAD * 2 })
     }
-    // A tela Início pode estar acabando de abrir: espera um pouco pelo botão.
-    const find = window.setTimeout(() => {
+    // A tela Início pode estar carregando (rota nova): procura o botão por até 3 s.
+    let tries = 0
+    let settle = 0
+    const find = window.setInterval(() => {
       el = document.querySelector<HTMLElement>(`[data-help="${stopAt.key}"]`)
+      if (!el && ++tries < 25) return
+      window.clearInterval(find)
       if (!el) return
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       measure()
-      window.setTimeout(measure, 400)
+      settle = window.setTimeout(measure, 400)
     }, 120)
     window.addEventListener('resize', measure)
     window.addEventListener('scroll', measure, true)
     return () => {
-      window.clearTimeout(find)
+      window.clearInterval(find)
+      window.clearTimeout(settle)
       window.removeEventListener('resize', measure)
       window.removeEventListener('scroll', measure, true)
     }

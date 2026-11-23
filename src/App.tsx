@@ -1,176 +1,212 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { Inicio } from './pages/Inicio'
-import { Hoje } from './pages/Hoje'
-import { Rotinas, type Selection } from './pages/Rotinas'
-import { Historico } from './pages/Historico'
-import { Companheiro } from './pages/Companheiro'
-import { Privacidade } from './pages/Privacidade'
-import { Perfil } from './pages/Perfil'
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
+import { NavLink, Navigate, Outlet, useLocation, useMatches, useNavigate } from 'react-router-dom'
 import { Pet } from './components/pets/Pet'
 import { useShownPet } from './store/useCompanion'
 import { useSyncTodayPlan } from './store/useSyncTodayPlan'
 import { useCompanionProgress } from './store/useCompanion'
 import { useTrophyProgress } from './store/useTrophies'
 import { PetCelebration } from './components/pets/PetCelebration'
-import { Entrar } from './pages/Entrar'
 import { useAuth } from './store/useAuth'
-import { Icon, Logo } from './components/ui/ui'
+import { Icon } from './components/ui/ui'
 import { useSession } from './sync/session'
 import { SyncNotice } from './components/sync/SyncNotice'
 import { LocalImportPrompt } from './components/sync/LocalImportPrompt'
 import { NamePrompt } from './components/sync/NamePrompt'
 import { Footer } from './components/ui/Footer'
-import { Onboarding } from './components/onboarding/Onboarding'
-import { Tour, useTour } from './components/help/Tour'
-import { useOnboarding } from './store/useOnboarding'
+import { PetLoader } from './components/ui/PetLoader'
+import { Toaster } from './components/ui/Toast'
+import { Tour } from './components/help/Tour'
 import { useRotina } from './store/useRotina'
 import { setOnboardingDone } from './sync/session'
 import { readLegacy } from './sync/legacy'
-import type { TodayTarget } from './components/home/PrimaryAction'
-import { div } from 'framer-motion/client'
+import { peekPending, rememberPending, takePending } from './lib/authUrl'
+import type { RouteHandle } from './router'
 
 // Só existe no modo dev: em produção a condição vira `false` e o import some do build.
 const DevPanel = import.meta.env.DEV ? lazy(() => import('./dev/DevPanel')) : null
+// A política também abre sem sessão (link no rodapé da tela de entrada).
+const Privacidade = lazy(() => import('./pages/Privacidade').then((m) => ({ default: m.Privacidade })))
 
-type Page = 'inicio' | 'hoje' | 'historico' | 'rotinas' | 'pet' | 'perfil' | 'privacidade'
-
-const TABS: { id: Page; label: string }[] = [
-  { id: 'inicio', label: 'Início' },
-  { id: 'hoje', label: 'Hoje' },
-  { id: 'historico', label: 'Histórico' },
-  { id: 'rotinas', label: 'Rotinas' },
-  { id: 'pet', label: 'Pet' },
+const TABS: { to: string; label: string }[] = [
+  { to: '/', label: 'Início' },
+  { to: '/hoje', label: 'Hoje' },
+  { to: '/rotinas', label: 'Rotinas' },
+  { to: '/pet', label: 'Pets' },
+  { to: '/historico', label: 'Histórico' },
 ]
 
-/** Sem sessão: tela de entrada. Com sessão: o app. */
-export default function App() {
-  const status = useAuth((s) => s.status)
-  const data = useSession((s) => s.status)
-  if (status === 'signedOut') return <Entrar />
-  // Espera o login e os dados da conta antes de mostrar o app.
-  if (status === 'loading' || data !== 'ready')
-    return (
-      <div className="grid min-h-screen place-items-center" role="status">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-pulse">
-            <Logo size={44} />
-          </div>
-          <span className="text-sm text-muted">{status === 'signedIn' ? 'Carregando suas rotinas…' : 'Carregando…'}</span>
-        </div>
-      </div>
-    )
-  return <AppShell />
+/** A rota atual pertence a esta aba? ("/" só na raiz; "/rotinas" também em "/rotinas/:id".) */
+const tabActive = (to: string, pathname: string) => (to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`))
+
+/**
+ * Raiz de todas as rotas: título da aba, rolar para o topo ao trocar de página
+ * (ou até a âncora, como /pet#colecao) e o carregamento das páginas.
+ */
+export function RootLayout() {
+  const { pathname, search, hash, state } = useLocation()
+  const matches = useMatches()
+  // Renomear a rotina troca a URL (/rotinas/<nome>) a cada tecla: aí não rola para o topo.
+  const renaming = !!(state as { rename?: boolean } | null)?.rename
+  const title = [...matches].reverse().find((m) => (m.handle as RouteHandle | undefined)?.title)?.handle as RouteHandle | undefined
+
+  useEffect(() => {
+    document.title = title?.title ? `${title.title} · Habbit Do` : 'Habbit Do'
+  }, [title?.title])
+
+  useEffect(() => {
+    if (renaming) return
+    if (!hash) return window.scrollTo({ top: 0 })
+    // A página pode estar carregando: procura a âncora por até 2 s.
+    let tries = 0
+    const timer = window.setInterval(() => {
+      const el = document.getElementById(decodeURIComponent(hash.slice(1)))
+      if (el || ++tries > 20) window.clearInterval(timer)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+    return () => window.clearInterval(timer)
+  }, [pathname, search, hash])
+
+  return (
+    <Suspense fallback={<PetLoader full />}>
+      <Outlet />
+    </Suspense>
+  )
 }
 
-function AppShell() {
+/** /entrar: com sessão, volta para a rota que a pessoa tentou abrir (ou para o início). */
+export function PublicOnly({ children }: { children: ReactNode }) {
+  const status = useAuth((s) => s.status)
+  const location = useLocation()
+  if (status === 'loading') return <PetLoader full />
+  if (status === 'signedIn') {
+    const from = (location.state as { from?: string } | null)?.from
+    return <Navigate to={from ?? peekPending() ?? '/'} replace />
+  }
+  return <>{children}</>
+}
+
+/** Sem sessão: vai para /entrar guardando a rota pedida (menos quando a pessoa acabou de sair da conta). */
+function ToLogin() {
+  const { pathname, search, hash } = useLocation()
+  const signedOutNow = useAuth((s) => s.hadSession)
+  const from = pathname + search + hash
+  useEffect(() => {
+    if (!signedOutNow) rememberPending(from)
+  }, [from, signedOutNow])
+  return <Navigate to="/entrar" replace state={signedOutNow ? null : { from }} />
+}
+
+/** Protege o app: espera o login e os dados da conta antes de mostrar qualquer página. */
+export function RequireAuth() {
+  const status = useAuth((s) => s.status)
+  const data = useSession((s) => s.status)
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+
+  if (status === 'signedOut') {
+    if (pathname === '/privacidade')
+      return (
+        <div className="flex min-h-screen flex-col">
+          <main className="flex-1 px-4 py-8">
+            <Suspense fallback={<PetLoader />}>
+              <Privacidade onBack={() => navigate('/entrar')} />
+            </Suspense>
+          </main>
+          <Footer />
+        </div>
+      )
+    return <ToLogin />
+  }
+  if (status === 'loading' || data !== 'ready') return <PetLoader full text={status === 'signedIn' ? 'Carregando suas rotinas…' : 'Carregando…'} />
+  return <SignedIn />
+}
+
+/** Com sessão e dados prontos: o que roda em todas as páginas e as janelas por cima delas. */
+function SignedIn() {
   useSyncTodayPlan()
   useCompanionProgress()
   useTrophyProgress()
-  const [page, setPage] = useState<Page>('inicio')
-  // A política abre por cima da página atual e o "Voltar" retorna para ela.
-  const [beforePrivacy, setBeforePrivacy] = useState<Page>('inicio')
-  const openPrivacy = () => {
-    if (page !== 'privacidade') setBeforePrivacy(page)
-    setPage('privacidade')
-    window.scrollTo({ top: 0 })
-  }
-  const [selection, setSelection] = useState<Selection>(null)
-
-  const openCollection = () => {
-    setPage('pet')
-    requestAnimationFrame(() => document.getElementById('colecao')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-  }
-
-  const openRoutine = (id: string | null) => {
-    setSelection(id ? { kind: 'routine', id } : null)
-    setPage('rotinas')
-  }
-  const openTemplate = (id: string) => {
-    setSelection({ kind: 'template', id })
-    setPage('rotinas')
-  }
-
-  /** Abre o Hoje; com alvo, rola até o bloco (e leva o foco para ele) ou até a revisão da noite. */
-  const goToday = (target?: TodayTarget) => {
-    setPage('hoje')
-    if (!target) return window.scrollTo({ top: 0 })
-    window.setTimeout(() => {
-      const el = target.review ? document.getElementById('nota') : document.getElementById(`bloco-${target.blockId}`)
-      if (!el) return
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      const focusable = target.review ? el : el.querySelector<HTMLElement>('button')
-      focusable?.focus({ preventScroll: true })
-    }, 80)
-  }
-
+  useReturnAfterLogin()
   useFirstAccessOnboarding()
 
   return (
-    <section className="flex min-h-screen w-full flex-col">
-      <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6 px-4 pt-6 pb-14 sm:px-6">
-        <div className="flex items-center justify-between gap-3">
-          <SectionNav page={page} onSelect={setPage} />
-          <ProfileButton current={page === 'perfil'} onClick={() => setPage('perfil')} />
-        </div>
-
-        {page === 'inicio' && <Inicio goToday={goToday} openRoutine={openRoutine} openTemplate={openTemplate} />}
-        {page === 'hoje' && <Hoje goRoutines={() => openRoutine(null)} />}
-        {page === 'historico' && <Historico goToday={() => goToday()} />}
-        {page === 'rotinas' && <Rotinas selected={selection} select={setSelection} />}
-      {page === 'pet' && <Companheiro />}
-      {page === 'perfil' && <Perfil
-          openPrivacy={openPrivacy}
-          openCollection={openCollection}
-          startTour={() => {
-            setPage('inicio')
-            window.scrollTo({ top: 0 })
-            useTour.getState().start()
-          }}
-        />}
-      {page === 'privacidade' && <Privacidade onBack={() => setPage(beforePrivacy)} />}
+    <>
+      <Outlet />
       <PetCelebration />
-      <Onboarding onFinish={() => setPage('inicio')} />
+      <Toaster />
       <Tour />
       <SyncNotice />
       <LocalImportPrompt />
       <NamePrompt />
-
       {DevPanel && (
         <Suspense fallback={null}>
           <DevPanel />
         </Suspense>
       )}
-      </div>
+    </>
+  )
+}
 
-      <Footer onPrivacy={openPrivacy} />
+/** Link do e-mail aberto em outra aba: o app abre na raiz e volta para a rota que a pessoa tinha pedido. */
+function useReturnAfterLogin() {
+  const navigate = useNavigate()
+  const { pathname, search, hash } = useLocation()
+  useEffect(() => {
+    const pending = takePending()
+    if (pending && pending !== pathname + search + hash) navigate(pending, { replace: true })
+  }, [])
+}
+
+/** Header, página e rodapé. As páginas carregam aqui dentro, sem esconder o header. */
+export function AppShell() {
+  return (
+    <section className="flex min-h-screen w-full flex-col">
+      <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6 px-4 pt-6 pb-14 sm:px-6">
+        <header className="flex items-center justify-between gap-3">
+          <SectionNav />
+          <ProfileButton />
+        </header>
+        <main className="flex flex-col">
+          <Suspense fallback={<PetLoader />}>
+            <Outlet />
+          </Suspense>
+        </main>
+      </div>
+      <Footer />
     </section>
   )
 }
 
+const tabClass = (active: boolean) => (active ? 'bg-accent/15 text-fg' : 'text-muted hover:text-soft')
+
 /** Navegação das seções: abas a partir de 768px; abaixo disso, menu hambúrguer. */
-function SectionNav({ page, onSelect }: { page: Page; onSelect: (p: Page) => void }) {
+function SectionNav() {
+  const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
-  const current = TABS.find((t) => t.id === page)
+  const current = TABS.find((t) => tabActive(t.to, pathname))
 
-  const close = () => {
+  const close = (focusButton = true) => {
     setOpen(false)
-    buttonRef.current?.focus()
+    if (focusButton) buttonRef.current?.focus()
   }
+
+  // Trocou de página (por um link do menu ou não): fecha o menu.
+  useEffect(() => setOpen(false), [pathname])
 
   useEffect(() => {
     if (!open) return
     // Leva o foco para a opção atual (ou a primeira) ao abrir.
-    const items = listRef.current?.querySelectorAll<HTMLButtonElement>('button')
+    const items = listRef.current?.querySelectorAll<HTMLAnchorElement>('a')
     const target = Array.from(items ?? []).find((b) => b.getAttribute('aria-current') === 'page') ?? items?.[0]
     target?.focus()
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
     }
     const onPointer = (e: PointerEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) close()
+      if (!wrapRef.current?.contains(e.target as Node)) close(false)
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('pointerdown', onPointer)
@@ -180,21 +216,14 @@ function SectionNav({ page, onSelect }: { page: Page; onSelect: (p: Page) => voi
     }
   }, [open])
 
-  const tabClass = (active: boolean) => (active ? 'bg-accent/15 text-fg' : 'text-muted hover:text-soft')
-
   return (
     <>
       <nav aria-label="Seções" className="hidden min-w-0 max-w-full gap-1 self-start rounded-full border border-line bg-panel p-1 md:flex">
+        {/* NavLink marca a aba atual com aria-current="page". */}
         {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            aria-current={page === t.id ? 'page' : undefined}
-            onClick={() => onSelect(t.id)}
-            className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${tabClass(page === t.id)}`}
-          >
+          <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => `shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${tabClass(isActive)}`}>
             {t.label}
-          </button>
+          </NavLink>
         ))}
       </nav>
 
@@ -215,18 +244,15 @@ function SectionNav({ page, onSelect }: { page: Page; onSelect: (p: Page) => voi
           <nav id="menu-secoes" aria-label="Seções" className="absolute top-[calc(100%+8px)] left-0 z-40 w-56 rounded-2xl border border-line bg-panel p-1.5 shadow-[0_12px_40px_rgba(0,0,0,.5)]">
             <ul ref={listRef} className="m-0 flex list-none flex-col gap-0.5 p-0">
               {TABS.map((t) => (
-                <li key={t.id}>
-                  <button
-                    type="button"
-                    aria-current={page === t.id ? 'page' : undefined}
-                    onClick={() => {
-                      onSelect(t.id)
-                      close()
-                    }}
-                    className={`flex min-h-11 w-full items-center rounded-xl px-4 text-left text-[15px] font-semibold ${tabClass(page === t.id)}`}
+                <li key={t.to}>
+                  <NavLink
+                    to={t.to}
+                    end={t.to === '/'}
+                    onClick={() => close(false)}
+                    className={({ isActive }) => `flex min-h-11 w-full items-center rounded-xl px-4 text-left text-[15px] font-semibold ${tabClass(isActive)}`}
                   >
                     {t.label}
-                  </button>
+                  </NavLink>
                 </li>
               ))}
             </ul>
@@ -238,11 +264,13 @@ function SectionNav({ page, onSelect }: { page: Page; onSelect: (p: Page) => voi
 }
 
 /**
- * Abre o onboarding na conta nova, uma vez por sessão, depois das perguntas de nome e de dados antigos.
+ * Leva a conta nova para o onboarding (/bem-vindo), uma vez por sessão, depois das perguntas de nome e de dados antigos.
  * Quem já tem pet e rotina (ex.: usava o app antes) só fica marcado como concluído.
  */
 function useFirstAccessOnboarding() {
   const profile = useSession((s) => s.profile)
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const checked = useRef(false)
   useEffect(() => {
     if (checked.current || !profile || profile.onboardingDone) return
@@ -252,26 +280,26 @@ function useFirstAccessOnboarding() {
     const { companion, routines } = useRotina.getState()
     const hasRoutines = routines.some((r) => !r.dev)
     if (companion.kind && hasRoutines) return setOnboardingDone()
-    useOnboarding.getState().show(companion.kind ? 2 : 1)
+    if (pathname !== '/bem-vindo') navigate(`/bem-vindo?passo=${companion.kind ? 2 : 1}`)
   }, [profile])
 }
 
 /** Avatar no topo: o pet favorito, que abre o perfil. */
-function ProfileButton({ current, onClick }: { current: boolean; onClick: () => void }) {
+function ProfileButton() {
   const pet = useShownPet('neutro')
   return (
-    <a aria-current={current ? 'page' : undefined}  onClick={onClick} className='flex justify-center text-soft" items-center gap-4 cursor-pointer'>
-       Meu Perfil
-       <button
-          type="button"
-          aria-label="Perfil"
-          aria-current={current ? 'page' : undefined}
-          onClick={onClick}
-          className={`grid h-11 w-11 shrink-0 place-items-center rounded-full cursor-pointer border bg-panel ${current ? 'border-accent' : 'border-line hover:border-line-2'}`}
-        >
-      <Pet kind={pet.kind} phase={pet.phase} accessories={pet.accessories} sleeping={pet.sleeping} size={32} interactive={false} float={false} />
-    </button>
-   </a>
-   
+    <NavLink to="/perfil" className="group flex shrink-0 items-center gap-3 rounded-full text-sm font-semibold text-soft hover:text-fg">
+      {({ isActive }) => (
+        <>
+          <span className="hidden sm:inline">Meu perfil</span>
+          <span
+            className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-panel ${isActive ? 'border-accent' : 'border-line group-hover:border-line-2'}`}
+          >
+            <span className="sr-only sm:hidden">Meu perfil</span>
+            <Pet kind={pet.kind} phase={pet.phase} accessories={pet.accessories} sleeping={pet.sleeping} size={32} interactive={false} float={false} />
+          </span>
+        </>
+      )}
+    </NavLink>
   )
 }

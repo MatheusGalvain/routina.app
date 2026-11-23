@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Icon } from '../components/ui/ui'
+import { useBack } from '../lib/navigation'
 
 /** E-mail para dúvidas sobre privacidade. Preencha antes de publicar (vazio = a seção não aparece). */
 const CONTATO = ''
@@ -13,6 +14,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <div className="flex flex-col gap-2 text-[15px] leading-relaxed text-soft">{children}</div>
     </section>
   )
+}
+
+/** Rota /privacidade dentro do app: "Voltar" retorna para a página de onde a pessoa veio. */
+export function PrivacidadePage() {
+  return <Privacidade onBack={useBack('/')} />
 }
 
 /** Política de privacidade, em linguagem simples. */

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRotina } from '../store/useRotina'
 import { computePetState, getTodayItems, petMessage } from '../lib/today'
@@ -10,8 +11,35 @@ import { Pet } from '../components/pets/Pet'
 import { STATE_STYLE, textColor } from '../components/pets/pets'
 import { useShownPet } from '../store/useCompanion'
 import type { PetState, TodayItem } from '../types'
+import type { TodayTarget } from '../lib/navigation'
+import { editorPath } from '../lib/slug'
 
-export function Hoje({ goRoutines }: { goRoutines: () => void }) {
+/**
+ * Veio do botão principal do Início com um alvo (state.focus): rola até o bloco, ou até a revisão
+ * da noite, e leva o foco para ele. Depois limpa o state para não repetir ao voltar.
+ */
+function useFocusTarget() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const target = (location.state as { focus?: TodayTarget } | null)?.focus
+  useEffect(() => {
+    if (!target) return
+    const t = window.setTimeout(() => {
+      const el = target.review ? document.getElementById('nota') : document.getElementById(`bloco-${target.blockId}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        const focusable = target.review ? el : el.querySelector<HTMLElement>('button')
+        focusable?.focus({ preventScroll: true })
+      }
+      navigate('.', { replace: true, state: null })
+    }, 80)
+    return () => window.clearTimeout(t)
+  }, [target])
+}
+
+export function Hoje() {
+  useFocusTarget()
+  const navigate = useNavigate()
   const now = nowInTz()
   const date = dayKey(now)
   const routines = useRotina((s) => s.routines)
@@ -75,7 +103,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
             empty={
               <>
                 <p className="m-0 text-muted">Nenhum bloco para hoje.</p>
-                <button type="button" onClick={goRoutines} className="rounded-full bg-ok px-4 py-2 text-sm font-bold text-ink">
+                <button type="button" onClick={() => navigate(editorPath(useRotina.getState().createRoutine()))} className="rounded-full bg-ok px-4 py-2 text-sm font-bold text-ink">
                   Criar uma rotina
                 </button>
               </>
@@ -89,7 +117,7 @@ export function Hoje({ goRoutines }: { goRoutines: () => void }) {
             <div className="relative grid h-[220px] w-full place-items-center">
               <div className="absolute h-[200px] w-[200px] rounded-full border transition-colors duration-500" style={{ borderColor: `${look.color}30` }} />
               <div className="absolute h-[160px] w-[160px] rounded-full border transition-colors duration-500" style={{ borderColor: `${look.color}22` }} />
-              <Pet kind={pet.kind} state={pet.state} sleeping={pet.sleeping} phase={pet.phase} accessories={pet.accessories} size={140} />
+              <Pet kind={pet.kind} state={pet.state} sleeping={pet.sleeping} phase={pet.phase} accessories={pet.accessories} size={140} play />
             </div>
             <p className="m-0 font-mono text-xs tracking-[0.2em] uppercase transition-colors duration-500" style={{ color: pet.sleeping ? 'var(--color-noite)' : textColor(look.color) }}>
               {pet.name && pet.isCompanion ? `${pet.name} · ` : ''}

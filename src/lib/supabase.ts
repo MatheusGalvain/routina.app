@@ -22,5 +22,8 @@ export const supabase = createClient(url, key, {
 /** Login com Google aparece só quando o provedor está ligado no painel do Supabase. */
 export const GOOGLE_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE === 'true'
 
-/** Para onde o link mágico e o Google devolvem a pessoa (a própria página do app). */
-export const redirectTo = () => window.location.origin + window.location.pathname
+/**
+ * Para onde o link mágico e o Google devolvem a pessoa: sempre a raiz do app (é a URL liberada
+ * em Redirect URLs no Supabase). A rota que ela tentou abrir volta depois do login (lib/authUrl).
+ */
+export const redirectTo = () => window.location.origin + '/'

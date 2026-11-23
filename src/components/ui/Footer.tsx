@@ -1,7 +1,8 @@
+import { Link } from 'react-router-dom'
 import { Logo } from './ui'
 
 /** Rodapé escuro e fosco: marca, direitos autorais e política de privacidade. */
-export function Footer({ onPrivacy }: { onPrivacy: () => void }) {
+export function Footer() {
   const year = new Date().getFullYear()
   return (
     <footer className="relative mt-auto w-full border-t border-fg/[0.06] bg-ink/85 backdrop-blur-xl">
@@ -24,9 +25,9 @@ export function Footer({ onPrivacy }: { onPrivacy: () => void }) {
           </div>
 
           <nav aria-label="Links do rodapé" className="flex flex-wrap items-center gap-1">
-            <button type="button" onClick={onPrivacy} className="rounded-full px-3.5 py-2 text-sm font-semibold text-soft transition-colors hover:bg-fg/[0.05] hover:text-fg">
+            <Link to="/privacidade" className="rounded-full px-3.5 py-2 text-sm font-semibold text-soft transition-colors hover:bg-fg/[0.05] hover:text-fg">
               Política de privacidade
-            </button>
+            </Link>
             <button
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

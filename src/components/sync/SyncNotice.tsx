@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { flushNow, useSyncStatus } from '../../sync/outbox'
 import { useSession } from '../../sync/session'
+import { useMatch } from 'react-router-dom'
 
 /**
  * Aviso discreto no canto da tela quando uma gravação falhou (e será tentada de novo),
@@ -12,6 +13,11 @@ export function SyncNotice() {
   const offline = useSession((s) => s.offline)
   const [now, setNow] = useState(Date.now())
   const [hideDropped, setHideDropped] = useState(0)
+  // No editor de rotina o selo do topo já mostra "Não foi possível salvar"; aqui não repete.
+  // Os dois hooks sempre rodam (um `||` pularia o segundo e mudaria a ordem dos hooks entre renderizações).
+  const routineMatch = useMatch('/rotinas/:slug')
+  const templateMatch = useMatch('/rotinas/modelos/:slug')
+  const inEditor = !!routineMatch || !!templateMatch
 
   useEffect(() => {
     if (state !== 'retrying') return
@@ -20,7 +26,8 @@ export function SyncNotice() {
   }, [state])
 
   let text: string | null = null
-  if (state === 'retrying') {
+  if (state === 'retrying' && inEditor) text = null
+  else if (state === 'retrying') {
     const secs = retryAt ? Math.max(0, Math.ceil((retryAt - now) / 1000)) : 0
     text = `Não deu para salvar ${pending === 1 ? '1 mudança' : `${pending} mudanças`} na sua conta. Elas estão guardadas aqui; tentando de novo${secs ? ` em ${secs}s` : ''}.`
   } else if (offline && pending > 0) text = 'Sem conexão com a sua conta. Suas mudanças ficam guardadas aqui e sobem quando a conexão voltar.'
