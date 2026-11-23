@@ -7,7 +7,7 @@ import { DEFAULT_SCENE, type SceneId, type SceneItemId } from '../data/scenes'
 import { TEMPLATES } from '../data/templates'
 import { AREA_ALLOWED, AREA_NAME_MAX, AREA_PALETTE, DEFAULT_AREAS, MAX_AREAS, ROUTINE_COLORS, normalizeAreas, pastelArea, pastelRoutine, removedDefaults, sameName } from '../data/areas'
 import { APP_KEY } from '../lib/storageKeys'
-import { nowInTz } from '../lib/dates'
+import { dayKey, nowInTz } from '../lib/dates'
 
 const uid = () => crypto.randomUUID()
 
@@ -232,7 +232,25 @@ export const useRotina = create<RotinaState>()(
           set({ routines: [...get().routines, { id, name, color, days: [nowInTz().getDay()], blocks: [] }] })
           return id
         },
-        updateRoutine: (id, patch) => set({ routines: mapRoutine(get().routines, id, (r) => ({ ...r, ...patch })) }),
+        updateRoutine: (id, patch) => {
+          const before = get().routines.find((r) => r.id === id)
+          set({ routines: mapRoutine(get().routines, id, (r) => ({ ...r, ...patch })) })
+          // Incluiu algum dia novo: as tarefas da rotina concluídas em dias anteriores voltam a aparecer.
+          // O registro daqueles dias não muda (continuam concluídas no histórico); as de hoje ficam como estão.
+          const addedDay = before && patch.days?.some((d) => !before.days.includes(d))
+          if (!addedDay) return
+          const today = dayKey()
+          const tasks = { ...get().completedTasks }
+          let changed = false
+          for (const b of before.blocks) {
+            const doneOn = tasks[b.id]
+            if (b.type === 'tarefa' && doneOn && doneOn < today) {
+              delete tasks[b.id]
+              changed = true
+            }
+          }
+          if (changed) set({ completedTasks: tasks })
+        },
         deleteRoutine: (id) => set({ routines: get().routines.filter((r) => r.id !== id) }),
         addTemplate: (keyOrId) => {
           const t = TEMPLATES.find((x) => x.key === keyOrId) ?? get().templates.find((x) => x.id === keyOrId)

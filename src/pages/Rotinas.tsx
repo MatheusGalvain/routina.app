@@ -198,7 +198,24 @@ function BlockRow({ target, block, index }: { target: EditorTarget; block: Block
 /** Libera uma saída de propósito do editor (excluir, usar o modelo) sem o aviso de "ainda salvando". */
 type Leave = (go: () => void) => void
 
-function Editor({ target, footer }: { target: EditorTarget; footer: (leave: Leave) => ReactNode }) {
+/** Salvar e voltar para a lista (espera o salvamento automático terminar). */
+type SaveCtl = { run: () => void; saving: boolean }
+
+/**
+ * `primary`: troca o botão da barra de baixo (por padrão, "Salvar rotina/modelo").
+ * `note`: texto na barra de baixo, no lugar da explicação padrão (erros continuam aparecendo).
+ */
+function Editor({
+  target,
+  footer,
+  primary,
+  note,
+}: {
+  target: EditorTarget
+  footer: (leave: Leave, save: SaveCtl) => ReactNode
+  primary?: { label: string; onClick: () => void }
+  note?: (leave: Leave) => ReactNode
+}) {
   const v = target.value
   const isTemplate = target.kind === 'template'
   const noun = isTemplate ? 'modelo' : 'rotina'
@@ -333,25 +350,27 @@ function Editor({ target, footer }: { target: EditorTarget; footer: (leave: Leav
         <BlockForm onSave={(b) => target.setBlocks([...v.blocks, { ...b, id: newId() }])} />
       </Panel>
 
-      <div className="flex flex-wrap items-center gap-3">{footer(leave)}</div>
+      <div className="flex flex-wrap items-center gap-3">{footer(leave, { run: () => void save(), saving })}</div>
 
       {/* Salvar e voltar: no fim do editor; no celular, barra fixa embaixo. */}
       <div data-save-bar className="fixed inset-x-0 bottom-0 z-40 flex flex-col gap-1 border-t border-line bg-panel/95 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:z-auto sm:flex-row sm:items-center sm:gap-3 sm:rounded-[22px] sm:border sm:bg-panel sm:p-4">
         <button
           type="button"
-          onClick={() => void save()}
-          disabled={saving}
+          onClick={primary ? primary.onClick : () => void save()}
+          disabled={!primary && saving}
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-accent px-6 text-[15px] font-bold text-ink disabled:opacity-70"
         >
-          <Icon name="check" size={16} />
-          {saving ? 'Salvando…' : isTemplate ? 'Salvar modelo' : 'Salvar rotina'}
+          <Icon name={primary ? 'box' : 'check'} size={16} />
+          {primary ? primary.label : saving ? 'Salvando…' : isTemplate ? 'Salvar modelo' : 'Salvar rotina'}
         </button>
         <p className="m-0 text-center text-[12.5px] text-muted sm:text-left" aria-live="polite">
           {nameError
             ? nameError
             : failed
               ? 'Ainda não deu para salvar na sua conta. Suas mudanças estão guardadas aqui e o app continua tentando.'
-              : 'Tudo é salvo automaticamente. Este botão espera terminar e volta para a lista.'}
+              : note
+                ? note(leave)
+                : 'Tudo é salvo automaticamente. Este botão espera terminar e volta para a lista.'}
         </p>
       </div>
 
@@ -378,10 +397,24 @@ function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine;
   return (
     <Editor
       target={target}
-      footer={(leave) => (
+      // Na barra de baixo fica "Salvar como modelo"; "Salvar rotina" vai para junto de "Excluir rotina".
+      primary={{ label: 'Salvar como modelo', onClick: () => setSaved(saveAsTemplate(routine.id) ?? null) }}
+      note={(leave) =>
+        saved ? (
+          <>
+            Modelo salvo em Rotinas prontas.{' '}
+            <button type="button" onClick={() => leave(() => openTemplate(saved))} className="font-semibold text-accent underline underline-offset-2">
+              Editar o modelo
+            </button>
+          </>
+        ) : (
+          'A rotina é salva automaticamente. Este botão guarda uma cópia dela como modelo.'
+        )
+      }
+      footer={(leave, save) => (
         <>
-          <button type="button" onClick={() => setSaved(saveAsTemplate(routine.id) ?? null)} className={`inline-flex items-center gap-2 ${ghostBtn}`}>
-            <Icon name="box" size={15} /> Salvar como modelo
+          <button type="button" onClick={save.run} disabled={save.saving} className={`inline-flex items-center gap-2 ${ghostBtn} disabled:opacity-70`}>
+            <Icon name="check" size={15} /> {save.saving ? 'Salvando…' : 'Salvar rotina'}
           </button>
           <button
             type="button"
@@ -396,16 +429,6 @@ function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine;
           >
             Excluir rotina
           </button>
-          <p className="m-0 w-full text-sm text-muted" aria-live="polite">
-            {saved && (
-              <>
-                Modelo salvo em Rotinas prontas.{' '}
-                <button type="button" onClick={() => leave(() => openTemplate(saved))} className="font-semibold text-accent underline underline-offset-2">
-                  Editar o modelo
-                </button>
-              </>
-            )}
-          </p>
         </>
       )}
     />
