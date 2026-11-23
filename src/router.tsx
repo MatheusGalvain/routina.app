@@ -1,11 +1,12 @@
 import { lazy, type ComponentType } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 import { AppShell, PublicOnly, RequireAuth, RootLayout } from './App'
+import { withReload } from './lib/staleBuild'
 
 /** Carrega a página só quando a rota abre (cada página vira um pedaço separado do build). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function page<K extends string>(load: () => Promise<Record<K, ComponentType<any>>>, name: K) {
-  return lazy(() => load().then((m) => ({ default: m[name] })))
+  return lazy(withReload(() => load().then((m) => ({ default: m[name] }))))
 }
 
 const Inicio = page(() => import('./pages/Inicio'), 'Inicio')

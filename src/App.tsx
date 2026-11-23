@@ -23,11 +23,12 @@ import { setOnboardingDone } from './sync/session'
 import { readLegacy } from './sync/legacy'
 import { peekPending, rememberPending, takePending } from './lib/authUrl'
 import type { RouteHandle } from './router'
+import { withReload } from './lib/staleBuild'
 
 // Só existe no modo dev: em produção a condição vira `false` e o import some do build.
 const DevPanel = import.meta.env.DEV ? lazy(() => import('./dev/DevPanel')) : null
 // A política também abre sem sessão (link no rodapé da tela de entrada).
-const Privacidade = lazy(() => import('./pages/Privacidade').then((m) => ({ default: m.Privacidade })))
+const Privacidade = lazy(withReload(() => import('./pages/Privacidade').then((m) => ({ default: m.Privacidade }))))
 
 const TABS: { to: string; label: string }[] = [
   { to: '/', label: 'Início' },
