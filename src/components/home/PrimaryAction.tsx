@@ -10,6 +10,8 @@ import { areaOf } from '../../data/areas'
 import { Pet } from '../pets/Pet'
 import { Icon, ProgressRing } from '../ui/ui'
 import type { TodayItem } from '../../types'
+import { useRoutineDay } from '../../store/useTodayItems'
+import { dayMonth, nextOnce, splitArchived } from '../../lib/routines'
 
 export type { TodayTarget } from '../../lib/navigation'
 
@@ -169,7 +171,14 @@ export function PrimaryActionButton({ items }: { items: TodayItem[] }) {
   const now = nowInTz()
   const date = dayKey(now)
   const hasFavoritePet = useRotina((s) => !!s.companion.kind)
-  const routineCount = useRotina((s) => s.routines.filter((r) => !r.dev).length)
+  const allRoutines = useRotina((s) => s.routines)
+  const routineDay = useRoutineDay()
+  const { routineCount, archivedCount, upcoming } = useMemo(() => {
+    const real = allRoutines.filter((r) => !r.dev)
+    const { active, archived } = splitArchived(real, routineDay)
+    const next = nextOnce(active, routineDay)
+    return { routineCount: active.length, archivedCount: archived.length, upcoming: next ? { name: next.name, when: dayMonth(next.onceDate!) } : null }
+  }, [allRoutines, routineDay])
   const activeId = useRotina((s) => s.activeBlockId)
   const wokeToday = useRotina((s) => s.wokenOn === date)
   const hasReview = useRotina((s) => !!s.logs[date]?.note?.trim())
@@ -182,6 +191,8 @@ export function PrimaryActionButton({ items }: { items: TodayItem[] }) {
       getPrimaryAction({
         hasFavoritePet,
         routineCount,
+        archivedCount,
+        nextOnce: upcoming,
         daysSinceLastActive: stats.daysSinceLastActive,
         wokeToday,
         items: items.map((i) => ({ id: i.block.id, name: i.block.name, done: i.done, skipped: i.skipped })),
@@ -189,7 +200,7 @@ export function PrimaryActionButton({ items }: { items: TodayItem[] }) {
         hour: now.getHours(),
         hasReview,
       }),
-    [hasFavoritePet, routineCount, stats.daysSinceLastActive, wokeToday, items, activeId, now.getHours(), hasReview],
+    [hasFavoritePet, routineCount, archivedCount, upcoming, stats.daysSinceLastActive, wokeToday, items, activeId, now.getHours(), hasReview],
   )
 
   const pet = useShownPet(waking ? 'concluido' : 'neutro', waking)
@@ -222,6 +233,8 @@ export function PrimaryActionButton({ items }: { items: TodayItem[] }) {
         return goToday({ review: true })
       case 'daySummary':
         return setModal('summary')
+      case 'routines':
+        return navigate('/rotinas')
     }
   }
 

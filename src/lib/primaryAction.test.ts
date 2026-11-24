@@ -95,3 +95,21 @@ test('todo estado tem uma frase do pet', () => {
   assert.equal(new Set(states.map((s) => s.state)).size, 8)
   for (const s of states) assert.ok(s.petMessage.length > 0)
 })
+
+test('só rotinas arquivadas e nada hoje: escolher uma rotina (vai para Rotinas)', () => {
+  const r = run({ routineCount: 0, archivedCount: 2, items: [] })
+  assert.equal(r.state, 'so-arquivadas')
+  assert.deepEqual(r.action, { type: 'routines' })
+})
+
+test('só arquivadas mas com tarefa avulsa hoje: segue o dia normalmente', () => {
+  const r = run({ routineCount: 0, archivedCount: 1, items: [item('a')] })
+  assert.equal(r.state, 'comecar')
+})
+
+test('dia vazio com rotina de um dia só por vir: o pet avisa a data', () => {
+  const r = run({ items: [], nextOnce: { name: 'Mudança', when: 'qui, 26 nov' } })
+  assert.equal(r.state, 'dia-vazio')
+  assert.match(r.petMessage, /Mudança/)
+  assert.match(r.petMessage, /qui, 26 nov/)
+})

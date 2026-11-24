@@ -2,10 +2,12 @@ import type { RotinaState } from '../store/useRotina'
 import type { Row, Table } from './rows'
 import { areaRows, blockLogRow, dayTaskRows, eventItemRows, templateRows, companionRow, dayRow, sceneItemRows, slotRow, storyReadRows, structureRows, taskRow, trophyRows } from './rows'
 import { SCENES } from '../data/scenes'
+import { hasDev } from '../lib/devData'
 
 export type Emit = (table: Table, kind: 'upsert' | 'delete', row: Row) => void
 
-const hasDevDays = (s: RotinaState) => Object.values(s.logs).some((d) => d.dev)
+// Qualquer dado simulado (dia inteiro ou só um bloco) deixa o progresso calculado falso.
+const hasDevDays = (s: RotinaState) => hasDev(s.logs)
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 /**

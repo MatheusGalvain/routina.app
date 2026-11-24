@@ -3,12 +3,16 @@ import { Reorder, useDragControls } from 'framer-motion'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { editorPath, findBySlug, looksLikeId, slugMap } from '../lib/slug'
 import { useAreas, useRotina } from '../store/useRotina'
-import { BLOCK_TYPES, ROUTINE_COLORS, WEEKDAYS, areaOf } from '../data/areas'
+import { BLOCK_TYPES, ROUTINE_COLORS, areaOf } from '../data/areas'
 import { Icon, Panel } from '../components/ui/ui'
 import { HelpButton } from '../components/help/HelpButton'
 import { LeaveDialog, SaveStatus, useLeaveGuard, useSaveState, waitForSave } from '../components/routines/SaveGuard'
 import { showToast } from '../components/ui/Toast'
 import { WeekDays } from '../components/routines/WeekDays'
+import { ScheduleField, type SchedulePatch } from '../components/routines/ScheduleField'
+import { useRoutineDay } from '../store/useTodayItems'
+import { dayMonth, isExpired, isOnce, onceLabel, splitArchived } from '../lib/routines'
+import { dayKey } from '../lib/dates'
 import type { AreaId, Block, BlockType, Routine, UserTemplate } from '../types'
 
 const inputCls = 'w-full rounded-lg border border-line bg-ink px-3 py-2.5 text-sm text-soft placeholder:text-muted'
@@ -135,8 +139,9 @@ function BlockForm({ initial, onSave, onCancel }: { initial?: Block; onSave: (b:
  */
 interface EditorTarget {
   kind: 'routine' | 'template'
-  value: { id: string; name: string; color: string; days: number[]; blocks: Block[] }
-  update: (patch: { name?: string; color?: string; days?: number[] }) => void
+  value: { id: string; name: string; color: string; days: number[]; blocks: Block[]; repeat?: 'weekly' | 'once'; onceDate?: string | null; archivedAt?: string | null }
+  /** Modelo nunca recebe `repeat`/`onceDate` (só a opção semanal). */
+  update: (patch: { name?: string; color?: string } & SchedulePatch) => void
   setBlocks: (blocks: Block[]) => void
 }
 
@@ -221,7 +226,6 @@ function Editor({
   const isTemplate = target.kind === 'template'
   const noun = isTemplate ? 'modelo' : 'rotina'
   const navigate = useNavigate()
-  const toggleDay = (d: number) => target.update({ days: v.days.includes(d) ? v.days.filter((x) => x !== d) : [...v.days, d].sort() })
 
   // Nome em rascunho: vazio não vai para o salvamento automático (fica o último nome válido) e mostra o erro.
   const [name, setName] = useState(v.name)
@@ -299,25 +303,7 @@ function Editor({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <fieldset className="m-0 w-full border-0 p-0 sm:w-auto">
-            <legend className="mb-2 text-xs text-muted">Dias da semana</legend>
-            <div className="grid grid-cols-7 gap-1.5 sm:flex">
-              {WEEKDAYS.map((w, d) => (
-                <button
-                  key={d}
-                  type="button"
-                  aria-pressed={v.days.includes(d)}
-                  aria-label={w.long}
-                  onClick={() => toggleDay(d)}
-                  className={`grid aspect-square w-full max-w-10 place-items-center rounded-full text-sm font-bold sm:h-10 sm:w-10 ${
-                    v.days.includes(d) ? 'bg-accent text-ink' : 'bg-panel-2 text-muted'
-                  }`}
-                >
-                  {w.short}
-                </button>
-              ))}
-            </div>
-          </fieldset>
+          <ScheduleField value={v} allowOnce={!isTemplate} onChange={(patch) => target.update(patch)} />
 
           <fieldset className="m-0 border-0 p-0">
             <legend className="mb-2 text-xs text-muted">Cor</legend>
@@ -386,8 +372,11 @@ const ghostBtn = 'min-h-11 rounded-full border border-line px-4 text-sm font-sem
 const dangerBtn = 'min-h-11 rounded-full border border-erro/40 px-4 text-sm font-semibold text-erro'
 
 function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine; onDeleted: () => void; openTemplate: (id: string) => void }) {
-  const { updateRoutine, deleteRoutine, setBlocks, saveAsTemplate } = useRotina.getState()
+  const { updateRoutine, deleteRoutine, setBlocks, saveAsTemplate, archiveRoutine, reuseRoutine } = useRotina.getState()
   const [saved, setSaved] = useState<string | null>(null)
+  const day = useRoutineDay()
+  const expired = isExpired(routine, day)
+  const archived = !!routine.archivedAt || expired
   const target: EditorTarget = {
     kind: 'routine',
     value: routine,
@@ -414,9 +403,34 @@ function RoutineEditor({ routine, onDeleted, openTemplate }: { routine: Routine;
       }
       footer={(leave, save) => (
         <>
+          {archived && (
+            <p className="m-0 flex w-full flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel-2 px-4 py-3 text-[13.5px] text-soft">
+              <Icon name="archive" size={15} />
+              {expired ? `Arquivada: era só em ${dayMonth(routine.onceDate!)}.` : 'Arquivada: não aparece no Hoje nem no Início.'}
+              <button
+                type="button"
+                onClick={() => (expired ? reuseRoutine(routine.id, dayKey()) : archiveRoutine(routine.id, false))}
+                className="font-semibold text-accent underline underline-offset-2"
+              >
+                {expired ? 'Usar de novo' : 'Desarquivar'}
+              </button>
+            </p>
+          )}
           <button type="button" onClick={save.run} disabled={save.saving} className={`inline-flex items-center gap-2 ${ghostBtn} disabled:opacity-70`}>
             <Icon name="check" size={15} /> {save.saving ? 'Salvando…' : 'Salvar rotina'}
           </button>
+          {!archived && (
+            <button
+              type="button"
+              onClick={() => {
+                archiveRoutine(routine.id, true)
+                showToast('Rotina arquivada. Está em "Arquivadas" quando quiser voltar.')
+              }}
+              className={`inline-flex items-center gap-2 ${ghostBtn}`}
+            >
+              <Icon name="archive" size={15} /> Arquivar
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -479,7 +493,24 @@ function TemplateEditor({ template, onDeleted, onUsed }: { template: UserTemplat
   )
 }
 
-function SideItem({ name, color, count, current, to, days }: { name: string; color: string; count: number; current: boolean; to: string; days?: number[] }) {
+function SideItem({
+  name,
+  color,
+  count,
+  current,
+  to,
+  days,
+  once,
+}: {
+  name: string
+  color: string
+  count: number
+  current: boolean
+  to: string
+  days?: number[]
+  /** Data da rotina de um dia só (no lugar das letrinhas). */
+  once?: string
+}) {
   return (
     <Link
       to={to}
@@ -496,8 +527,113 @@ function SideItem({ name, color, count, current, to, days }: { name: string; col
           <span className="sr-only"> {count === 1 ? 'bloco' : 'blocos'}</span>
         </span>
       </span>
-      {days && <WeekDays days={days} color={color} className="pl-[18px]" />}
+      {once ? (
+        <span className="pl-[18px] font-mono text-[11px] font-medium" style={{ color }}>
+          {onceLabel(once)}
+        </span>
+      ) : (
+        days && <WeekDays days={days} color={color} className="pl-[18px]" />
+      )}
     </Link>
+  )
+}
+
+/**
+ * Seção recolhida "Arquivadas": rotinas de um dia só que já passaram e as arquivadas à mão.
+ * Nada é apagado: os registros continuam nas estatísticas, nos troféus e no céu do ano.
+ */
+function ArchivedSection({ routines, slugs, currentId, open }: { routines: Routine[]; slugs: Map<string, string>; currentId?: string; open: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const { archiveRoutine, reuseRoutine, saveAsTemplate, deleteRoutine } = useRotina.getState()
+  const day = useRoutineDay()
+  const listId = 'lista-arquivadas'
+  if (routines.length === 0) return null
+
+  const action = 'inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 text-[12.5px] font-semibold text-soft hover:bg-panel-2'
+
+  return (
+    <section aria-labelledby="titulo-arquivadas" className="flex flex-col gap-2 border-t border-line pt-4">
+      <h2 id="titulo-arquivadas" className="m-0">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={listId}
+          onClick={() => setExpanded(!expanded)}
+          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-2 text-left text-lg font-bold hover:bg-panel-2"
+        >
+          <span className="flex items-center gap-2.5">
+            <Icon name="archive" size={17} /> Arquivadas
+            <span className="font-mono text-xs font-normal text-muted">{routines.length}</span>
+          </span>
+          <span aria-hidden="true" className={`text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}>
+            ▾
+          </span>
+        </button>
+      </h2>
+      {expanded && (
+        <ul id={listId} className="m-0 flex list-none flex-col gap-2 p-0">
+          {routines.map((r) => {
+            const expired = isExpired(r, day)
+            return (
+              <li key={r.id} className={`flex flex-col gap-2 rounded-xl px-3 py-2.5 ${currentId === r.id ? 'bg-accent/10' : 'bg-panel-2/60'}`}>
+                <Link to={`/rotinas/${slugs.get(r.id)}`} className="flex min-w-0 flex-col gap-1 text-sm font-semibold">
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="h-2 w-2 shrink-0 rounded-full opacity-70" style={{ background: r.color }} aria-hidden="true" />
+                    <span className="[overflow-wrap:anywhere] text-soft">{r.name || 'Sem nome'}</span>
+                  </span>
+                  <span className="pl-[18px] font-mono text-[11px] font-normal text-muted">
+                    {isOnce(r) ? `Era só em ${dayMonth(r.onceDate)}` : 'Pausada'} · {r.blocks.length} {r.blocks.length === 1 ? 'bloco' : 'blocos'}
+                  </span>
+                </Link>
+                <div className="flex flex-wrap gap-1.5 pl-[18px]">
+                  {expired || isOnce(r) ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        reuseRoutine(r.id, dayKey())
+                        open(r.id)
+                      }}
+                      className={action}
+                    >
+                      <Icon name="undo" size={13} /> Usar de novo
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        archiveRoutine(r.id, false)
+                        showToast(`"${r.name}" voltou para as suas rotinas.`)
+                      }}
+                      className={action}
+                    >
+                      <Icon name="undo" size={13} /> Desarquivar
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (saveAsTemplate(r.id)) showToast('Modelo salvo em "Meus modelos".')
+                    }}
+                    className={action}
+                  >
+                    <Icon name="box" size={13} /> Salvar como modelo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Excluir a rotina "${r.name}"? O que você já fez nela continua no histórico.`)) deleteRoutine(r.id)
+                    }}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-erro/40 px-3 text-[12.5px] font-semibold text-erro"
+                  >
+                    <Icon name="trash" size={13} /> Excluir
+                  </button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -533,6 +669,8 @@ export function Rotinas({ kind = 'routine' }: { kind?: 'routine' | 'template' })
   const backToList = () => navigate('/rotinas', { replace: true })
   const routineSlugs = slugMap(routines)
   const templateSlugs = slugMap(templates)
+  const day = useRoutineDay()
+  const { active, archived } = splitArchived(routines, day)
 
   return (
     <div className="flex flex-wrap items-start gap-5">
@@ -544,13 +682,25 @@ export function Rotinas({ kind = 'routine' }: { kind?: 'routine' | 'template' })
             </h2>
             <HelpButton k="rotinas" />
           </div>
-          {routines.map((r) => (
-            <SideItem key={r.id} name={r.name} color={r.color} count={r.blocks.length} current={routine?.id === r.id} to={`/rotinas/${routineSlugs.get(r.id)}`} days={r.days} />
+          {active.length === 0 && archived.length > 0 && <p className="m-0 px-2 text-[13px] text-muted">Nenhuma rotina ativa. As arquivadas estão logo abaixo.</p>}
+          {active.map((r) => (
+            <SideItem
+              key={r.id}
+              name={r.name}
+              color={r.color}
+              count={r.blocks.length}
+              current={routine?.id === r.id}
+              to={`/rotinas/${routineSlugs.get(r.id)}`}
+              days={r.days}
+              once={isOnce(r) ? r.onceDate : undefined}
+            />
           ))}
           <button type="button" onClick={() => open(createRoutine())} className="mt-1 self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-ink">
             + Nova rotina
           </button>
         </nav>
+
+        <ArchivedSection routines={archived} slugs={routineSlugs} currentId={routine?.id} open={open} />
 
         <nav aria-labelledby="lista-modelos" className="flex flex-col gap-2 border-t border-line pt-4">
           <div className="flex items-center gap-2.5 px-2 pb-1">

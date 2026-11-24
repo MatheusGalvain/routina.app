@@ -93,12 +93,13 @@ export const BLOCK_TYPES = [
 /** Cores de rotina e modelo: os tons de atenção, destaque, concluído, pulado, descanso e Estudo. */
 export const ROUTINE_COLORS = ['#FFD59E', '#A9BFFF', '#A8E6B8', '#F4B4B4', '#CDB8FF', '#A6E3DA']
 
+/** `short`: letra das letrinhas pequenas; `abbr`: abreviação do editor (S e Q se repetem nas letras). */
 export const WEEKDAYS = [
-  { short: 'D', long: 'Domingo' },
-  { short: 'S', long: 'Segunda' },
-  { short: 'T', long: 'Terça' },
-  { short: 'Q', long: 'Quarta' },
-  { short: 'Q', long: 'Quinta' },
-  { short: 'S', long: 'Sexta' },
-  { short: 'S', long: 'Sábado' },
+  { short: 'D', abbr: 'Dom', long: 'Domingo' },
+  { short: 'S', abbr: 'Seg', long: 'Segunda' },
+  { short: 'T', abbr: 'Ter', long: 'Terça' },
+  { short: 'Q', abbr: 'Qua', long: 'Quarta' },
+  { short: 'Q', abbr: 'Qui', long: 'Quinta' },
+  { short: 'S', abbr: 'Sex', long: 'Sexta' },
+  { short: 'S', abbr: 'Sáb', long: 'Sábado' },
 ]

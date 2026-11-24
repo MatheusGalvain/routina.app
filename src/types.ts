@@ -39,9 +39,15 @@ export interface Routine {
   id: string
   name: string
   color: string
-  /** Dias da semana em que a rotina aparece (0 = domingo … 6 = sábado). */
+  /** Dias da semana em que a rotina aparece (0 = domingo … 6 = sábado). Na de um dia só, o dia da semana da data. */
   days: number[]
   blocks: Block[]
+  /** 'weekly' (padrão, também quando ausente): repete toda semana. 'once': só em `onceDate`. */
+  repeat?: 'weekly' | 'once'
+  /** Data (AAAA-MM-DD) da rotina de um dia só. `null` = limpar no servidor. */
+  onceDate?: string | null
+  /** Arquivada à mão (ISO). `null` = desarquivada (limpa no servidor). A de um dia só se arquiva sozinha quando a data passa. */
+  archivedAt?: string | null
   /** Criada pelo painel de desenvolvimento. */
   dev?: true
 }
@@ -193,6 +199,8 @@ export interface PetProgress {
    * Uma espécie fora do mapa segue só a regra atual.
    */
   phases: Partial<Record<PetKind, PetPhase>>
+  /** Por onde o coelho de cristal foi desbloqueado (só registro; não aparece na interface). */
+  secretPath?: 'dias' | 'areas' | 'lua'
 }
 
 /** Tarefa avulsa: só de um dia, fora das rotinas. O que aconteceu com ela fica em `logs[date].blocks[id]`. */

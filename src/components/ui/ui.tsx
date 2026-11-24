@@ -19,6 +19,7 @@ const PATHS: Record<string, ReactNode> = {
   skip: <path d="M6 6 L14 12 L6 18 Z M17 6 L17 18" />,
   undo: <><path d="M9 14 L4 9 L9 4" /><path d="M4 9 L14 9 A6 6 0 0 1 14 21 L10 21" /></>,
   trash: <path d="M5 7 L19 7 M10 7 L10 4 L14 4 L14 7 M7 7 L8 20 L16 20 L17 7" />,
+  archive: <><path d="M3 4 L21 4 L21 8 L3 8 Z" /><path d="M5 8 L5 20 L19 20 L19 8 M10 12 L14 12" /></>,
   edit: <path d="M4 20 L8 19 L19 8 L16 5 L5 16 Z" />,
   grip: <path d="M9 6 L9 6.01 M15 6 L15 6.01 M9 12 L9 12.01 M15 12 L15 12.01 M9 18 L9 18.01 M15 18 L15 18.01" />,
   note: <path d="M6 4 L15 4 L19 8 L19 20 L6 20 Z M9 11 L16 11 M9 15 L14 15" />,
@@ -105,9 +106,14 @@ export function ProgressRing({ pct, size = 104, stroke = 8, color = 'var(--color
   )
 }
 
-export function Bar({ pct, color }: { pct: number; color: string }) {
+/** Barrinha de progresso. Com `label`, o leitor de tela ouve o progresso (role="progressbar"). */
+export function Bar({ pct, color, label }: { pct: number; color: string; label?: string }) {
+  const value = Math.round(Math.min(1, Math.max(0, pct)) * 100)
   return (
-    <div className="h-[5px] overflow-hidden rounded-full bg-line">
+    <div
+      className="h-[5px] overflow-hidden rounded-full bg-line"
+      {...(label ? { role: 'progressbar', 'aria-label': label, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': value } : {})}
+    >
       <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.round(pct * 100)}%`, background: color }} />
     </div>
   )

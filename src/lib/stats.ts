@@ -130,21 +130,35 @@ export function daysSinceLastActive(logs: Logs, today = dayKey()) {
 }
 
 /**
- * Houve 7 dias seguidos (uma semana) em que cada uma das áreas da vida (`areaIds`)
- * teve pelo menos um bloco concluído? Vale qualquer janela de 7 dias do histórico.
+ * Maior número das áreas `areaIds` com pelo menos um bloco concluído dentro de uma mesma
+ * janela de 7 dias seguidos (de calendário), em todo o histórico até hoje. 0 sem áreas ou sem registros.
  */
-export function allAreasInAWeek(logs: Logs, areaIds: AreaId[] = DEFAULT_AREA_KEYS, today = dayKey()) {
-  if (areaIds.length === 0) return false
+export function bestAreasWindow(logs: Logs, areaIds: AreaId[], today = dayKey()) {
+  const wanted = new Set(areaIds)
+  if (wanted.size === 0) return 0
   const days = pastKeys(logs, today)
     .sort()
-    .map((k) => ({ k, areas: Object.keys(summarizeDay(logs[k]).areas) }))
+    .map((k) => ({ k, areas: Object.keys(summarizeDay(logs[k]).areas).filter((a) => wanted.has(a)) }))
     .filter((d) => d.areas.length > 0)
+  let best = 0
   for (let i = 0; i < days.length; i++) {
     const seen = new Set<string>()
     for (let j = i; j < days.length && diffDays(days[j].k, days[i].k) < 7; j++) days[j].areas.forEach((a) => seen.add(a))
-    if (areaIds.every((a) => seen.has(a))) return true
+    best = Math.max(best, seen.size)
+    if (best === wanted.size) break
   }
-  return false
+  return best
+}
+
+/**
+ * Houve 7 dias seguidos (uma semana) em que cada uma das áreas da vida (`areaIds`)
+ * teve pelo menos um bloco concluído? Vale qualquer janela de 7 dias do histórico.
+ * Nunca é verdade sem áreas (nada de `[].every()`) nem com menos áreas que `minAreas`.
+ */
+export function allAreasInAWeek(logs: Logs, areaIds: AreaId[] = DEFAULT_AREA_KEYS, today = dayKey(), minAreas = 1) {
+  const wanted = new Set(areaIds)
+  if (wanted.size === 0 || wanted.size < minAreas) return false
+  return bestAreasWindow(logs, [...wanted], today) === wanted.size
 }
 
 export interface Stats {

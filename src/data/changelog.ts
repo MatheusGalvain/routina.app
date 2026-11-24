@@ -16,6 +16,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    versão: '0.5',
+    data: '2026-11-24',
+    título: 'Rotinas de um dia só',
+    itens: [
+      'Agora dá para criar uma rotina que vale só num dia: ligue "Somente esse dia" no editor e escolha a data.',
+      'Depois que o dia passa, ela vai sozinha para "Arquivadas", na tela de Rotinas. O que você fez nela continua contando.',
+      'Você também pode arquivar uma rotina semanal para dar uma pausa, e trazer de volta quando quiser.',
+      'Os dias da semana no editor aparecem com três letras (Dom, Seg, Ter…), para não confundir sábado com segunda.',
+      'O pet secreto ganhou uma dica na galeria, com o quanto falta para ele aparecer.',
+    ],
+  },
+  {
     versão: '0.4',
     data: '2026-11-24',
     título: 'Um coelho, tarefas do dia e histórias completas',

@@ -98,7 +98,7 @@ function StepAdopt({ onNext }: { onNext: () => void }) {
 }
 
 function StepStart({ onPicked }: { onPicked: (routineId: string) => void }) {
-  const { addTemplate, createRoutine, addBlock } = useRotina.getState()
+  const { addTemplate, createRoutine, addBlock, reuseRoutine } = useRotina.getState()
   const templates = useRotina((s) => s.templates)
   const [mode, setMode] = useState<'modelo' | null>(null)
 
@@ -137,6 +137,20 @@ function StepStart({ onPicked }: { onPicked: (routineId: string) => void }) {
           <span className="text-[13px] text-muted">Uma rotina só sua, começando por um bloco bem simples.</span>
         </button>
       </div>
+
+      {/* Para quem quer testar sem compromisso: uma rotina que vale só hoje e depois vai para "Arquivadas". */}
+      <button
+        type="button"
+        onClick={() => {
+          const id = createRoutine('Meu dia')
+          reuseRoutine(id, dayKey())
+          addBlock(id, water())
+          onPicked(id)
+        }}
+        className="inline-flex min-h-11 items-center gap-2 self-start rounded-full border border-line px-4 text-[13.5px] font-semibold text-soft hover:bg-panel-2"
+      >
+        <Icon name="calendar" size={15} /> Só para hoje: uma rotina de um dia só
+      </button>
 
       {mode === 'modelo' && (
         <ul className="m-0 flex list-none flex-col gap-2 p-0" aria-label="Modelos">

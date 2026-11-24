@@ -3,7 +3,7 @@ import { TROPHY_BY_ID, type TrophyId, type TrophyTier } from '../data/trophies'
 import { EMPTY_LAYOUTS } from '../lib/corner'
 import { DEFAULT_SCENE, isItemId, isSceneId, type SceneId } from '../data/scenes'
 import { AREA_NAME_MAX, DEFAULT_AREAS, normalizeAreas, pastelArea, pastelRoutine } from '../data/areas'
-import { LEGACY_SECRET_UNLOCK } from '../lib/companion'
+import { LEGACY_SECRET_UNLOCK, SECRET_UNLOCK } from '../lib/companion'
 import { migrateSecretUnlock, seedPhases } from '../store/useRotina'
 
 /**
@@ -40,6 +40,11 @@ export const routineRow = (uid: string, r: Routine, position: number): Row => ({
   color: r.color,
   days: r.days,
   position,
+  // Colunas da migration 014: só vão quando a rotina já usou "Somente esse dia" ou foi arquivada/desarquivada.
+  ...(r.repeat !== undefined || r.onceDate !== undefined
+    ? { repeat_mode: r.repeat === 'once' && r.onceDate ? 'once' : 'weekly', once_date: r.repeat === 'once' && r.onceDate ? r.onceDate : null }
+    : {}),
+  ...(r.archivedAt !== undefined ? { archived_at: r.archivedAt } : {}),
 })
 
 export const blockRow = (uid: string, routineId: string, b: Block, position: number): Row => ({
@@ -112,6 +117,8 @@ export const companionRow = (uid: string, c: Companion, p: PetProgress, withProg
     : {}),
   // Coluna da migration 013: só vai quando a fase guardada de alguma espécie mudou.
   ...(withProgress && withPhases ? { phases: p.phases } : {}),
+  // Coluna da migration 014: por onde o coelho de cristal foi desbloqueado (só quando há).
+  ...(withProgress && p.secretPath ? { secret_path: p.secretPath } : {}),
 })
 
 /** Um registro por nível de troféu conquistado, com a chave "id|nível". */
@@ -257,7 +264,16 @@ export function toStore(r: RemoteData) {
 
   const routines: Routine[] = [...r.routines]
     .sort((a, c) => Number(a.position) - Number(c.position))
-    .map((x) => ({ id: String(x.id), name: String(x.name), color: pastelRoutine(String(x.color)), days: (x.days as number[]).map(Number), blocks: byRoutine.get(String(x.id)) ?? [] }))
+    .map((x) => {
+      const routine: Routine = { id: String(x.id), name: String(x.name), color: pastelRoutine(String(x.color)), days: (x.days as number[]).map(Number), blocks: byRoutine.get(String(x.id)) ?? [] }
+      // Sem as colunas (migration 014 não aplicada): semanal e não arquivada.
+      if (x.repeat_mode === 'once' && x.once_date) {
+        routine.repeat = 'once'
+        routine.onceDate = String(x.once_date).slice(0, 10)
+      }
+      if (x.archived_at) routine.archivedAt = String(x.archived_at)
+      return routine
+    })
 
   const logs: Record<string, DayLog> = {}
   for (const d of r.dayLogs) {
@@ -305,8 +321,11 @@ export function toStore(r: RemoteData) {
         // Sem a coluna (migration 013 não aplicada): a fase de cada espécie pela regra antiga, para não regredir.
         phases:
           c.phases && typeof c.phases === 'object' ? (c.phases as Partial<Record<PetKind, PetPhase>>) : seedPhases(Number(c.peak_active_days ?? 0)),
+        ...(c.secret_path === 'dias' || c.secret_path === 'areas' || c.secret_path === 'lua' ? { secretPath: c.secret_path } : {}),
       }
     : { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [], phases: {} }
+  // Favorito no coelho de cristal sem o desbloqueio (ex.: desbloqueio removido): volta para o coelho comum.
+  if (companion.kind === 'coelho-cristal' && !petProgress.unlocked.includes(SECRET_UNLOCK)) companion.kind = 'coelho'
 
   // Troféus de ids que o app não conhece mais são ignorados.
   const extra: {

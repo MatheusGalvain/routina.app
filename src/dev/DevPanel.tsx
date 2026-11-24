@@ -12,7 +12,7 @@ import { ACCESSORIES } from '../data/accessories'
 import { ALL_PETS, PETS } from '../components/pets/pets'
 import { PHASES, conqueredPhase, phaseFor, phaseName } from '../lib/companion'
 import { PET_GROWTH } from '../data/pets'
-import { dayKey, nowInTz, parseKey } from '../lib/dates'
+import { addDays, dayKey, nowInTz, parseKey } from '../lib/dates'
 import { EVENTS, eventItems, eventLabel, isEventActive } from '../data/events'
 import { isFullMoon, moonIllumination, nextFullMoon } from '../lib/moon'
 import type { EventItemMap } from '../types'
@@ -24,6 +24,7 @@ import { EMPTY_LAYOUT, EMPTY_LAYOUTS, tiersOf } from '../lib/corner'
 import type { CornerLayout, SceneItemMap, TrophyMap } from '../types'
 import { ITEM_BY_ID, SCENES, SCENE_ITEMS, type SceneItemId } from '../data/scenes'
 import type { AreaId } from '../types'
+import { isOnce, onceLabel, splitArchived } from '../lib/routines'
 import { clearDev, simulateActiveDays, simulateArea, simulateIdle, simulateStreak, testRoutine } from './simulate'
 
 const STATES: { id: ForcedState; label: string }[] = [
@@ -120,6 +121,7 @@ export default function DevPanel() {
               <Trophies onStatus={setStatus} />
               <Scenes onStatus={setStatus} />
               <Seasons onStatus={setStatus} />
+              <RoutineDays />
               <FocusTest />
               <Safety onStatus={setStatus} />
             </div>
@@ -668,13 +670,39 @@ function allEventItems(): EventItemMap {
   return Object.fromEntries(EVENTS.map((e) => [e.id, Object.fromEntries(eventItems(e).map(({ def }) => [def.id, at]))]))
 }
 
+/**
+ * Rotinas de um dia só: adianta "hoje" só para decidir o que está arquivado (Início, Rotinas e Hoje).
+ * Nada é gravado: as rotinas e os registros continuam como estão.
+ */
+function RoutineDays() {
+  const dev = useDevOverrides()
+  const routines = useRotina((s) => s.routines)
+  const day = addDays(dayKey(), dev.dayShift)
+  const { archived } = splitArchived(routines, day)
+  const onces = routines.filter((r) => isOnce(r))
+
+  return (
+    <Section title="Rotinas de um dia só (só visual)">
+      <p className="m-0 text-[11.5px] text-muted">
+        {dev.dayShift ? `Fingindo que hoje é ${day} (+${dev.dayShift}).` : 'Usando hoje de verdade.'} De um dia só: {onces.length ? onces.map((r) => `${r.name} (${onceLabel(r.onceDate!)})`).join(', ') : 'nenhuma'}. Arquivadas: {archived.length}.
+      </p>
+      <Row>
+        <Btn onClick={() => dev.set({ dayShift: dev.dayShift + 1 })}>Simular a passagem do dia (+1)</Btn>
+        <Btn disabled={!dev.dayShift} onClick={() => dev.set({ dayShift: 0 })}>
+          Voltar para hoje
+        </Btn>
+      </Row>
+    </Section>
+  )
+}
+
 /** Eventos sazonais e lua cheia: data simulada, itens de teste e decorações. */
 function Seasons({ onStatus }: { onStatus: (s: string) => void }) {
   const dev = useDevOverrides()
   const day = dev.date ?? dayKey()
   const at = parseKey(day)
   at.setHours(22)
-  const moon = dev.date ? at : new Date()
+  const moon = dev.fullMoon ? nextFullMoon(new Date()) : dev.date ? at : new Date()
   const active = EVENTS.filter((e) => isEventActive(e, day))
   const fullMoonDay = dayKey(nowInTz(nextFullMoon(new Date())))
   const presets: { label: string; date: string }[] = [
@@ -736,7 +764,23 @@ function Seasons({ onStatus }: { onStatus: (s: string) => void }) {
         ]}
         onChange={(v) => dev.set({ decor: v === null ? null : v === 'on' })}
       />
-      <p className="m-0 text-[11.5px] text-muted">O coelho de cristal da lua passa uma vez por visita: recarregue a página para ver de novo.</p>
+      <Row>
+        <Btn pressed={dev.fullMoon} onClick={() => dev.set({ fullMoon: !dev.fullMoon })}>
+          {dev.fullMoon ? 'Lua cheia forçada' : 'Forçar lua cheia'}
+        </Btn>
+        <Btn
+          onClick={() => {
+            dev.set({ moonPass: Date.now() })
+            onStatus('Coelho de cristal passando no céu (toque nele; só visual, nada é gravado).')
+          }}
+        >
+          Passar o coelho de cristal agora
+        </Btn>
+      </Row>
+      <p className="m-0 text-[11.5px] text-muted">
+        A passagem de verdade acontece uma vez por abertura do app, numa noite de lua cheia, só para quem ainda não tem o coelho de cristal.
+        A disparada aqui aparece sempre e, se tocada, só mostra a chegada (sem gravar).
+      </p>
     </Section>
   )
 }

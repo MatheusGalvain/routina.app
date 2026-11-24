@@ -44,11 +44,19 @@ export const HELP = {
   },
   rotinas: {
     title: 'Rotinas',
-    text: ['Uma rotina é um conjunto de blocos para certos dias da semana.', 'Você pode ter várias, como uma da manhã e outra da noite, e eu junto tudo no Hoje.'],
+    text: [
+      'Uma rotina é um conjunto de blocos para certos dias da semana, ou para um dia só.',
+      'Você pode ter várias, como uma da manhã e outra da noite, e eu junto tudo no Hoje.',
+      'As de um dia só vão sozinhas para "Arquivadas" quando a data passa. Você também pode arquivar uma rotina para pausar sem perder nada.',
+    ],
   },
   editor: {
     title: 'Editor de rotina',
-    text: ['Escolha o nome, a cor e os dias, depois monte os blocos na ordem em que quer fazer.', 'Cada bloco tem um tipo:'],
+    text: [
+      'Escolha o nome, a cor e os dias, depois monte os blocos na ordem em que quer fazer.',
+      'Ligue "Somente esse dia" para uma rotina que vale só numa data (hoje, os próximos dias ou outra data).',
+      'Cada bloco tem um tipo:',
+    ],
     examples: BLOCK_EXAMPLES,
   },
   tipos: {

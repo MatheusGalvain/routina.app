@@ -15,7 +15,8 @@ import { allStoriesRead, chooseFavorite, unlockStats } from '../store/useCompani
 import { PetCorner } from '../components/pets/PetCorner'
 import { TrophyCollection } from '../components/pets/TrophyCollection'
 import { SceneCollection } from '../components/pets/SceneCollection'
-import { useState, type KeyboardEvent } from 'react'
+import { useId, useMemo, useState, type KeyboardEvent } from 'react'
+import { SECRET_DAYS, SECRET_MIN_AREAS, secretProgress } from '../lib/unlock'
 
 /** Aba "Pet": escolher o favorito, dar um nome e cuidar dos acessórios. */
 export function Companheiro() {
@@ -93,16 +94,57 @@ export function Companheiro() {
   )
 }
 
-/** Alguém que ainda não apareceu: só a silhueta e "???". Sem nome e sem dica. */
+/**
+ * Alguém que ainda não apareceu: a silhueta, "???" e um botão de dica que abre como chegar
+ * (com o progresso dos dois caminhos e uma pista do caminho secreto da lua).
+ */
 function UnknownPet() {
+  const [open, setOpen] = useState(false)
+  const logs = useRotina((s) => s.logs)
+  const areas = useRotina((s) => s.areas)
+  const p = useMemo(() => secretProgress(logs, areas.map((a) => a.id)), [logs, areas])
+  const hintId = useId()
+
   return (
-    <div role="img" aria-label="???" className="flex flex-col items-center gap-2 rounded-2xl border border-line bg-panel-2 px-3 pt-3 pb-3.5 text-center">
-      <Pet kind={SECRET_PET} size={72} interactive={false} float={false} silhouette />
-      <span className="text-sm font-semibold text-muted">???</span>
-      {/* Mantém a mesma altura dos outros cartões. */}
-      <span aria-hidden="true" className="invisible font-mono text-[10.5px] tracking-wider uppercase">
-        ?
+    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line-2 bg-panel-2 px-3 pt-3 pb-3.5 text-center">
+      <span role="img" aria-label="Pet secreto, ainda escondido">
+        <Pet kind={SECRET_PET} size={72} interactive={false} float={false} silhouette />
       </span>
+      <span className="text-sm font-semibold text-muted">???</span>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={hintId}
+        onClick={() => setOpen(!open)}
+        className="inline-flex min-h-8 items-center gap-1 rounded-full border border-noite/35 bg-noite/10 px-2.5 font-mono text-[10.5px] tracking-wider text-noite uppercase"
+      >
+        <Icon name="sparkle" size={12} /> {open ? 'Fechar dica' : 'Como chegar'}
+      </button>
+      {open && (
+        <div id={hintId} className="flex w-full flex-col gap-2.5 pt-1 text-left text-[12px] leading-snug text-soft">
+          <p className="m-0 text-muted">Ele aparece por um destes caminhos:</p>
+          <div className="flex flex-col gap-1">
+            <span>
+              {SECRET_DAYS} dias ativos <span className="font-mono text-muted">({p.days}/{SECRET_DAYS})</span>
+            </span>
+            <Bar pct={p.days / SECRET_DAYS} color="var(--color-noite)" label={`${p.days} de ${SECRET_DAYS} dias ativos`} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span>
+              Todas as suas áreas numa mesma semana{' '}
+              <span className="font-mono text-muted">
+                ({p.bestAreas}/{p.areasTotal})
+              </span>
+            </span>
+            {p.enoughAreas ? (
+              <Bar pct={p.areasTotal ? p.bestAreas / p.areasTotal : 0} color="var(--color-noite)" label={`${p.bestAreas} de ${p.areasTotal} áreas numa semana`} />
+            ) : (
+              <span className="text-muted">Vale a partir de {SECRET_MIN_AREAS} áreas da vida (você tem {p.areasTotal}).</span>
+            )}
+          </div>
+          <p className="m-0 text-muted italic">Dizem que, nas noites de lua cheia, algo brilha no céu do cantinho…</p>
+        </div>
+      )}
     </div>
   )
 }

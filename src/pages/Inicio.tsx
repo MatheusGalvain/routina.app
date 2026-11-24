@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useAreas, useRotina } from '../store/useRotina'
 import { computePetState } from '../lib/today'
 import { greeting, nowInTz } from '../lib/dates'
-import { useTodayItems } from '../store/useTodayItems'
+import { useActiveRoutines, useTodayItems } from '../store/useTodayItems'
+import { isOnce, onceLabel } from '../lib/routines'
 import { ScrollFade } from '../components/ui/ScrollFade'
 import { NewsNotice } from '../components/home/NewsNotice'
 import { WEEKDAYS } from '../data/areas'
@@ -171,7 +172,9 @@ export function Inicio() {
   const openRoutine = (id: string) => navigate(editorPath(id))
   const openTemplate = openRoutine
   const now = nowInTz()
-  const routines = useRotina((s) => s.routines)
+  // Arquivadas (à mão ou de um dia só que já passou) não aparecem aqui; ficam em Rotinas > Arquivadas.
+  const routines = useActiveRoutines()
+  const archivedCount = useRotina((s) => s.routines.length) - routines.length
   const storyReads = useRotina((s) => s.storyReads)
   const createRoutine = useRotina((s) => s.createRoutine)
   const addTemplate = useRotina((s) => s.addTemplate)
@@ -270,7 +273,11 @@ export function Inicio() {
         {/* Altura definida pelos painéis vizinhos: com muitas rotinas, rola por dentro em vez de crescer. */}
         <Panel title="Minhas rotinas" icon="calendar" color="var(--color-ok)" help="minhas-rotinas">
           {routines.length === 0 ? (
-            <p className="m-0 flex-1 text-sm text-muted">Você ainda não tem rotinas. Crie uma do zero ou comece por um modelo pronto.</p>
+            <p className="m-0 flex-1 text-sm text-muted">
+              {archivedCount > 0
+                ? 'Nenhuma rotina ativa agora. As arquivadas continuam em Rotinas, prontas para usar de novo.'
+                : 'Você ainda não tem rotinas. Crie uma do zero ou comece por um modelo pronto.'}
+            </p>
           ) : (
             <ScrollFade label="Minhas rotinas" minHeight={210}>
               <ul className="m-0 flex list-none flex-col gap-2 p-0 pb-1">
@@ -290,6 +297,11 @@ export function Inicio() {
                           {r.blocks.length} {r.blocks.length === 1 ? 'bloco' : 'blocos'}
                         </span>
                       </span>
+                      {isOnce(r) && (
+                        <span className="pl-[18px] font-mono text-[11px] font-medium" style={{ color: r.color }}>
+                          {onceLabel(r.onceDate)}
+                        </span>
+                      )}
                     </button>
                   </li>
                 ))}

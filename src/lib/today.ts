@@ -1,4 +1,5 @@
-import { nowInTz, parseKey } from './dates'
+import { nowInTz } from './dates'
+import { runsOn } from './routines'
 import type { Block, BlockLog, DayLog, DayTask, PetState, PlanEntry, Routine, TodayItem, TodaySort } from '../types'
 
 /** Grupo das tarefas avulsas na lista do dia (e no histórico). */
@@ -68,11 +69,11 @@ export function getTodayItems(
   date: Date,
   dateKey: string,
 ): TodayItem[] {
-  // Dia da semana pela própria chave do dia (que já está no fuso do usuário).
-  const weekday = parseKey(dateKey).getDay()
+  // Semanal: pelo dia da semana da própria chave (já no fuso do usuário). De um dia só: só naquela data.
+  // Arquivadas à mão ficam de fora.
   const items: TodayItem[] = []
   for (const routine of routines) {
-    if (!routine.days.includes(weekday)) continue
+    if (!runsOn(routine, dateKey)) continue
     for (const block of routine.blocks) {
       const doneOn = completedTasks[block.id]
       if (block.type === 'tarefa' && doneOn && doneOn !== dateKey) continue

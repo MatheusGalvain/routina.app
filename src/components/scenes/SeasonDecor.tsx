@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 /**
@@ -207,39 +207,101 @@ export function Bunting() {
 // Coelho da lua cheia
 // ---------------------------------------------------------------------
 
-/** Já passou nesta visita ao app (passa uma vez só). */
+/** Já passou nesta visita ao app (a passagem natural acontece uma vez a cada abertura). */
 let bunnyPassed = false
 
-/**
- * Silhueta do coelho cruzando o céu, uma vez, bem rápida e discreta.
- * Sem texto: quem viu, viu. Na floresta, passa na frente da lua.
- */
-export function MoonBunny({ y }: { y: number }) {
-  const [run, setRun] = useState(false)
+/** Duração da passagem (s): cruzando o céu, ou parada num canto com movimento reduzido. */
+const PASS_S = 4
+const STILL_S = 6
 
+/**
+ * Silhueta do coelho de cristal cruzando o céu numa noite de lua cheia, uma vez por abertura do app.
+ * Durante a passagem ela é um botão ("Algo brilhou no céu"): tocar antes de sumir chama `onCatch`.
+ * Com movimento reduzido, fica parada num canto do céu por 6 s.
+ *  - `natural`: pode passar sozinha (lua cheia de verdade e coelho ainda não desbloqueado).
+ *  - `trigger`: muda quando o painel dev dispara a passagem; tocar nessa passagem é só visual (`onCatch(true)`).
+ * `top` = altura do chão da silhueta, em % da altura do cenário.
+ */
+export function MoonBunnyPass({
+  top,
+  reduced,
+  trigger,
+  natural,
+  onCatch,
+}: {
+  top: number
+  reduced: boolean
+  trigger: number
+  natural: boolean
+  onCatch: (simulated: boolean) => void
+}) {
+  const [run, setRun] = useState<{ id: number; simulated: boolean } | null>(null)
+
+  // Passagem natural: alguns segundos depois de abrir, uma vez só.
   useEffect(() => {
-    if (bunnyPassed) return
+    if (!natural || bunnyPassed) return
     const t = window.setTimeout(() => {
       bunnyPassed = true
-      setRun(true)
+      setRun({ id: Date.now(), simulated: false })
     }, 3000 + Math.random() * 5000)
     return () => window.clearTimeout(t)
-  }, [])
+  }, [natural])
+
+  // Painel dev: passa na hora a cada toque (não repete ao montar de novo com o mesmo número).
+  const mountedWith = useRef(trigger)
+  useEffect(() => {
+    if (!trigger || trigger === mountedWith.current) return
+    setRun({ id: trigger, simulated: true })
+  }, [trigger])
+
+  useEffect(() => {
+    if (!run) return
+    const t = window.setTimeout(() => setRun(null), (reduced ? STILL_S : PASS_S) * 1000)
+    return () => window.clearTimeout(t)
+  }, [run, reduced])
 
   return (
     <AnimatePresence>
       {run && (
-        <motion.g
-          key="coelho"
-          initial={{ x: -60 }}
-          animate={{ x: W + 60 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 2.2, ease: 'linear' }}
-          onAnimationComplete={() => setRun(false)}
-          opacity={0.55}
+        <motion.button
+          key={run.id}
+          type="button"
+          aria-label="Algo brilhou no céu"
+          onClick={() => {
+            const simulated = run.simulated
+            setRun(null)
+            onCatch(simulated)
+          }}
+          className="absolute z-10 grid -translate-x-1/2 -translate-y-[80%] cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0"
+          style={{ top: reduced ? '24%' : `${top}%`, width: 'max(48px, 8%)', aspectRatio: '1' }}
+          initial={reduced ? { left: '86%', opacity: 0 } : { left: '-8%', opacity: 1 }}
+          animate={reduced ? { left: '86%', opacity: 1 } : { left: '108%', opacity: 1 }}
+          exit={{ opacity: 0, scale: 1.4, transition: { duration: 0.35 } }}
+          transition={reduced ? { duration: 0.5 } : { left: { duration: PASS_S, ease: 'linear' } }}
         >
-          <motion.g initial={{ y }} animate={{ y: [y, y - 16, y] }} transition={{ duration: 0.44, repeat: 4, ease: 'easeOut' }}>
-            <g fill="#05070C" transform="scale(.9)">
+          <motion.svg
+            viewBox="-24 -40 48 48"
+            className="h-full w-full overflow-visible"
+            aria-hidden="true"
+            animate={reduced ? undefined : { y: [0, -9, 0] }}
+            transition={reduced ? undefined : { duration: 0.5, repeat: Infinity, ease: 'easeOut' }}
+          >
+            <defs>
+              <radialGradient id="hd-moonBunnyGlow">
+                <stop offset="0" stopColor="#E6DCFF" stopOpacity=".55" />
+                <stop offset="1" stopColor="#CDB8FF" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            {/* Brilho suave: é o "algo brilhou" que convida a tocar. */}
+            <motion.circle
+              cx="2"
+              cy="-14"
+              r="20"
+              fill="url(#hd-moonBunnyGlow)"
+              animate={reduced ? undefined : { opacity: [0.5, 1, 0.5] }}
+              transition={reduced ? undefined : { duration: 1.2, repeat: Infinity }}
+            />
+            <g fill="#05070C" stroke="#CDB8FF" strokeOpacity=".7" strokeWidth=".9">
               <ellipse cx="0" cy="-8" rx="11" ry="7.5" />
               <circle cx="10" cy="-15" r="6" />
               <ellipse cx="8" cy="-27" rx="2.2" ry="7.5" transform="rotate(-14 8 -27)" />
@@ -247,8 +309,8 @@ export function MoonBunny({ y }: { y: number }) {
               <circle cx="-11" cy="-10" r="3.2" />
               <ellipse cx="5" cy="-1" rx="5" ry="2.4" />
             </g>
-          </motion.g>
-        </motion.g>
+          </motion.svg>
+        </motion.button>
       )}
     </AnimatePresence>
   )

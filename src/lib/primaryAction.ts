@@ -16,7 +16,12 @@ export interface PrimaryItem {
 
 export interface PrimaryInput {
   hasFavoritePet: boolean
+  /** Rotinas ativas (sem as arquivadas). */
   routineCount: number
+  /** Rotinas arquivadas (à mão ou de um dia só que já passou). */
+  archivedCount?: number
+  /** A próxima rotina de um dia só (depois de hoje), com a data já escrita ("qui, 26 nov"). */
+  nextOnce?: { name: string; when: string } | null
   /** Dias desde o último dia ativo (`null` = nunca houve dia ativo). */
   daysSinceLastActive: number | null
   /** A pessoa já acordou o pet hoje. */
@@ -33,6 +38,7 @@ export interface PrimaryInput {
 
 export type PrimaryActionType =
   | { type: 'onboarding'; step: 1 | 2 }
+  | { type: 'routines' }
   | { type: 'wakePet' }
   | { type: 'quickTask' }
   | { type: 'startDay'; blockId: string }
@@ -40,7 +46,7 @@ export type PrimaryActionType =
   | { type: 'review' }
   | { type: 'daySummary' }
 
-export type PrimaryState = 'adotar' | 'primeira-rotina' | 'acordar' | 'dia-vazio' | 'comecar' | 'continuar' | 'revisao' | 'resumo'
+export type PrimaryState = 'adotar' | 'primeira-rotina' | 'so-arquivadas' | 'acordar' | 'dia-vazio' | 'comecar' | 'continuar' | 'revisao' | 'resumo'
 
 export interface PrimaryAction {
   state: PrimaryState
@@ -60,7 +66,16 @@ export function getPrimaryAction(s: PrimaryInput): PrimaryAction {
   if (!s.hasFavoritePet)
     return { state: 'adotar', label: 'Conhecer meu pet', petMessage: 'Oi! Ainda não fomos apresentados. Vem me conhecer?', action: { type: 'onboarding', step: 1 } }
 
-  if (s.routineCount === 0)
+  // Só rotinas arquivadas e nada para hoje: convida a reaproveitar uma (sem tarefas avulsas no dia).
+  if (s.routineCount === 0 && (s.archivedCount ?? 0) > 0 && s.items.length === 0)
+    return {
+      state: 'so-arquivadas',
+      label: 'Escolher uma rotina',
+      petMessage: 'Suas rotinas estão guardadas em Arquivadas. Vamos usar uma de novo ou montar outra?',
+      action: { type: 'routines' },
+    }
+
+  if (s.routineCount === 0 && (s.archivedCount ?? 0) === 0)
     return {
       state: 'primeira-rotina',
       label: 'Montar minha primeira rotina',
@@ -75,7 +90,14 @@ export function getPrimaryAction(s: PrimaryInput): PrimaryAction {
     return { state: 'acordar', label: 'Acordar meu pet', petMessage: 'Zzz… faz uns dias que eu cochilo por aqui. Me acorda?', action: { type: 'wakePet' } }
 
   if (s.items.length === 0)
-    return { state: 'dia-vazio', label: 'Adicionar algo para hoje', petMessage: 'Hoje está livre. Que tal uma coisinha só para a gente cuidar?', action: { type: 'quickTask' } }
+    return {
+      state: 'dia-vazio',
+      label: 'Adicionar algo para hoje',
+      petMessage: s.nextOnce
+        ? `Hoje está livre. "${clipName(s.nextOnce.name)}" é só na ${s.nextOnce.when}. Quer cuidar de algo hoje?`
+        : 'Hoje está livre. Que tal uma coisinha só para a gente cuidar?',
+      action: { type: 'quickTask' },
+    }
 
   if (pending.length > 0) {
     if (done === 0)

@@ -8,7 +8,8 @@ import { useRotina } from '../../store/useRotina'
 import { useDevOverrides } from '../../store/useDevOverrides'
 import { SECRET_UNLOCK } from '../../lib/companion'
 import type { DecorId } from '../../data/events'
-import { Bunting, Confetti, Fireworks, GuideStar, LIGHT_WIRES, Lights, MoonBunny, Snow } from './SeasonDecor'
+import { Bunting, Confetti, Fireworks, GuideStar, LIGHT_WIRES, Lights, MoonBunnyPass, Snow } from './SeasonDecor'
+import { catchMoonBunny } from '../../store/useCompanion'
 
 /**
  * Motor de cena do cantinho, em camadas de profundidade (viewBox 640 × 320, proporção 2:1).
@@ -169,12 +170,14 @@ export function SceneStage({ scene, areas, days, seed, preview = false, label, c
   // A ilhota do cosmos flutua devagar; o que está em cima dela flutua junto.
   const floats = scene === 'cosmos' && !still
   // Decorações de época (src/data/events.ts) e o coelho de cristal que passa nas noites de lua cheia
-  // (só para quem ainda não desbloqueou o coelho de cristal; com movimento reduzido ele não passa).
+  // (só para quem ainda não o desbloqueou). Tocar na silhueta durante a passagem desbloqueia na hora.
+  // A passagem disparada pelo painel dev aparece sempre e é só visual.
   const decor = useSeasonDecor(scene)
   const fullMoon = useFullMoonNight()
   const secretKnown = useRotina((s) => s.petProgress.unlocked.includes(SECRET_UNLOCK))
   const secretDev = useDevOverrides((s) => s.secretPet)
-  const bunny = fullMoon && !secretKnown && !secretDev && !still
+  const moonPass = useDevOverrides((s) => s.moonPass)
+  const bunny = !preview && ((fullMoon && !secretKnown && !secretDev) || moonPass > 0)
 
   return (
     <div
@@ -201,7 +204,6 @@ export function SceneStage({ scene, areas, days, seed, preview = false, label, c
           ) : (
             <ForestBack areas={areas} days={days} seed={seed} tilt={tilt} preview={preview} decor={decor} />
           )}
-          {bunny && <MoonBunny y={scene === 'floresta' ? 82 : 46} />}
         </motion.svg>
       </AnimatePresence>
 
@@ -217,6 +219,9 @@ export function SceneStage({ scene, areas, days, seed, preview = false, label, c
           </motion.div>
         </motion.div>
       )}
+
+      {/* Silhueta do coelho de cristal no céu (um botão de verdade, por cima do cenário). */}
+      {bunny && <MoonBunnyPass top={((scene === 'floresta' ? 82 : 46) / SCENE_H) * 100} reduced={reduced} trigger={moonPass} natural={fullMoon && !secretKnown && !secretDev} onCatch={catchMoonBunny} />}
 
       {/* Frente: árvores que emolduram a floresta e a granulação por cima de tudo. */}
       <svg viewBox={`0 0 ${SCENE_W} ${SCENE_H}`} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">

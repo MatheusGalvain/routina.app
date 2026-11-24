@@ -3,8 +3,10 @@ import { useRotina } from './useRotina'
 import { useDevOverrides } from './useDevOverrides'
 import { usePetEvents } from './usePetEvents'
 import { computeStats } from '../lib/stats'
-import { SECRET_DAYS, SECRET_UNLOCK, conqueredPhase, phaseIndex, phasesOf, shownPhase } from '../lib/companion'
+import { SECRET_UNLOCK, conqueredPhase, phaseIndex, phasesOf, shownPhase } from '../lib/companion'
 import { dayKey } from '../lib/dates'
+import { clearDev } from '../lib/devData'
+import { secretUnlockPath } from '../lib/unlock'
 import { ALL_PETS, DEFAULT_PET, PET_ORDER, SECRET_PET } from '../components/pets/pets'
 import { ACCESSORIES, EVENT_ACCESSORY_LIST, type UnlockStats } from '../data/accessories'
 import { ownedEventAccessories } from '../data/events'
@@ -17,6 +19,21 @@ export function useStats() {
   const areas = useRotina((s) => s.areas)
   const today = dayKey()
   return useMemo(() => computeStats(logs, today, areas.map((a) => a.id)), [logs, today, areas])
+}
+
+/**
+ * Estatísticas só dos registros reais (sem nada simulado pelo painel dev).
+ * Tudo que desbloqueia algo de verdade (fases, acessórios, coelho de cristal) usa estas.
+ */
+export function useRealStats() {
+  const logs = useRotina((s) => s.logs)
+  const areas = useRotina((s) => s.areas)
+  const today = dayKey()
+  return useMemo(() => {
+    const real = clearDev(logs)
+    const areaIds = areas.map((a) => a.id)
+    return { stats: computeStats(real, today, areaIds), secretPath: secretUnlockPath(real, areaIds, today) }
+  }, [logs, today, areas])
 }
 
 /** Leu todas as histórias que existem hoje (uma por pet que não é segredo). */
@@ -54,11 +71,12 @@ export function unlockStats(
  * Mantém o progresso do companheiro (montado uma vez, no App):
  * guarda o maior número de dias ativos e a fase conquistada de cada espécie (nunca regride),
  * libera acessórios (para sempre) e enfileira as comemorações de nova fase e de acessório novo.
- * O coelho de cristal chega com 30 dias ativos ou uma semana com todas as áreas concluídas.
+ * O coelho de cristal chega pela regra de src/lib/unlock.ts (o caminho fica guardado em `secretPath`).
+ * Só registros reais contam: com dias simulados pelo painel dev nada é liberado de verdade.
  * Na primeira vez só registra o estado atual, sem comemorar o passado.
  */
 export function useCompanionProgress() {
-  const stats = useStats()
+  const { stats, secretPath } = useRealStats()
   const kind = useRotina((s) => s.companion.kind)
   const reads = useRotina((s) => s.storyReads)
   const hasCompanion = !!kind
@@ -77,11 +95,11 @@ export function useCompanionProgress() {
     const phase: PetPhase = (kind && phases[kind]) || conqueredPhase(kind ?? DEFAULT_PET, peak, phases)
     const u = unlockStats(stats, peak, hasCompanion, kind, phases, allStoriesRead(reads))
     const fresh = ACCESSORIES.filter((a) => !p.unlocked.includes(a.id) && a.unlock(u)).map((a) => a.id)
-    const secret = !p.unlocked.includes(SECRET_UNLOCK) && (peak >= SECRET_DAYS || stats.allAreasWeek)
+    const secret = !p.unlocked.includes(SECRET_UNLOCK) && secretPath !== null
     const unlocked: UnlockId[] = [...p.unlocked, ...fresh, ...(secret ? [SECRET_UNLOCK] : [])]
 
     if (!p.initialized) {
-      updateProgress({ initialized: true, peakActiveDays: peak, seenPhase: phase, unlocked, phases })
+      updateProgress({ initialized: true, peakActiveDays: peak, seenPhase: phase, unlocked, phases, ...(secret && secretPath ? { secretPath } : {}) })
       return
     }
 
@@ -93,11 +111,29 @@ export function useCompanionProgress() {
     // Comemora só quando o favorito sobe de fase (trocar de pet não comemora).
     if (hasCompanion && phaseIndex(phase) > phaseIndex(before)) push({ type: 'phase', phase })
     if (fresh.length || secret) patch.unlocked = unlocked
+    if (secret && secretPath) patch.secretPath = secretPath
     // O livrinho do Historiador vem das histórias, não do pet: avisa mesmo sem favorito.
     fresh.forEach((accessory) => (hasCompanion || accessory === 'livrinho') && push({ type: 'unlock', accessory }))
     if (secret) push({ type: 'secret' })
     if (Object.keys(patch).length) updateProgress(patch)
-  }, [stats, kind, reads])
+  }, [stats, secretPath, kind, reads])
+}
+
+/**
+ * Tocou na silhueta do coelho de cristal no céu da lua cheia: desbloqueia na hora (caminho 'lua').
+ * `simulated` (passagem disparada pelo painel dev): só visual, nada é gravado.
+ */
+export function catchMoonBunny(simulated: boolean) {
+  const { push } = usePetEvents.getState()
+  if (simulated) {
+    useDevOverrides.getState().set({ secretPet: true })
+    push({ type: 'secret' })
+    return
+  }
+  const { petProgress: p, updateProgress } = useRotina.getState()
+  if (p.unlocked.includes(SECRET_UNLOCK)) return
+  updateProgress({ unlocked: [...p.unlocked, SECRET_UNLOCK], secretPath: 'lua' })
+  push({ type: 'secret' })
 }
 
 /**

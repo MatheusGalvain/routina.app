@@ -11,6 +11,12 @@ interface DevOverrides {
   unlockAll: boolean
   /** Mostra o coelho de cristal como desbloqueado (só visual, não grava nada). */
   secretPet: boolean
+  /** Força a noite de lua cheia (só visual). */
+  fullMoon: boolean
+  /** Dispara a passagem do coelho de cristal no céu agora (muda o número a cada toque; 0 = nunca). Tocar nela é só visual. */
+  moonPass: number
+  /** Dias somados a hoje só para arquivar rotinas de um dia (testar o arquivamento). 0 = hoje de verdade. */
+  dayShift: number
   /** Troféus de mentira (só neste aparelho). `null` = os reais. */
   trophies: TrophyMap | null
   /** Montagens do cantinho de mentira. `null` = as reais. */
@@ -43,6 +49,9 @@ export const useDevOverrides = create<DevOverrides>()((set, get) => ({
   species: null,
   unlockAll: false,
   secretPet: false,
+  fullMoon: false,
+  moonPass: 0,
+  dayShift: 0,
   trophies: null,
   layouts: null,
   scene: null,

@@ -105,6 +105,8 @@ export function useSeasonDecor(scene: SceneId): DecorId[] {
  */
 export function useFullMoonNight() {
   const simulated = useDevOverrides((s) => s.date)
+  const forced = useDevOverrides((s) => s.fullMoon)
+  if (forced) return true
   if (simulated) {
     const at = parseKey(simulated)
     at.setHours(22)

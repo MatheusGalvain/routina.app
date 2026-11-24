@@ -8,6 +8,7 @@ import { TEMPLATES } from '../data/templates'
 import { AREA_ALLOWED, AREA_NAME_MAX, AREA_PALETTE, DEFAULT_AREAS, MAX_AREAS, ROUTINE_COLORS, normalizeAreas, pastelArea, pastelRoutine, removedDefaults, sameName } from '../data/areas'
 import { APP_KEY } from '../lib/storageKeys'
 import { dayKey, nowInTz } from '../lib/dates'
+import { weekdayOf } from '../lib/routines'
 import { LEGACY_SECRET_UNLOCK, SECRET_UNLOCK, legacyPhase } from '../lib/companion'
 import { dayTaskBlock } from '../lib/today'
 
@@ -103,6 +104,10 @@ export interface RotinaState {
   restoreArea: (key: DefaultAreaKey, mergeFrom?: AreaId) => void
 
   createRoutine: (name?: string) => string
+  /** Arquiva (pausa sem perder nada) ou desarquiva uma rotina. */
+  archiveRoutine: (id: string, archived: boolean) => void
+  /** "Usar de novo": a rotina vira de um dia só na data escolhida e sai das arquivadas. */
+  reuseRoutine: (id: string, date: string) => void
   updateRoutine: (id: string, patch: Partial<Omit<Routine, 'id' | 'blocks'>>) => void
   deleteRoutine: (id: string) => void
   /** Usa um modelo (do app, pela chave, ou da pessoa, pelo id): cria uma rotina nova e devolve o id dela. */
@@ -287,6 +292,12 @@ export const useRotina = create<RotinaState>()(
           if (changed) set({ completedTasks: tasks })
         },
         deleteRoutine: (id) => set({ routines: get().routines.filter((r) => r.id !== id) }),
+        archiveRoutine: (id, archived) =>
+          set({ routines: mapRoutine(get().routines, id, (r) => ({ ...r, archivedAt: archived ? new Date().toISOString() : null })) }),
+        reuseRoutine: (id, date) =>
+          set({
+            routines: mapRoutine(get().routines, id, (r) => ({ ...r, repeat: 'once', onceDate: date, days: [weekdayOf(date)], archivedAt: r.archivedAt ? null : r.archivedAt })),
+          }),
         addTemplate: (keyOrId) => {
           const t = TEMPLATES.find((x) => x.key === keyOrId) ?? get().templates.find((x) => x.id === keyOrId)
           if (!t) return
@@ -313,7 +324,9 @@ export const useRotina = create<RotinaState>()(
           const r = get().routines.find((x) => x.id === routineId)
           if (!r) return
           const id = uid()
-          const t: UserTemplate = { id, name: r.name.trim() || 'Novo modelo', color: r.color, days: [...r.days], blocks: r.blocks.map((b) => ({ ...b, id: uid() })) }
+          // Modelo nunca guarda data: a de um dia só vira semanal no dia da semana daquela data.
+          const days = r.repeat === 'once' && r.onceDate ? [weekdayOf(r.onceDate)] : [...r.days]
+          const t: UserTemplate = { id, name: r.name.trim() || 'Novo modelo', color: r.color, days, blocks: r.blocks.map((b) => ({ ...b, id: uid() })) }
           set({ templates: [...get().templates, t] })
           return id
         },

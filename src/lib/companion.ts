@@ -7,8 +7,8 @@ export const SECRET_UNLOCK: PetUnlockId = 'pet:coelho-cristal'
 /** Marca antiga, de quando o pet secreto era o coelho (vira SECRET_UNLOCK ao carregar). */
 export const LEGACY_SECRET_UNLOCK = 'pet:coelho'
 
-/** Dias ativos que trazem o coelho de cristal (ou uma semana com todas as áreas). */
-export const SECRET_DAYS = 30
+/** Regra completa do coelho de cristal em src/lib/unlock.ts. */
+export { SECRET_DAYS } from './unlock'
 
 export const PHASE_LIST: { id: PetPhase; name: string }[] = [
   { id: 'filhote', name: 'Filhote' },
