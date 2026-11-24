@@ -285,7 +285,7 @@ const DUST = Array.from({ length: 16 }, (_, i) => {
 const DUST_COLORS = ['var(--color-fg)', 'var(--color-area-mente)', 'var(--color-accent)', 'var(--color-area-social)']
 
 /**
- * Chegada do coelho: a silhueta acende, a poeira de estrela se espalha e ele dá um pulinho.
+ * Chegada do coelho de cristal: a silhueta acende, a poeira de estrela se espalha e ele dá um pulinho.
  * Tom calmo e sem rótulos ("raro", "lendário"...): a pessoa percebe sozinha.
  */
 function SecretArrival({ onClose }: { onClose: () => void }) {
@@ -358,7 +358,7 @@ function SecretArrival({ onClose }: { onClose: () => void }) {
             }}
             style={{ transformOrigin: '50% 90%' }}
           >
-            <Pet kind="coelho" size={150} interactive={false} float={false} />
+            <Pet kind="coelho-cristal" size={150} interactive={false} float={false} />
           </motion.div>
         </div>
 
@@ -367,19 +367,19 @@ function SecretArrival({ onClose }: { onClose: () => void }) {
             Alguém novo apareceu no seu cantinho.
           </h2>
           <p className="m-0 w-full rounded-2xl border border-line-2 bg-panel-2 px-4 py-3 text-sm text-soft">
-            Um coelho veio fazer companhia. Ele fica por aqui, e você pode escolhê-lo como favorito quando quiser.
+            Um coelho de cristal veio fazer companhia. Ele fica por aqui, e você pode escolhê-lo como favorito quando quiser.
           </p>
           <div className="mt-1 flex flex-wrap justify-center gap-2">
             <button
               type="button"
               autoFocus
               onClick={() => {
-                chooseFavorite('coelho')
+                chooseFavorite('coelho-cristal')
                 onClose()
               }}
               className="rounded-full bg-noite px-5 py-2.5 text-sm font-bold text-ink"
             >
-              {hasCompanion ? 'Trocar para o coelho' : 'Escolher como favorito'}
+              {hasCompanion ? 'Trocar para o coelho de cristal' : 'Escolher como favorito'}
             </button>
             <button type="button" onClick={onClose} className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-soft hover:bg-panel-2">
               Depois
@@ -393,7 +393,7 @@ function SecretArrival({ onClose }: { onClose: () => void }) {
 
 function Celebration({ event, onClose }: { event: Extract<PetEvent, { type: 'phase' | 'unlock' }>; onClose: () => void }) {
   const view = useCompanionView()
-  const kind = view.kind ?? 'gatinho'
+  const kind = view.kind ?? 'coelho'
   const species = SPECIES[kind]
   const name = view.name || species.name
   const look = STATE_STYLE.concluido

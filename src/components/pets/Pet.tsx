@@ -315,7 +315,7 @@ export function Pet({
             })
             .then(() => reactControls.set({ rotate: 0 }))
         else if (kind === 'corujinha') void reactControls.start({ rotate: [0, -12, -12, 12, 12, 0], transition: { duration: 1.5 * PLAY_SLOW, ease: 'easeInOut' } })
-        else if (kind === 'coelho') {
+        else if (kind === 'coelho' || kind === 'coelho-cristal') {
           void reactControls.start({
             y: [0, s * 0.04, -s * 0.3, 0, 0],
             scaleY: [1, 0.86, 1.08, 0.92, 1],

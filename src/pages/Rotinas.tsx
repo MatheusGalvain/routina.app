@@ -8,6 +8,7 @@ import { Icon, Panel } from '../components/ui/ui'
 import { HelpButton } from '../components/help/HelpButton'
 import { LeaveDialog, SaveStatus, useLeaveGuard, useSaveState, waitForSave } from '../components/routines/SaveGuard'
 import { showToast } from '../components/ui/Toast'
+import { WeekDays } from '../components/routines/WeekDays'
 import type { AreaId, Block, BlockType, Routine, UserTemplate } from '../types'
 
 const inputCls = 'w-full rounded-lg border border-line bg-ink px-3 py-2.5 text-sm text-soft placeholder:text-muted'
@@ -478,18 +479,24 @@ function TemplateEditor({ template, onDeleted, onUsed }: { template: UserTemplat
   )
 }
 
-function SideItem({ name, color, count, current, to }: { name: string; color: string; count: number; current: boolean; to: string }) {
+function SideItem({ name, color, count, current, to, days }: { name: string; color: string; count: number; current: boolean; to: string; days?: number[] }) {
   return (
     <Link
       to={to}
       aria-current={current ? 'page' : undefined}
-      className={`flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${current ? 'bg-accent/15' : 'hover:bg-panel-2'}`}
+      className={`flex min-h-11 flex-col justify-center gap-1.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${current ? 'bg-accent/15' : 'hover:bg-panel-2'}`}
     >
-      <span className="flex min-w-0 items-center gap-2.5">
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
-        <span className="[overflow-wrap:anywhere]">{name || 'Sem nome'}</span>
+      <span className="flex w-full items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2.5">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} aria-hidden="true" />
+          <span className="[overflow-wrap:anywhere]">{name || 'Sem nome'}</span>
+        </span>
+        <span className="font-mono text-xs font-normal text-muted">
+          {count}
+          <span className="sr-only"> {count === 1 ? 'bloco' : 'blocos'}</span>
+        </span>
       </span>
-      <span className="font-mono text-xs font-normal text-muted">{count}</span>
+      {days && <WeekDays days={days} color={color} className="pl-[18px]" />}
     </Link>
   )
 }
@@ -538,7 +545,7 @@ export function Rotinas({ kind = 'routine' }: { kind?: 'routine' | 'template' })
             <HelpButton k="rotinas" />
           </div>
           {routines.map((r) => (
-            <SideItem key={r.id} name={r.name} color={r.color} count={r.blocks.length} current={routine?.id === r.id} to={`/rotinas/${routineSlugs.get(r.id)}`} />
+            <SideItem key={r.id} name={r.name} color={r.color} count={r.blocks.length} current={routine?.id === r.id} to={`/rotinas/${routineSlugs.get(r.id)}`} days={r.days} />
           ))}
           <button type="button" onClick={() => open(createRoutine())} className="mt-1 self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-ink">
             + Nova rotina

@@ -28,6 +28,8 @@ const PK: Record<Table, string[]> = {
   user_scene_items: ['item_id'],
   user_event_items: ['event_id', 'item_id'],
   focus_sessions: ['id'],
+  day_tasks: ['id'],
+  user_story_reads: ['story_id'],
 }
 const CONFLICT: Record<Table, string> = {
   profiles: 'user_id',
@@ -44,10 +46,12 @@ const CONFLICT: Record<Table, string> = {
   user_scene_items: 'user_id,item_id',
   user_event_items: 'user_id,event_id,item_id',
   focus_sessions: 'id',
+  day_tasks: 'id',
+  user_story_reads: 'user_id,story_id',
 }
 // Pais antes dos filhos ao gravar; filhos antes dos pais ao apagar.
-const UPSERT_ORDER: Table[] = ['profiles', 'user_areas', 'routines', 'blocks', 'day_logs', 'block_logs', 'completed_tasks', 'companion', 'user_trophies', 'user_scene_items', 'user_event_items', 'corner_slots', 'user_templates', 'focus_sessions']
-const DELETE_ORDER: Table[] = ['block_logs', 'completed_tasks', 'blocks', 'day_logs', 'routines', 'corner_slots', 'user_trophies', 'user_scene_items', 'user_event_items', 'user_areas', 'user_templates', 'focus_sessions']
+const UPSERT_ORDER: Table[] = ['profiles', 'user_areas', 'routines', 'blocks', 'day_logs', 'block_logs', 'completed_tasks', 'companion', 'user_trophies', 'user_scene_items', 'user_event_items', 'corner_slots', 'user_templates', 'focus_sessions', 'day_tasks', 'user_story_reads']
+const DELETE_ORDER: Table[] = ['block_logs', 'completed_tasks', 'blocks', 'day_logs', 'routines', 'corner_slots', 'user_trophies', 'user_scene_items', 'user_event_items', 'user_areas', 'user_templates', 'focus_sessions', 'day_tasks', 'user_story_reads']
 
 const DEBOUNCE_MS = 600
 const BACKOFF_S = [2, 5, 10, 20, 30]
@@ -172,7 +176,8 @@ async function send(table: Table, kind: 'upsert' | 'delete', rows: Row[]): Promi
     }
     return null
   }
-  const col = table === 'day_logs' ? 'date' : table === 'completed_tasks' ? 'block_id' : table === 'user_scene_items' ? 'item_id' : 'id'
+  const col =
+    table === 'day_logs' ? 'date' : table === 'completed_tasks' ? 'block_id' : table === 'user_scene_items' ? 'item_id' : table === 'user_story_reads' ? 'story_id' : 'id'
   const { error } = await supabase.from(table).delete().eq('user_id', uid!).in(col, rows.map((r) => String(r[col])))
   return error
 }

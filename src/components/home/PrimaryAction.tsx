@@ -55,9 +55,9 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 function QuickTask({ onClose }: { onClose: () => void }) {
   const areas = useAreas()
-  const addQuickTask = useRotina((s) => s.addQuickTask)
+  const addDayTask = useRotina((s) => s.addDayTask)
   const [name, setName] = useState('')
-  const [areaId, setAreaId] = useState(areas[0]?.id ?? 'foco')
+  const [areaId, setAreaId] = useState('')
   return (
     <Modal title="Algo para hoje" onClose={onClose}>
       <form
@@ -65,11 +65,11 @@ function QuickTask({ onClose }: { onClose: () => void }) {
         onSubmit={(e) => {
           e.preventDefault()
           if (!name.trim()) return
-          addQuickTask(name, areaId)
+          addDayTask(dayKey(), name, areaId || null)
           onClose()
         }}
       >
-        <p className="m-0 text-sm text-muted">Uma tarefa avulsa: aparece no Hoje e some depois de feita.</p>
+        <p className="m-0 text-sm text-muted">Uma tarefa só de hoje: aparece no grupo Avulsas, na tela Hoje.</p>
         <label className="flex flex-col gap-1.5 text-xs text-muted">
           O que você quer fazer?
           <input
@@ -82,8 +82,9 @@ function QuickTask({ onClose }: { onClose: () => void }) {
           />
         </label>
         <label className="flex flex-col gap-1.5 text-xs text-muted">
-          Área da vida
+          Área da vida (opcional)
           <select value={areaId} onChange={(e) => setAreaId(e.target.value)} className="min-h-11 w-full rounded-lg border border-line bg-ink px-3 text-sm text-soft">
+            <option value="">Sem área</option>
             {areas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}

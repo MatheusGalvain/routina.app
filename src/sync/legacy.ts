@@ -79,6 +79,7 @@ export function mergeLegacy(account: LegacyData, local: LegacyData): LegacyData 
     peakActiveDays: Math.max(a.peakActiveDays, l.peakActiveDays),
     seenPhase: phaseIndex(l.seenPhase) > phaseIndex(a.seenPhase) ? l.seenPhase : a.seenPhase,
     unlocked: [...new Set([...a.unlocked, ...l.unlocked])],
+    phases: { ...l.phases, ...a.phases },
   }
 
   return { routines, logs, completedTasks, companion, petProgress }

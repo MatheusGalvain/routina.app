@@ -9,7 +9,7 @@ interface DevOverrides {
   state: ForcedState | null
   species: PetKind | null
   unlockAll: boolean
-  /** Mostra o coelho como desbloqueado (só visual, não grava nada). */
+  /** Mostra o coelho de cristal como desbloqueado (só visual, não grava nada). */
   secretPet: boolean
   /** Troféus de mentira (só neste aparelho). `null` = os reais. */
   trophies: TrophyMap | null

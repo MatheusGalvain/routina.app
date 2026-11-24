@@ -168,8 +168,8 @@ export function SceneStage({ scene, areas, days, seed, preview = false, label, c
   const gy = useTransform(tilt.y, (v) => v * shiftOf(groundDepth) * 0.5 * scale)
   // A ilhota do cosmos flutua devagar; o que está em cima dela flutua junto.
   const floats = scene === 'cosmos' && !still
-  // Decorações de época (src/data/events.ts) e o coelho que passa nas noites de lua cheia
-  // (só para quem ainda não desbloqueou o coelho; com movimento reduzido ele não passa).
+  // Decorações de época (src/data/events.ts) e o coelho de cristal que passa nas noites de lua cheia
+  // (só para quem ainda não desbloqueou o coelho de cristal; com movimento reduzido ele não passa).
   const decor = useSeasonDecor(scene)
   const fullMoon = useFullMoonNight()
   const secretKnown = useRotina((s) => s.petProgress.unlocked.includes(SECRET_UNLOCK))

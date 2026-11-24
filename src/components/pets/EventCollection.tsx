@@ -37,7 +37,7 @@ export function EventCollection() {
   const map = useEventItemsView()
   const logs = useRotina((s) => s.logs)
   const view = useCompanionView()
-  const kind = view.kind ?? 'gatinho'
+  const kind = view.kind ?? 'coelho'
 
   return (
     <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-3 p-0">

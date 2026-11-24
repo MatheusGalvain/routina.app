@@ -4,14 +4,14 @@ import { useCompanionView } from '../store/useCompanion'
 import { Bar, Icon, Panel } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
 import { ALL_PETS, PETS, SECRET_PET, SPECIES, textColor as light } from '../components/pets/pets'
-import { PHASES, daysToPhase, nextPhase, phaseIndex } from '../lib/companion'
+import { PHASES, daysToPhase, nextPhase, phaseIndex, phasesOf } from '../lib/companion'
 import { Switch } from '../components/ui/Switch'
 import type { PetAppearance } from '../types'
 import { ACCESSORIES, EVENT_ACCESSORY_LIST, SLOT_NAMES } from '../data/accessories'
 import { EVENT_ACCESSORIES, EVENT_BY_ID, eventLabel, isEventActive, ownedAt } from '../data/events'
 import { eventCtx, useEventDay, useEventItemsView } from '../store/useEvents'
 import { EventCollection, EventTag, hasEventsToShow } from '../components/pets/EventCollection'
-import { chooseFavorite, unlockStats } from '../store/useCompanion'
+import { allStoriesRead, chooseFavorite, unlockStats } from '../store/useCompanion'
 import { PetCorner } from '../components/pets/PetCorner'
 import { TrophyCollection } from '../components/pets/TrophyCollection'
 import { SceneCollection } from '../components/pets/SceneCollection'
@@ -114,9 +114,12 @@ function UnknownPet() {
 function PhaseCard() {
   const view = useCompanionView()
   const kind = view.kind!
-  const next = nextPhase(view.activeDays)
-  const current = PHASES[phaseIndex(view.conqueredPhase)]
-  const prevMin = current.min
+  // Cada espécie cresce no seu ritmo (src/data/pets.ts). Se a regra mudou e a fase guardada é maior,
+  // a barra começa do dia em que a fase atual começa pela regra nova (sem regredir).
+  const steps = phasesOf(kind)
+  const next = nextPhase(kind, view.activeDays, view.conqueredPhase)
+  const current = steps[phaseIndex(view.conqueredPhase)]
+  const prevMin = Math.min(current.min, view.activeDays)
   const pct = next ? Math.min(1, Math.max(0, (view.activeDays - prevMin) / (next.min - prevMin))) : 1
 
   return (
@@ -153,6 +156,7 @@ function PhaseCard() {
           {next
             ? `Faltam ${next.remaining} ${next.remaining === 1 ? 'dia ativo' : 'dias ativos'} para virar ${next.name.toLowerCase()}.`
             : `Fase máxima! ${SPECIES[kind].name} adulto ganhou ${SPECIES[kind].adultDetail}.`}
+          {next && ` ${SPECIES[kind].name} vira jovem com ${steps[1].min} e adulto com ${steps[2].min} dias ativos.`}
           {view.phase !== view.conqueredPhase && ` Aparência escolhida: ${PHASES[phaseIndex(view.phase)].name.toLowerCase()}.`}
         </p>
         {view.sleeping && <p className="m-0 text-sm text-noite">Está tirando um cochilo. Conclua um bloco hoje e ele acorda.</p>}
@@ -219,7 +223,7 @@ function AppearancePicker() {
             {PHASES.map((p, i) => {
               const unlocked = i <= conquered
               const on = view.appearance === p.id
-              const left = daysToPhase(p.id, view.activeDays)
+              const left = daysToPhase(kind, p.id, view.activeDays, view.conqueredPhase)
               return (
                 <button
                   key={p.id}
@@ -256,7 +260,7 @@ function AppearancePicker() {
             hint={
               adultReached
                 ? `${detail[0].toUpperCase()}${detail.slice(1)}, em qualquer aparência.`
-                : `Liberado na fase adulto (faltam ${daysText(daysToPhase('adulto', view.activeDays))} ativos): ${detail}.`
+                : `Liberado na fase adulto (faltam ${daysText(daysToPhase(kind, 'adulto', view.activeDays, view.conqueredPhase))} ativos): ${detail}.`
             }
             checked={adultReached && view.showAdultDetail}
             disabled={!adultReached}
@@ -273,8 +277,10 @@ function Accessories() {
   const view = useCompanionView()
   const equipped = useRotina((s) => s.companion.equipped)
   const equip = useRotina((s) => s.equip)
-  const kind = view.kind ?? 'gatinho'
-  const u = unlockStats(view.stats, view.activeDays, !!view.kind)
+  const kind = view.kind ?? 'coelho'
+  const phases = useRotina((s) => s.petProgress.phases)
+  const reads = useRotina((s) => s.storyReads)
+  const u = unlockStats(view.stats, view.activeDays, !!view.kind, view.kind, phases, allStoriesRead(reads))
   // Acessórios de evento: aparecem se conquistados, ou (bloqueados) enquanto o evento acontece.
   const day = useEventDay()
   const eventMap = useEventItemsView()

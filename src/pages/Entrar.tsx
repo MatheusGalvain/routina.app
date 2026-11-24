@@ -77,7 +77,7 @@ function ConfirmLink({ tokenHash, type }: { tokenHash: string; type: 'email' | '
           </h1>
         </div>
         <section className="flex w-full flex-col items-center gap-5 rounded-[26px] border border-line bg-panel px-6 pt-7 pb-6 text-center">
-          <Pet kind="gatinho" state="neutro" size={110} label="Gatinho esperando você entrar" />
+          <Pet kind="coelho" state="neutro" size={110} label="Coelho esperando você entrar" />
           <h2 className="m-0 text-lg font-bold">Tudo pronto para entrar</h2>
           <p className="m-0 text-sm text-muted">Aperte o botão para abrir sua conta neste navegador.</p>
           <button
@@ -219,7 +219,7 @@ function EntrarForm() {
         </div>
 
         <section className="flex w-full flex-col items-center gap-5 rounded-[26px] border border-line bg-panel px-6 pt-7 pb-6">
-          {/* Gatinho dando boas-vindas */}
+          {/* Coelho, o mascote, dando boas-vindas */}
           <div className="flex w-full flex-col items-center gap-3">
             <AnimatePresence mode="wait">
               <motion.p
@@ -236,7 +236,7 @@ function EntrarForm() {
             </AnimatePresence>
             <div className="relative grid h-[150px] w-[150px] place-items-center">
               <div className="absolute h-[140px] w-[140px] rounded-full border border-fg/15" />
-              <Pet kind="gatinho" state={sentTo ? 'concluido' : 'neutro'} size={120} label="Gatinho dando boas-vindas" />
+              <Pet kind="coelho" state={sentTo ? "concluido" : "neutro"} size={120} label="Coelho dando boas-vindas" />
             </div>
           </div>
 

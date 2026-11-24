@@ -19,6 +19,7 @@ const Privacidade = page(() => import('./pages/Privacidade'), 'PrivacidadePage')
 const Entrar = page(() => import('./pages/Entrar'), 'Entrar')
 const BemVindo = page(() => import('./pages/BemVindo'), 'BemVindo')
 const NaoEncontrada = page(() => import('./pages/NaoEncontrada'), 'NaoEncontrada')
+const Novidades = page(() => import('./pages/Novidades'), 'Novidades')
 
 /** Título da aba: "<title> · Habbit Do" (lido pelo RootLayout). */
 export type RouteHandle = { title?: string }
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
               { path: 'rotinas/:slug', element: <Rotinas />, handle: { title: 'Editar rotina' } },
               { path: 'pet', element: <Companheiro />, handle: { title: 'Pet' } },
               { path: 'perfil', element: <Perfil />, handle: { title: 'Perfil' } },
+              { path: 'novidades', element: <Novidades />, handle: { title: 'Novidades' } },
               { path: 'privacidade', element: <Privacidade />, handle: { title: 'Privacidade' } },
               ...devRoutes,
               { path: '*', element: <NaoEncontrada />, handle: { title: 'Página não encontrada' } },

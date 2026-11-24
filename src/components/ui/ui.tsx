@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { HelpKey } from '../../data/help'
 import { HelpButton } from '../help/HelpButton'
+import { BunnyMark } from './BunnyMark'
 
 const PATHS: Record<string, ReactNode> = {
   trend: <><path d="M4 19 L10 13 L14 17 L20 7" /><path d="M15 7 L20 7 L20 12" /></>,
@@ -112,16 +113,11 @@ export function Bar({ pct, color }: { pct: number; color: string }) {
   )
 }
 
+/** Logo do app: o rosto do coelho (o mesmo símbolo do ícone e do favicon). */
 export function Logo({ size = 56 }: { size?: number }) {
-  const segs = ['var(--color-alerta)', 'var(--color-accent)', 'var(--color-ok)', 'var(--color-noite)']
   return (
-    <div className="grid place-items-center rounded-[22px] border border-line bg-panel" style={{ width: size + 20, height: size + 20 }}>
-      <svg width={size} height={size} viewBox="0 0 56 56" role="img" aria-label="Habbit Do">
-        {segs.map((c, i) => (
-          <circle key={c} cx="28" cy="28" r="22" fill="none" style={{ stroke: c }} strokeWidth="6" strokeLinecap="round" strokeDasharray="26 112.2" strokeDashoffset={-34.5 * i} transform="rotate(-90 28 28)" />
-        ))}
-        <path d="M19 28.5 L25.5 35 L37.5 22" fill="none" style={{ stroke: 'var(--color-fg)' }} strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+    <div className="grid shrink-0 place-items-center rounded-[22px] border border-line bg-ink" style={{ width: size + 20, height: size + 20 }}>
+      <BunnyMark size={size + 8} />
     </div>
   )
 }

@@ -1,13 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { useTour } from '../components/help/Tour'
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useRotina } from '../store/useRotina'
 import { useAuth, signOut } from '../store/useAuth'
 import { NAME_MAX, deleteAccount, exportMyData, nameFromEmail, setDisplayName, setProfileTimezone, useSession } from '../sync/session'
 import { flushNow } from '../sync/outbox'
-import { computePetState, getTodayItems } from '../lib/today'
-import { dayKey, deviceTimeZone, nowInTz } from '../lib/dates'
-import { useShownPet } from '../store/useCompanion'
+import { computePetState } from '../lib/today'
+import { useTodayItems } from '../store/useTodayItems'
+import { deviceTimeZone, nowInTz } from '../lib/dates'
+import { useHistorian, useShownPet } from '../store/useCompanion'
+import { Link } from 'react-router-dom'
+import { LATEST_VERSION } from '../data/changelog'
 import { useTrophyView } from '../store/useTrophies'
 import { TIERS, TROPHIES, Trophy, trophyTitle } from '../data/trophies'
 import { Icon } from '../components/ui/ui'
@@ -72,6 +75,7 @@ export function Perfil() {
       <Numbers />
       <Showcase openCollection={openCollection} />
       <TourCard startTour={startTour} />
+      <NewsCard />
       <Settings openPrivacy={openPrivacy} />
     </div>
   )
@@ -79,14 +83,9 @@ export function Perfil() {
 
 /** Estado do pet agora, como no Início (para a aura do avatar). */
 function useAutoState() {
-  const now = nowInTz()
-  const date = dayKey(now)
-  const routines = useRotina((s) => s.routines)
-  const dayLog = useRotina((s) => s.logs[date])
-  const completedTasks = useRotina((s) => s.completedTasks)
   const activeId = useRotina((s) => s.activeBlockId)
-  const items = useMemo(() => getTodayItems(routines, dayLog, completedTasks, now, date), [routines, dayLog, completedTasks, date])
-  return computePetState(items, activeId, now)
+  const items = useTodayItems()
+  return computePetState(items, activeId, nowInTz())
 }
 
 function Header() {
@@ -98,6 +97,7 @@ function Header() {
   const [draft, setDraft] = useState(name)
   const editBtn = useRef<HTMLButtonElement>(null)
 
+  const historian = useHistorian()
   const look = STATE_STYLE[pet.state]
   const aura = pet.sleeping ? STATE_STYLE.descanso.color : look.color
   const since = profile ? new Date(profile.createdAt).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : null
@@ -177,6 +177,12 @@ function Header() {
         </div>
       )}
 
+      {historian && (
+        // Título por ler todas as histórias dos pets (fica mesmo se surgirem histórias novas).
+        <p className="m-0 inline-flex items-center gap-1.5 rounded-full border border-noite/35 bg-noite/10 px-3 py-1 text-[13px] font-semibold text-noite">
+          <Icon name="book" size={14} /> Historiador
+        </p>
+      )}
       {pet.isCompanion && (
         <p className="m-0 rounded-full border border-ok/30 bg-ok/10 px-3 py-1 font-mono text-[12px] text-ok">
           {PHASES[phaseIndex(pet.conqueredPhase)].name} · {pet.activeDays} {pet.activeDays === 1 ? 'dia ativo' : 'dias ativos'}
@@ -392,6 +398,24 @@ function TourCard({ startTour }: { startTour: () => void }) {
       <button type="button" onClick={startTour} className={btn}>
         Rever o tour
       </button>
+    </section>
+  )
+}
+
+/** Link para o histórico de novidades do app. */
+function NewsCard() {
+  return (
+    <section className="flex flex-wrap items-center gap-4 rounded-[22px] border border-line bg-panel p-5 sm:p-6">
+      <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-noite/10 text-noite">
+        <Icon name="sparkle" size={22} />
+      </span>
+      <div className="flex min-w-[180px] flex-1 flex-col gap-0.5">
+        <h2 className="m-0 text-lg font-bold">Novidades</h2>
+        <p className="m-0 text-sm text-muted">Tudo o que mudou no Habbit Do. Você está na versão {LATEST_VERSION}.</p>
+      </div>
+      <Link to="/novidades" className={`${btn} inline-flex items-center`}>
+        Ver novidades
+      </Link>
     </section>
   )
 }

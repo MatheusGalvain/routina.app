@@ -36,6 +36,46 @@ const SUN: [string, string] = ['#4A3510', '#16130C']
 const EMBER: [string, string] = ['#4A1422', '#170C10']
 
 export const STORIES: Record<BasePetKind, PetStory> = {
+  coelho: {
+    title: 'O Coelho e o pulinho de cada dia',
+    scenes: [
+      {
+        sky: DAWN,
+        mood: 'open',
+        deco: ['sun', 'cloud'],
+        text: 'O Coelho acorda com as orelhas em pé. Lá longe, no alto do morro, tem uma cenoura enorme esperando por ele.',
+        action: { type: 'next', label: 'Que longe…' },
+      },
+      {
+        sky: DAY,
+        deco: ['sprout', 'leaf'],
+        text: 'O morro parece grande demais para um coelho só. Mas um pulinho de cada vez ele sabe dar.',
+        action: { type: 'tap', hint: 'Toque no Coelho para ele pular', times: 4, done: 'Hop, hop, hop, hop! O caminho já ficou menor.' },
+      },
+      {
+        sky: POND,
+        mood: 'squint',
+        deco: ['wind', 'cloud'],
+        text: 'No meio do caminho, bate um vento forte e o Coelho cansa. O que ele faz agora?',
+        action: {
+          type: 'choice',
+          options: [
+            { label: 'Descansar um pouquinho', reply: 'Uma pausa curta, e as orelhas voltam a ficar em pé.', mood: 'closed' },
+            { label: 'Dar só mais um pulinho', reply: 'Só mais um já é um passo a mais do que antes.', mood: 'happy' },
+            { label: 'Olhar o quanto já andou', reply: 'Olhando para trás, o caminho percorrido é bem grande!', mood: 'open' },
+          ],
+        },
+      },
+      {
+        sky: SUN,
+        mood: 'happy',
+        deco: ['sparkle', 'heart'],
+        text: 'Pulinho depois de pulinho, o Coelho chega no topo. A cenoura é ainda mais bonita de perto.',
+        action: { type: 'end', moral: 'Ninguém sobe o morro de uma vez. Um pulinho por dia leva longe.' },
+      },
+    ],
+  },
+
   gatinho: {
     title: 'O Gatinho e o primeiro passo',
     scenes: [

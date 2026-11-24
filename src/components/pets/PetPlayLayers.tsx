@@ -23,6 +23,7 @@ export const MOUTH: Record<PetKind, { x: number; y: number }> = {
   ourico: { x: 60, y: 84 },
   corujinha: { x: 60, y: 76 },
   coelho: { x: 60, y: 78 },
+  'coelho-cristal': { x: 60, y: 78 },
 }
 
 const HEART = 'M0,4 C-7,-1 -4,-8 0,-4.5 C4,-8 7,-1 0,4 Z'
@@ -226,7 +227,7 @@ export function SpecialFront({ kind, species }: { kind: PetKind; species: Specie
       </>
     )
   }
-  if (kind === 'coelho')
+  if (kind === 'coelho' || kind === 'coelho-cristal')
     return (
       <>
         {[

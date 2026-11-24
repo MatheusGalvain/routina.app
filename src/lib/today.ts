@@ -1,5 +1,56 @@
 import { nowInTz, parseKey } from './dates'
-import type { BlockLog, DayLog, PetState, PlanEntry, Routine, TodayItem } from '../types'
+import type { Block, BlockLog, DayLog, DayTask, PetState, PlanEntry, Routine, TodayItem, TodaySort } from '../types'
+
+/** Grupo das tarefas avulsas na lista do dia (e no histórico). */
+export const AVULSAS = { id: 'avulsas', name: 'Avulsas', color: '#CDB8FF' } as const
+
+/** Tarefa avulsa no formato de bloco (para marcar, pular e entrar nas estatísticas como os outros). */
+export const dayTaskBlock = (t: DayTask): Block => ({ id: t.id, name: t.name, type: 'tarefa', areaId: t.areaId ?? '' })
+
+/** Tarefas avulsas de um dia, na ordem do grupo "Avulsas". */
+export function dayTaskItems(tasks: DayTask[], dayLog: DayLog | undefined, dateKey: string): TodayItem[] {
+  return tasks
+    .filter((t) => t.date === dateKey)
+    .sort((a, b) => a.position - b.position)
+    .map((t) => {
+      const log = dayLog?.blocks[t.id] ?? {}
+      return { block: dayTaskBlock(t), routine: AVULSAS, log, done: !!log.done, skipped: !!log.skipped, dayTask: t }
+    })
+}
+
+/** Tarefas avulsas de dias anteriores que ficaram sem fazer e ainda não foram respondidas ("Levar para hoje?"). */
+export function pendingFromBefore(tasks: DayTask[], logs: Record<string, DayLog>, todayKey: string) {
+  return tasks.filter((t) => {
+    if (t.date >= todayKey || t.resolution) return false
+    const log = logs[t.date]?.blocks[t.id]
+    return !log?.done && !log?.skipped
+  })
+}
+
+/** Item "em andamento": o bloco ativo ou um contador começado. */
+export const inProgress = (i: TodayItem, activeId: string | null) =>
+  !i.done && !i.skipped && (i.block.id === activeId || (i.block.type === 'contador' && (i.log.value ?? 0) > 0))
+
+/**
+ * Ordena a lista do Hoje:
+ *  - `rotina`: como vem (avulsas e depois as rotinas, na ordem delas);
+ *  - `auto`: pendentes, em andamento, concluídos e pulados; dentro de cada grupo, a ordem das rotinas;
+ *  - `manual`: a ordem arrastada pela pessoa no dia; o que não estava nela vai para o fim.
+ */
+export function sortTodayItems(items: TodayItem[], mode: TodaySort, order: string[] | undefined, activeId: string | null): TodayItem[] {
+  if (mode === 'auto') {
+    const rank = (i: TodayItem) => (i.done ? 2 : i.skipped ? 3 : inProgress(i, activeId) ? 1 : 0)
+    return items.map((item, idx) => ({ item, idx })).sort((a, b) => rank(a.item) - rank(b.item) || a.idx - b.idx).map((x) => x.item)
+  }
+  if (mode === 'manual' && order?.length) {
+    const pos = new Map(order.map((id, i) => [id, i]))
+    return items
+      .map((item, idx) => ({ item, idx, p: pos.get(item.block.id) ?? Number.MAX_SAFE_INTEGER }))
+      .sort((a, b) => a.p - b.p || a.idx - b.idx)
+      .map((x) => x.item)
+  }
+  return items
+}
 
 export function isDone(type: string, log: BlockLog, target?: number) {
   if (type === 'contador') return (log.value ?? 0) >= (target ?? 1)
@@ -60,8 +111,9 @@ export function getDayItems(
   date: Date,
   dateKey: string,
   todayKey: string,
+  dayTasks: DayTask[] = [],
 ): TodayItem[] {
-  if (dateKey === todayKey) return getTodayItems(routines, dayLog, completedTasks, date, dateKey)
+  if (dateKey === todayKey) return [...dayTaskItems(dayTasks, dayLog, dateKey), ...getTodayItems(routines, dayLog, completedTasks, date, dateKey)]
   if (dateKey > todayKey || !dayLog) return [] // futuro ou dia sem registro
   if (dayLog.plan) return withStatus(dayLog.plan, dayLog)
   return getTodayItems(routines, dayLog, completedTasks, date, dateKey)

@@ -19,6 +19,10 @@ export interface UnlockStats {
   areaBlocks: Record<AreaId, number>
   areaDaysTotal: Record<AreaId, number>
   hasCompanion: boolean
+  /** Dias ativos em que o favorito vira adulto (cada espécie tem o seu, em src/data/pets.ts). */
+  adultAt: number
+  /** Leu todas as histórias dos pets. */
+  storiesAllRead: boolean
 }
 
 export interface Accessory {
@@ -89,7 +93,7 @@ export const ACCESSORIES: Accessory[] = [
     slot: 'cabeca',
     hint: 'Chegue à fase adulto',
     unlock: (s) => s.phase === 'adulto',
-    progress: (s) => [Math.min(s.activeDays, 21), 21],
+    progress: (s) => [Math.min(s.activeDays, s.adultAt), s.adultAt],
     draw: ({ x, y }, body) => (
       <g>
         <path
@@ -195,6 +199,30 @@ export const ACCESSORIES: Accessory[] = [
         <path d={`M${x - 11},${y - 7} L${x},${y + 1} L${x + 11},${y - 7}`} fill="none" stroke={line} strokeWidth={1.5} />
         <path d={`M${x},${y + 5} C${x - 5},${y + 1} ${x - 3},${y - 3} ${x},${y} C${x + 3},${y - 3} ${x + 5},${y + 1} ${x},${y + 5} Z`} fill="#F43F5E" />
       </g>
+      )
+    },
+  },
+  {
+    id: 'livrinho',
+    name: 'Livrinho de histórias',
+    slot: 'mao',
+    hint: 'Leia todas as histórias dos pets',
+    unlock: (s) => s.storiesAllRead,
+    draw: ({ x, y }, body) => {
+      const cover = pick(body, '#8B5CF6', '#4C1D95', '#C4B5FD')
+      const spine = cover === '#C4B5FD' ? '#7C3AED' : '#3B0F7A'
+      return (
+        <g transform={`rotate(-12 ${x} ${y})`}>
+          {/* Páginas abertas, a capa por baixo e uma fitinha marcando a página. */}
+          <path d={`M${x - 13},${y - 7} Q${x - 6},${y - 10} ${x},${y - 7} Q${x + 6},${y - 10} ${x + 13},${y - 7} L${x + 13},${y + 8} Q${x + 6},${y + 5} ${x},${y + 8} Q${x - 6},${y + 5} ${x - 13},${y + 8} Z`} fill={cover} />
+          <path d={`M${x - 11.5},${y - 7.5} Q${x - 5.5},${y - 10} ${x},${y - 7.5} L${x},${y + 6} Q${x - 5.5},${y + 3.5} ${x - 11.5},${y + 6} Z`} fill="#FFF8EC" />
+          <path d={`M${x + 11.5},${y - 7.5} Q${x + 5.5},${y - 10} ${x},${y - 7.5} L${x},${y + 6} Q${x + 5.5},${y + 3.5} ${x + 11.5},${y + 6} Z`} fill="#FFF8EC" />
+          <path d={`M${x},${y - 7.5} L${x},${y + 7}`} stroke={spine} strokeWidth={1.4} />
+          {[-1, 1].map((side) => (
+            <path key={side} d={`M${x + side * 3},${y - 3.5} L${x + side * 9},${y - 4.6} M${x + side * 3},${y} L${x + side * 9},${y - 1.1}`} stroke="#C9B79C" strokeWidth={1} strokeLinecap="round" />
+          ))}
+          <path d={`M${x + 6},${y - 8.5} L${x + 6},${y + 11} L${x + 7.6},${y + 9} L${x + 9.2},${y + 11} L${x + 9.2},${y - 8.5} Z`} fill="#F43F5E" />
+        </g>
       )
     },
   },

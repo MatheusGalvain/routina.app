@@ -3,13 +3,13 @@ import { useRotina } from './useRotina'
 import { useDevOverrides } from './useDevOverrides'
 import { usePetEvents } from './usePetEvents'
 import { computeStats } from '../lib/stats'
-import { SECRET_DAYS, SECRET_UNLOCK, phaseFor, phaseIndex, shownPhase } from '../lib/companion'
+import { SECRET_DAYS, SECRET_UNLOCK, conqueredPhase, phaseIndex, phasesOf, shownPhase } from '../lib/companion'
 import { dayKey } from '../lib/dates'
-import { DEFAULT_PET } from '../components/pets/pets'
+import { ALL_PETS, DEFAULT_PET, PET_ORDER, SECRET_PET } from '../components/pets/pets'
 import { ACCESSORIES, EVENT_ACCESSORY_LIST, type UnlockStats } from '../data/accessories'
 import { ownedEventAccessories } from '../data/events'
 import type { Stats } from '../lib/stats'
-import type { AccessoryId, PetKind, PetState, UnlockId } from '../types'
+import type { AccessoryId, PetKind, PetPhase, PetState, UnlockId } from '../types'
 
 /** Estatísticas atuais, recalculadas quando os registros mudam. */
 export function useStats() {
@@ -19,10 +19,29 @@ export function useStats() {
   return useMemo(() => computeStats(logs, today, areas.map((a) => a.id)), [logs, today, areas])
 }
 
-export function unlockStats(stats: Stats, activeDays: number, hasCompanion: boolean): UnlockStats {
+/** Leu todas as histórias que existem hoje (uma por pet que não é segredo). */
+export const allStoriesRead = (reads: Record<string, string>) => PET_ORDER.every((k) => !!reads[k])
+
+/** Leu todas as histórias (fica true para sempre depois do livrinho, mesmo se surgirem histórias novas). */
+export function useHistorian() {
+  const reads = useRotina((s) => s.storyReads)
+  const earned = useRotina((s) => s.petProgress.unlocked.includes('livrinho'))
+  return earned || allStoriesRead(reads)
+}
+
+export function unlockStats(
+  stats: Stats,
+  activeDays: number,
+  hasCompanion: boolean,
+  kind: PetKind | null = null,
+  phases: Partial<Record<PetKind, PetPhase>> = {},
+  storiesAllRead = false,
+): UnlockStats {
   return {
     activeDays,
-    phase: phaseFor(activeDays),
+    phase: conqueredPhase(kind ?? DEFAULT_PET, activeDays, phases),
+    adultAt: phasesOf(kind ?? DEFAULT_PET)[2].min,
+    storiesAllRead,
     currentStreak: stats.currentStreak,
     blocksDone: stats.blocksDone,
     areaBlocks: stats.areaBlocks,
@@ -33,41 +52,52 @@ export function unlockStats(stats: Stats, activeDays: number, hasCompanion: bool
 
 /**
  * Mantém o progresso do companheiro (montado uma vez, no App):
- * guarda o maior número de dias ativos, libera acessórios (para sempre)
- * e enfileira as comemorações de nova fase e de acessório novo.
- * O coelho chega com 30 dias ativos ou uma semana com todas as áreas concluídas.
+ * guarda o maior número de dias ativos e a fase conquistada de cada espécie (nunca regride),
+ * libera acessórios (para sempre) e enfileira as comemorações de nova fase e de acessório novo.
+ * O coelho de cristal chega com 30 dias ativos ou uma semana com todas as áreas concluídas.
  * Na primeira vez só registra o estado atual, sem comemorar o passado.
  */
 export function useCompanionProgress() {
   const stats = useStats()
-  const hasCompanion = useRotina((s) => !!s.companion.kind)
+  const kind = useRotina((s) => s.companion.kind)
+  const reads = useRotina((s) => s.storyReads)
+  const hasCompanion = !!kind
 
   useEffect(() => {
     const { petProgress: p, updateProgress } = useRotina.getState()
     const peak = Math.max(p.peakActiveDays, stats.activeDays)
-    const phase = phaseFor(peak)
-    const u = unlockStats(stats, peak, hasCompanion)
+    // Fase de cada espécie: a da regra de src/data/pets.ts ou a já guardada, a maior.
+    const phases = { ...p.phases }
+    for (const k of ALL_PETS) {
+      const now = conqueredPhase(k, peak, p.phases)
+      if (now !== 'filhote' && now !== p.phases[k]) phases[k] = now
+    }
+    const phasesChanged = ALL_PETS.some((k) => phases[k] !== p.phases[k])
+    const before: PetPhase = (kind && p.phases[kind]) || 'filhote'
+    const phase: PetPhase = (kind && phases[kind]) || conqueredPhase(kind ?? DEFAULT_PET, peak, phases)
+    const u = unlockStats(stats, peak, hasCompanion, kind, phases, allStoriesRead(reads))
     const fresh = ACCESSORIES.filter((a) => !p.unlocked.includes(a.id) && a.unlock(u)).map((a) => a.id)
     const secret = !p.unlocked.includes(SECRET_UNLOCK) && (peak >= SECRET_DAYS || stats.allAreasWeek)
     const unlocked: UnlockId[] = [...p.unlocked, ...fresh, ...(secret ? [SECRET_UNLOCK] : [])]
 
     if (!p.initialized) {
-      updateProgress({ initialized: true, peakActiveDays: peak, seenPhase: phase, unlocked })
+      updateProgress({ initialized: true, peakActiveDays: peak, seenPhase: phase, unlocked, phases })
       return
     }
 
     const { push } = usePetEvents.getState()
     const patch: Partial<typeof p> = {}
     if (peak !== p.peakActiveDays) patch.peakActiveDays = peak
-    if (phaseIndex(phase) > phaseIndex(p.seenPhase)) {
-      patch.seenPhase = phase
-      if (hasCompanion) push({ type: 'phase', phase })
-    }
+    if (phasesChanged) patch.phases = phases
+    if (phase !== p.seenPhase) patch.seenPhase = phase
+    // Comemora só quando o favorito sobe de fase (trocar de pet não comemora).
+    if (hasCompanion && phaseIndex(phase) > phaseIndex(before)) push({ type: 'phase', phase })
     if (fresh.length || secret) patch.unlocked = unlocked
-    if (fresh.length && hasCompanion) fresh.forEach((accessory) => push({ type: 'unlock', accessory }))
+    // O livrinho do Historiador vem das histórias, não do pet: avisa mesmo sem favorito.
+    fresh.forEach((accessory) => (hasCompanion || accessory === 'livrinho') && push({ type: 'unlock', accessory }))
     if (secret) push({ type: 'secret' })
     if (Object.keys(patch).length) updateProgress(patch)
-  }, [stats, hasCompanion])
+  }, [stats, kind, reads])
 }
 
 /**
@@ -78,8 +108,8 @@ export function useCompanionProgress() {
 export function chooseFavorite(kind: PetKind | null) {
   const dev = useDevOverrides.getState()
   const reallyUnlocked = useRotina.getState().petProgress.unlocked.includes(SECRET_UNLOCK)
-  if (kind === 'coelho' && !reallyUnlocked) {
-    dev.set({ species: 'coelho' })
+  if (kind === SECRET_PET && !reallyUnlocked) {
+    dev.set({ species: SECRET_PET })
     return
   }
   if (dev.species) {
@@ -98,11 +128,11 @@ export function useCompanionView() {
 
   const activeDays = Math.max(progress.peakActiveDays, stats.activeDays)
   const kind = dev.species ?? companion.kind
-  // Fase conquistada (pelos dias ativos, nunca regride) x aparência escolhida.
+  // Fase conquistada (pelos dias ativos e pela regra da espécie, nunca regride) x aparência escolhida.
   // A fase forçada pelo painel dev vale por cima da escolha.
-  const conqueredPhase = phaseFor(activeDays)
-  const phase = dev.phase ?? shownPhase(conqueredPhase, companion.appearance)
-  const adultDetail = dev.phase ? dev.phase === 'adulto' : conqueredPhase === 'adulto' && companion.showAdultDetail
+  const conquered = conqueredPhase(kind ?? DEFAULT_PET, activeDays, progress.phases)
+  const phase = dev.phase ?? shownPhase(conquered, companion.appearance)
+  const adultDetail = dev.phase ? dev.phase === 'adulto' : conquered === 'adulto' && companion.showAdultDetail
   // Acessórios de evento conquistados (ou simulados pelo painel dev) contam como liberados.
   const realEventItems = useRotina((s) => s.eventItems)
   const eventItems = dev.eventItems ?? realEventItems
@@ -121,7 +151,7 @@ export function useCompanionView() {
     kind,
     name: companion.name,
     phase,
-    conqueredPhase,
+    conqueredPhase: conquered,
     appearance: companion.appearance,
     showAdultDetail: companion.showAdultDetail,
     adultDetail,

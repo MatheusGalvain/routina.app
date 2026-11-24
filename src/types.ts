@@ -85,6 +85,8 @@ export interface DayLog {
   note?: string
   /** Lista do dia congelada (atualizada enquanto o dia é "hoje"). */
   plan?: PlanEntry[]
+  /** "Minha ordem": ids dos blocos e tarefas avulsas na ordem que a pessoa arrastou. */
+  order?: string[]
   /** Dia gerado pelo painel de desenvolvimento. */
   dev?: true
   /** Dia real que a simulação substituiu (volta ao limpar os dados simulados). */
@@ -97,13 +99,15 @@ export interface TodayItem {
   log: BlockLog
   done: boolean
   skipped: boolean
+  /** Presente quando o item é uma tarefa avulsa (não vem de rotina). */
+  dayTask?: DayTask
 }
 
-/** Os seis pets de sempre (cada um tem um estado "da casa" e uma historinha). */
-export type BasePetKind = 'gatinho' | 'sapinho' | 'polvinho' | 'pintinho' | 'ourico' | 'corujinha'
+/** Os pets de sempre (cada um tem um estado "da casa" e uma historinha). O coelho é o mascote. */
+export type BasePetKind = 'gatinho' | 'sapinho' | 'polvinho' | 'pintinho' | 'ourico' | 'corujinha' | 'coelho'
 
-/** O coelho aparece só depois de desbloqueado (a interface nunca anuncia isso). */
-export type SecretPetKind = 'coelho'
+/** O coelho de cristal aparece só depois de desbloqueado (a interface nunca anuncia isso). */
+export type SecretPetKind = 'coelho-cristal'
 
 export type PetKind = BasePetKind | SecretPetKind
 
@@ -113,7 +117,7 @@ export type PetPhase = 'filhote' | 'jovem' | 'adulto'
 
 export type Slot = 'cabeca' | 'rosto' | 'pescoco' | 'mao'
 
-export type BaseAccessoryId = 'chapeu-mago' | 'coroa' | 'fones' | 'oculos' | 'cachecol' | 'tiara-lua' | 'cartinha' | 'laco'
+export type BaseAccessoryId = 'chapeu-mago' | 'coroa' | 'fones' | 'oculos' | 'cachecol' | 'tiara-lua' | 'cartinha' | 'laco' | 'livrinho'
 
 /** Acessórios de evento sazonal (src/data/events.ts): sempre com o prefixo "evt-". */
 export type EventAccessoryId = `evt-${string}`
@@ -184,4 +188,28 @@ export interface PetProgress {
   seenPhase: PetPhase
   /** Acessórios e pets desbloqueados (ficam para sempre). */
   unlocked: UnlockId[]
+  /**
+   * Fase conquistada por espécie (nunca regride, mesmo se a regra de src/data/pets.ts mudar).
+   * Uma espécie fora do mapa segue só a regra atual.
+   */
+  phases: Partial<Record<PetKind, PetPhase>>
 }
+
+/** Tarefa avulsa: só de um dia, fora das rotinas. O que aconteceu com ela fica em `logs[date].blocks[id]`. */
+export interface DayTask {
+  id: string
+  /** Dia (AAAA-MM-DD) a que pertence. */
+  date: string
+  name: string
+  /** Área da vida (opcional). */
+  areaId: AreaId | null
+  /** Ordem dentro do grupo "Avulsas". */
+  position: number
+  /** Tarefa de um dia anterior que foi levada para este. */
+  carriedFrom?: string
+  /** Não concluída e já respondida no dia seguinte: levada para outro dia ou descartada. */
+  resolution?: 'levada' | 'descartada'
+}
+
+/** Como a lista do Hoje é ordenada. */
+export type TodaySort = 'rotina' | 'auto' | 'manual'

@@ -45,7 +45,7 @@ function Progress({ step }: { step: OnboardingStep }) {
 function StepAdopt({ onNext }: { onNext: () => void }) {
   const companion = useRotina((s) => s.companion)
   const setCompanionName = useRotina((s) => s.setCompanionName)
-  const [kind, setKind] = useState<BasePetKind | null>(companion.kind && companion.kind !== 'coelho' ? companion.kind : null)
+  const [kind, setKind] = useState<BasePetKind | null>(companion.kind && companion.kind !== 'coelho-cristal' ? companion.kind : null)
   const [name, setName] = useState(companion.name)
 
   return (
@@ -61,7 +61,7 @@ function StepAdopt({ onNext }: { onNext: () => void }) {
     >
       <fieldset className="m-0 border-0 p-0">
         <legend className="mb-3 text-sm text-muted">Escolha quem vai te acompanhar</legend>
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3">
           {PET_ORDER.map((k) => (
             <button
               key={k}
@@ -260,7 +260,7 @@ export function BemVindo() {
     setOnboardingDone()
     navigate('/', { replace: true })
   }
-  const petKind: BasePetKind = kind && kind !== 'coelho' ? kind : 'gatinho'
+  const petKind: BasePetKind = kind && kind !== 'coelho-cristal' ? kind : 'coelho'
   const t = TITLES[step]
 
   return (
@@ -282,6 +282,15 @@ export function BemVindo() {
             exit={{ opacity: 0, x: -16 }}
             transition={{ duration: 0.2 }}
           >
+            {step === 1 && (
+              // Quem dá as boas-vindas é o coelho, o mascote do Habbit Do.
+              <div className="flex items-center gap-3">
+                <Pet kind="coelho" state="concluido" size={72} label="Coelho dando boas-vindas" />
+                <p className="relative m-0 rounded-2xl border border-line-2 bg-panel-2 px-4 py-3 text-sm text-soft">
+                  Oi! Eu sou o Coelho e vou te ajudar a começar. Primeiro, escolha quem vai te acompanhar.
+                </p>
+              </div>
+            )}
             <header className="flex flex-col gap-1.5">
               <h1 ref={titleRef} tabIndex={-1} className="m-0 text-[28px] leading-tight font-extrabold tracking-tight outline-none sm:text-[34px]">
                 {t.title}

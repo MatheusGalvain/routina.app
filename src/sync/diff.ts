@@ -1,6 +1,6 @@
 import type { RotinaState } from '../store/useRotina'
 import type { Row, Table } from './rows'
-import { areaRows, blockLogRow, eventItemRows, templateRows, companionRow, dayRow, sceneItemRows, slotRow, structureRows, taskRow, trophyRows } from './rows'
+import { areaRows, blockLogRow, dayTaskRows, eventItemRows, templateRows, companionRow, dayRow, sceneItemRows, slotRow, storyReadRows, structureRows, taskRow, trophyRows } from './rows'
 import { SCENES } from '../data/scenes'
 
 export type Emit = (table: Table, kind: 'upsert' | 'delete', row: Row) => void
@@ -34,7 +34,7 @@ export function diff(uid: string, prev: RotinaState, next: RotinaState, enqueue:
         enqueue('day_logs', 'delete', { date })
         continue
       }
-      let dayChanged = !p || p.note !== n.note || !same(p.plan, n.plan)
+      let dayChanged = !p || p.note !== n.note || !same(p.plan, n.plan) || !same(p.order, n.order)
       for (const id of new Set([...Object.keys(p?.blocks ?? {}), ...Object.keys(n.blocks)])) {
         const pb = p?.blocks[id]
         const nb = n.blocks[id]
@@ -58,7 +58,8 @@ export function diff(uid: string, prev: RotinaState, next: RotinaState, enqueue:
     const c = next.companion
     const p = prev.companion
     const withLook = c.appearance !== 'auto' || !c.showAdultDetail || p.appearance !== c.appearance || p.showAdultDetail !== c.showAdultDetail
-    enqueue('companion', 'upsert', companionRow(uid, c, next.petProgress, !hasDevDays(next), withLook))
+    const withPhases = !same(prev.petProgress.phases, next.petProgress.phases)
+    enqueue('companion', 'upsert', companionRow(uid, c, next.petProgress, !hasDevDays(next), withLook, withPhases))
   }
 
   // Troféus: só acrescenta (um nível conquistado nunca é perdido).
@@ -108,4 +109,17 @@ export function diff(uid: string, prev: RotinaState, next: RotinaState, enqueue:
   }
 
   if (prev.scene !== next.scene) enqueue('profiles', 'upsert', { user_id: uid, scene: next.scene })
+
+  if (prev.dayTasks !== next.dayTasks) {
+    const a = dayTaskRows(uid, prev.dayTasks)
+    const b = dayTaskRows(uid, next.dayTasks)
+    for (const [id, row] of b) if (!same(a.get(id), row)) enqueue('day_tasks', 'upsert', row)
+    for (const id of a.keys()) if (!b.has(id)) enqueue('day_tasks', 'delete', { id })
+  }
+
+  // Histórias lidas: só acrescenta (o título de Historiador não se perde).
+  if (prev.storyReads !== next.storyReads) {
+    const a = storyReadRows(uid, prev.storyReads)
+    for (const [key, row] of storyReadRows(uid, next.storyReads)) if (!a.has(key)) enqueue('user_story_reads', 'upsert', row)
+  }
 }

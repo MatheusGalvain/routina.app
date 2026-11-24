@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useRotina } from './useRotina'
-import { buildPlan, getTodayItems } from '../lib/today'
+import { buildPlan, dayTaskItems, getTodayItems } from '../lib/today'
 import { dayKey, nowInTz } from '../lib/dates'
 
 /**
@@ -10,14 +10,16 @@ import { dayKey, nowInTz } from '../lib/dates'
 export function useSyncTodayPlan() {
   const routines = useRotina((s) => s.routines)
   const completedTasks = useRotina((s) => s.completedTasks)
+  const dayTasks = useRotina((s) => s.dayTasks)
   const hasLog = useRotina((s) => !!s.logs[dayKey()])
 
   useEffect(() => {
     const now = nowInTz()
     const date = dayKey(now)
     const { logs, setPlan } = useRotina.getState()
-    const plan = buildPlan(getTodayItems(routines, logs[date], completedTasks, now, date))
+    // As tarefas avulsas entram na lista congelada (grupo "Avulsas"): contam no progresso e no histórico.
+    const plan = buildPlan([...dayTaskItems(dayTasks, logs[date], date), ...getTodayItems(routines, logs[date], completedTasks, now, date)])
     if (plan.length === 0 && !logs[date]) return
     setPlan(date, plan)
-  }, [routines, completedTasks, hasLog])
+  }, [routines, completedTasks, dayTasks, hasLog])
 }

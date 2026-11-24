@@ -2,7 +2,7 @@ import type { BlockType } from '../types'
 
 /**
  * Textos de ajuda do botão "?" de cada tela e painel. Quem "explica" é o pet favorito
- * (sem favorito, o gatinho), sempre em primeira pessoa e em 1 a 3 frases curtas.
+ * (sem favorito, o coelho), sempre em primeira pessoa e em 1 a 3 frases curtas.
  * Para mudar um texto, edite só aqui: os componentes leem tudo deste arquivo.
  */
 
@@ -37,7 +37,10 @@ export const HELP = {
   },
   hoje: {
     title: 'Hoje',
-    text: ['Esta é a lista do dia, na ordem das suas rotinas.', 'Marque o que fez, pule o que não deu e, à noite, me conte como foi.'],
+    text: [
+      'Esta é a lista do dia. Anote no topo uma tarefa só de hoje e escolha como ordenar: por rotina, automático ou na sua ordem.',
+      'Marque o que fez, pule o que não deu e, à noite, me conte como foi.',
+    ],
   },
   rotinas: {
     title: 'Rotinas',
@@ -94,11 +97,11 @@ export const HELP = {
   },
   'minhas-rotinas': {
     title: 'Minhas rotinas',
-    text: ['Suas rotinas, com quantos blocos têm e em que dias aparecem.', 'Toque numa para editar.'],
+    text: ['Suas rotinas, com quantos blocos têm e as letrinhas dos dias em que aparecem (o pontinho marca hoje).', 'Toque numa para editar.'],
   },
   'os-pets': {
     title: 'Os pets',
-    text: ['Somos nós! Cada pet tem um jeito e uma historinha.', 'Toque em "História" para conhecer melhor cada um.'],
+    text: ['Somos nós! Cada pet tem um jeito e uma historinha.', 'Toque em "História" para conhecer melhor cada um. Quem ler todas ganha um presente.'],
   },
   'painel-do-dia': {
     title: 'Painel do dia',

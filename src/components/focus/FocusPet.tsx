@@ -27,6 +27,7 @@ const TYPING: Record<PetKind, { limbs: number; beat: number; shape: Limb; bob?: 
   ourico: { limbs: 2, beat: 0.6, shape: 'paw' },
   corujinha: { limbs: 2, beat: 0.44, shape: 'wing' },
   coelho: { limbs: 2, beat: 0.26, shape: 'paw' },
+  'coelho-cristal': { limbs: 2, beat: 0.26, shape: 'paw' },
 }
 
 const POSE_STATE: Record<FocusPose, PetState> = { typing: 'foco', stretch: 'descanso', door: 'neutro', cheer: 'concluido' }

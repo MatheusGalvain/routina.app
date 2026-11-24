@@ -2,12 +2,18 @@ import { motion, useAnimationControls } from 'framer-motion'
 import { useEffect, useId } from 'react'
 
 /**
- * O coelho. Desenho próprio (viewBox 0 0 120 120, como os outros pets):
- *  - corpo perolado com gradiente iridescente que gira e troca de tom devagar (SMIL, sem custo de React);
- *  - orelhas longas, cada uma com o seu tremido em horários aleatórios;
- *  - poeira de estrela em volta (camada `behind`, desenhada atrás do corpo).
- * Os olhos com brilho de estrela e o pulinho parado ficam no Pet.tsx (`starEyes` e `idle: 'hop'`).
+ * Os coelhos. Desenho próprio (viewBox 0 0 120 120, como os outros pets), em duas versões com a mesma forma:
+ *  - `branco`: o mascote. Corpo #F2F0ED, orelhas com o interior em degradê rosa → lilás e bochechinhas rosadas.
+ *  - `cristal`: o secreto. Corpo perolado com gradiente iridescente que gira e troca de tom devagar
+ *    (SMIL, sem custo de React) e poeira de estrela em volta (camada `behind`).
+ * Nos dois, as orelhas longas tremem cada uma no seu horário e o pet dá pulinhos parado (`idle: 'hop'`).
+ * Os olhos com brilho de estrela do cristal ficam no Pet.tsx (`starEyes`).
  */
+
+export type BunnyVariant = 'branco' | 'cristal'
+
+/** Cor do corpo do coelho branco. */
+export const BUNNY_WHITE = '#F2F0ED'
 
 const INK = '#0A0D14'
 
@@ -47,26 +53,34 @@ function Ear({ x, tilt, delay, gradient, inner }: { x: number; tilt: number; del
   )
 }
 
-export function BunnyBody({ adult }: { adult: boolean }) {
+export function BunnyBody({ adult, variant = 'cristal' }: { adult: boolean; variant?: BunnyVariant }) {
   const id = useId().replace(/:/g, '')
   const body = `bunny-body-${id}`
   const inner = `bunny-inner-${id}`
   const sheen = `bunny-sheen-${id}`
+  const crystal = variant === 'cristal'
 
   return (
     <>
       <defs>
-        <linearGradient id={body} x1="0" y1="0" x2="1" y2="1">
-          {STOPS.map((s) => (
-            <stop key={s.offset} offset={s.offset} stopColor={s.values[0]}>
-              <animate attributeName="stop-color" values={s.values.join(';')} dur="14s" repeatCount="indefinite" />
-            </stop>
-          ))}
-          <animateTransform attributeName="gradientTransform" type="rotate" values="0 .5 .5;360 .5 .5" dur="22s" repeatCount="indefinite" />
-        </linearGradient>
+        {crystal ? (
+          <linearGradient id={body} x1="0" y1="0" x2="1" y2="1">
+            {STOPS.map((s) => (
+              <stop key={s.offset} offset={s.offset} stopColor={s.values[0]}>
+                <animate attributeName="stop-color" values={s.values.join(';')} dur="14s" repeatCount="indefinite" />
+              </stop>
+            ))}
+            <animateTransform attributeName="gradientTransform" type="rotate" values="0 .5 .5;360 .5 .5" dur="22s" repeatCount="indefinite" />
+          </linearGradient>
+        ) : (
+          <linearGradient id={body} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={BUNNY_WHITE} />
+            <stop offset="1" stopColor={BUNNY_WHITE} />
+          </linearGradient>
+        )}
         <linearGradient id={inner} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#FFC4E1" />
-          <stop offset="1" stopColor="#D7C2FF" />
+          <stop offset="0" stopColor={crystal ? '#FFC4E1' : '#F7B8D6'} />
+          <stop offset="1" stopColor={crystal ? '#D7C2FF' : '#CDB8FF'} />
         </linearGradient>
         <radialGradient id={sheen} cx=".5" cy=".5" r=".5">
           <stop offset="0" stopColor="#FFFFFF" stopOpacity=".75" />
@@ -81,11 +95,11 @@ export function BunnyBody({ adult }: { adult: boolean }) {
       <ellipse cx="45" cy="102" rx="9" ry="5" fill={`url(#${body})`} />
       <ellipse cx="75" cy="102" rx="9" ry="5" fill={`url(#${body})`} />
       <path d="M60,38 C84,38 96,56 95,74 C94,94 80,104 60,104 C40,104 26,94 25,74 C24,56 36,38 60,38 Z" fill={`url(#${body})`} />
-      <ellipse cx="60" cy="93" rx="17" ry="9" fill="#FFFFFF" opacity=".32" />
-      <ellipse cx="43" cy="50" rx="13" ry="7" fill={`url(#${sheen})`} transform="rotate(-28 43 50)" />
+      <ellipse cx="60" cy="93" rx="17" ry="9" fill="#FFFFFF" opacity={crystal ? 0.32 : 0.55} />
+      {crystal && <ellipse cx="43" cy="50" rx="13" ry="7" fill={`url(#${sheen})`} transform="rotate(-28 43 50)" />}
 
-      <ellipse cx="39" cy="76" rx="5.5" ry="3.2" fill="#FF9EC7" opacity=".5" />
-      <ellipse cx="81" cy="76" rx="5.5" ry="3.2" fill="#FF9EC7" opacity=".5" />
+      <ellipse cx="39" cy="76" rx="5.5" ry="3.2" fill="#FF9EC7" opacity={crystal ? 0.5 : 0.6} />
+      <ellipse cx="81" cy="76" rx="5.5" ry="3.2" fill="#FF9EC7" opacity={crystal ? 0.5 : 0.6} />
       <path d="M57.2,76.4 Q60,74.8 62.8,76.4 Q61.6,79.2 60,79.6 Q58.4,79.2 57.2,76.4 Z" fill="#F59BC4" />
       <path d="M60,79.6 Q58.6,82.6 55.6,81.6 M60,79.6 Q61.4,82.6 64.4,81.6" fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
 

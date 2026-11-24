@@ -38,6 +38,7 @@ export function Historico() {
   const routines = useRotina((s) => s.routines)
   const logs = useRotina((s) => s.logs)
   const completedTasks = useRotina((s) => s.completedTasks)
+  const dayTasks = useRotina((s) => s.dayTasks)
   const { toggleDone, increment, toggleSkip, setNote } = useRotina.getState()
 
   const [month, setMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
@@ -53,10 +54,10 @@ export function Historico() {
     return Array.from({ length: count }, (_, idx) => {
       const date = new Date(year, m, idx + 1)
       const key = dayKey(date)
-      const items = getDayItems(routines, logs[key], completedTasks, date, key, todayKey)
+      const items = getDayItems(routines, logs[key], completedTasks, date, key, todayKey, dayTasks)
       return { date, key, items, ...dayProgress(items), recorded: key === todayKey || !!logs[key], future: key > todayKey }
     })
-  }, [month, routines, logs, completedTasks, todayKey])
+  }, [month, routines, logs, completedTasks, todayKey, dayTasks])
 
   const summary = useMemo(() => {
     const tracked = cells.filter((c) => c.recorded && !c.future && c.total > 0)
@@ -69,8 +70,8 @@ export function Historico() {
     return new Date(y, m - 1, d)
   }, [selected])
   const selItems = useMemo(
-    () => getDayItems(routines, logs[selected], completedTasks, selDate, selected, todayKey),
-    [routines, logs, completedTasks, selDate, selected, todayKey],
+    () => getDayItems(routines, logs[selected], completedTasks, selDate, selected, todayKey, dayTasks),
+    [routines, logs, completedTasks, selDate, selected, todayKey, dayTasks],
   )
   const sel = dayProgress(selItems)
   const selNote = logs[selected]?.note

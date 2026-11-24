@@ -12,7 +12,7 @@ import { SceneDefs } from './data/scenes'
 import { PetCelebration } from './components/pets/PetCelebration'
 import { useAuth } from './store/useAuth'
 import { Icon } from './components/ui/ui'
-import { useSession } from './sync/session'
+import { nameFromEmail, useSession } from './sync/session'
 import { SyncNotice } from './components/sync/SyncNotice'
 import { LocalImportPrompt } from './components/sync/LocalImportPrompt'
 import { NamePrompt } from './components/sync/NamePrompt'
@@ -179,7 +179,8 @@ export function AppShell() {
       <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6 px-4 pt-6 pb-14 sm:px-6">
         <header className="flex items-center justify-between gap-3">
           <SectionNav />
-          <ProfileButton />
+          {/* No celular, o perfil fica no topo do menu hambúrguer. */}
+          <ProfileButton className="hidden md:flex" />
         </header>
         <main className="flex flex-col">
           <Suspense fallback={<PetLoader />}>
@@ -256,8 +257,11 @@ function SectionNav() {
           {current?.label ?? 'Menu'}
         </button>
         {open && (
-          <nav id="menu-secoes" aria-label="Seções" className="absolute top-[calc(100%+8px)] left-0 z-40 w-56 rounded-2xl border border-line bg-panel p-1.5 shadow-[0_12px_40px_rgba(0,0,0,.5)]">
+          <nav id="menu-secoes" aria-label="Seções" className="absolute top-[calc(100%+8px)] left-0 z-40 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-panel p-1.5 shadow-[0_12px_40px_rgba(0,0,0,.5)]">
             <ul ref={listRef} className="m-0 flex list-none flex-col gap-0.5 p-0">
+              <li className="mb-1 border-b border-line pb-1.5">
+                <ProfileButton onNavigate={() => close(false)} className="flex w-full rounded-xl px-2 py-1.5" />
+              </li>
               {TABS.map((t) => (
                 <li key={t.to}>
                   <NavLink
@@ -299,19 +303,26 @@ function useFirstAccessOnboarding() {
   }, [profile])
 }
 
-/** Avatar no topo: o pet favorito, que abre o perfil. */
-function ProfileButton() {
+/** Perfil no canto do header: o pet favorito (pequeno), o nome e "Meu perfil". Tudo é um link para /perfil. */
+function ProfileButton({ className = '', onNavigate }: { className?: string; onNavigate?: () => void }) {
   const pet = useShownPet('neutro')
+  const email = useAuth((s) => s.session?.user.email)
+  const name = useSession((s) => s.profile?.displayName) ?? nameFromEmail(email)
   return (
-    <NavLink to="/perfil" className="group flex shrink-0 items-center gap-3 rounded-full text-sm font-semibold text-soft hover:text-fg">
+    <NavLink
+      to="/perfil"
+      onClick={onNavigate}
+      aria-label={`${name}: meu perfil`}
+      className={`group min-h-11 min-w-0 shrink-0 items-center gap-2.5 rounded-full text-left hover:bg-panel-2/60 md:pr-1 ${className}`}
+    >
       {({ isActive }) => (
         <>
-          <span className="hidden sm:inline">Meu perfil</span>
-          <span
-            className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-panel ${isActive ? 'border-accent' : 'border-line group-hover:border-line-2'}`}
-          >
-            <span className="sr-only sm:hidden">Meu perfil</span>
-            <Pet kind={pet.kind} phase={pet.phase} adultDetail={pet.adultDetail} accessories={pet.accessories} sleeping={pet.sleeping} size={32} interactive={false} float={false} />
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-panel ${isActive ? 'border-accent' : 'border-line group-hover:border-line-2'}`}>
+            <Pet kind={pet.kind} phase={pet.phase} adultDetail={pet.adultDetail} accessories={pet.accessories} sleeping={pet.sleeping} size={30} interactive={false} float={false} />
+          </span>
+          <span className="flex min-w-0 flex-col leading-tight md:max-w-[180px]">
+            <span className="truncate text-sm font-semibold text-soft group-hover:text-fg">{name}</span>
+            <span className={`text-[11.5px] ${isActive ? 'text-accent' : 'text-muted'}`}>Meu perfil</span>
           </span>
         </>
       )}

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
-import type { AccessoryId, Area, AreaId, Block, CornerLayout, CornerLayouts, DefaultAreaKey, UserTemplate, BlockLog, Companion, DayLog, EventItemMap, PetAppearance, PetKind, PetProgress, PlanEntry, Routine, SceneItemMap, Slot, TrophyMap, TrophyUnlock } from '../types'
+import type { AccessoryId, Area, AreaId, Block, CornerLayout, CornerLayouts, DayTask, DefaultAreaKey, UserTemplate, BlockLog, Companion, DayLog, EventItemMap, PetAppearance, PetKind, PetPhase, PetProgress, PlanEntry, Routine, SceneItemMap, Slot, TrophyMap, TrophyUnlock, UnlockId } from '../types'
 import type { TrophyId } from '../data/trophies'
 import { EMPTY_LAYOUT, EMPTY_LAYOUTS } from '../lib/corner'
 import { DEFAULT_SCENE, type SceneId, type SceneItemId } from '../data/scenes'
@@ -8,6 +8,8 @@ import { TEMPLATES } from '../data/templates'
 import { AREA_ALLOWED, AREA_NAME_MAX, AREA_PALETTE, DEFAULT_AREAS, MAX_AREAS, ROUTINE_COLORS, normalizeAreas, pastelArea, pastelRoutine, removedDefaults, sameName } from '../data/areas'
 import { APP_KEY } from '../lib/storageKeys'
 import { dayKey, nowInTz } from '../lib/dates'
+import { LEGACY_SECRET_UNLOCK, SECRET_UNLOCK, legacyPhase } from '../lib/companion'
+import { dayTaskBlock } from '../lib/today'
 
 const uid = () => crypto.randomUUID()
 
@@ -37,7 +39,26 @@ const scopedStorage: StateStorage = {
 }
 
 export const DEFAULT_COMPANION: Companion = { kind: null, name: '', equipped: {}, appearance: 'auto', showAdultDetail: true }
-export const DEFAULT_PROGRESS: PetProgress = { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
+export const DEFAULT_PROGRESS: PetProgress = { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [], phases: {} }
+
+/** Todas as espécies (para semear a fase guardada de quem já usava o app). */
+const ALL_KINDS: PetKind[] = ['gatinho', 'sapinho', 'polvinho', 'pintinho', 'ourico', 'corujinha', 'coelho', 'coelho-cristal']
+
+/**
+ * Antes do crescimento por espécie, todo pet seguia 7/21 dias. Guarda essa fase para cada espécie,
+ * para ninguém regredir com a regra nova (as fases só sobem a partir daqui).
+ */
+export function seedPhases(peak: number): Partial<Record<PetKind, PetPhase>> {
+  const phase = legacyPhase(peak)
+  return phase === 'filhote' ? {} : Object.fromEntries(ALL_KINDS.map((k) => [k, phase]))
+}
+
+/** O pet secreto antigo era o coelho: a marca de desbloqueio dele passa para o coelho de cristal. */
+export function migrateSecretUnlock(unlocked: UnlockId[]): UnlockId[] {
+  if (!unlocked.includes(LEGACY_SECRET_UNLOCK as UnlockId)) return unlocked
+  const rest = unlocked.filter((u) => (u as string) !== LEGACY_SECRET_UNLOCK && u !== SECRET_UNLOCK)
+  return [...rest, SECRET_UNLOCK]
+}
 
 export interface RotinaState {
   /** Áreas da vida da pessoa, sempre em ordem de `position`. */
@@ -63,6 +84,10 @@ export interface RotinaState {
   cornerLayouts: CornerLayouts
   /** Dia (AAAA-MM-DD) em que a pessoa acordou o pet pelo botão do Início. Só neste aparelho. */
   wokenOn: string | null
+  /** Tarefas avulsas (só de um dia, fora das rotinas). */
+  dayTasks: DayTask[]
+  /** Histórias dos pets já lidas até o fim: id da história → data ISO. */
+  storyReads: Record<string, string>
 
   /** Cria uma área (até 12). Devolve o id, ou null se chegou no limite. */
   addArea: (name: string, color: string) => string | null
@@ -101,11 +126,17 @@ export interface RotinaState {
   setActive: (blockId: string | null) => void
   /** Acorda o pet hoje (botão "Acordar meu pet"). */
   wakePet: (date: string) => void
-  /**
-   * Tarefa avulsa para hoje: entra na rotina "Tarefas rápidas" (criada na primeira vez, todos os dias).
-   * Como é tarefa, some depois de feita. Devolve o id do bloco.
-   */
-  addQuickTask: (name: string, areaId: AreaId) => string
+  /** Tarefa avulsa de um dia (fora das rotinas). Devolve o id. */
+  addDayTask: (date: string, name: string, areaId: AreaId | null) => string
+  updateDayTask: (id: string, patch: Partial<Pick<DayTask, 'name' | 'areaId'>>) => void
+  /** Apaga a tarefa avulsa e o registro dela no dia. */
+  deleteDayTask: (id: string) => void
+  /** Tarefa não concluída de um dia anterior: leva para `today` (cria uma cópia) ou descarta. */
+  resolveDayTask: (id: string, resolution: 'levada' | 'descartada', today: string) => void
+  /** "Minha ordem" do dia (ids de blocos e tarefas avulsas). */
+  setDayOrder: (date: string, order: string[]) => void
+  /** Marca a história como lida (a primeira data fica). */
+  markStoryRead: (storyId: string) => void
   setNote: (date: string, note: string) => void
   /** Guarda a lista planejada do dia, para o histórico não depender das rotinas atuais. */
   setPlan: (date: string, plan: PlanEntry[]) => void
@@ -126,9 +157,6 @@ export interface RotinaState {
   /** Acrescenta itens de evento conquistados (os que já existem ficam como estão). */
   addEventItems: (list: { eventId: string; itemId: string }[], at: string) => void
 }
-
-/** Rotina onde entram as tarefas criadas pelo botão "Adicionar algo para hoje". */
-export const QUICK_ROUTINE = 'Tarefas rápidas'
 
 const mapRoutine = (routines: Routine[], id: string, fn: (r: Routine) => Routine) =>
   routines.map((r) => (r.id === id ? fn(r) : r))
@@ -159,6 +187,8 @@ export const useRotina = create<RotinaState>()(
         eventItems: {},
         cornerLayouts: EMPTY_LAYOUTS,
         wokenOn: null,
+        dayTasks: [],
+        storyReads: {},
 
         addArea: (name, color) => {
           const areas = get().areas
@@ -317,7 +347,8 @@ export const useRotina = create<RotinaState>()(
               return { ...l, done: nowDone, skipped: false }
             })
           }
-          if (block.type === 'tarefa') {
+          // Tarefa de rotina concluída some dos dias seguintes; a avulsa já é só do dia.
+          if (block.type === 'tarefa' && !get().dayTasks.some((t) => t.id === block.id)) {
             const tasks = { ...get().completedTasks }
             if (nowDone) tasks[block.id] = date
             else delete tasks[block.id]
@@ -347,13 +378,50 @@ export const useRotina = create<RotinaState>()(
         },
         setActive: (blockId) => set({ activeBlockId: blockId }),
         wakePet: (date) => set({ wokenOn: date }),
-        addQuickTask: (name, areaId) => {
-          const block: Block = { id: uid(), name: name.trim().slice(0, 200) || 'Tarefa', type: 'tarefa', areaId }
-          const routines = get().routines
-          const quick = routines.find((r) => !r.dev && r.name === QUICK_ROUTINE)
-          if (quick) set({ routines: mapRoutine(routines, quick.id, (r) => ({ ...r, blocks: [...r.blocks, block] })) })
-          else set({ routines: [...routines, { id: uid(), name: QUICK_ROUTINE, color: '#A6E3DA', days: [0, 1, 2, 3, 4, 5, 6], blocks: [block] }] })
-          return block.id
+        addDayTask: (date, name, areaId) => {
+          const id = uid()
+          const list = get().dayTasks
+          const position = list.filter((t) => t.date === date).reduce((m, t) => Math.max(m, t.position + 1), 0)
+          set({ dayTasks: [...list, { id, date, name: name.trim().slice(0, 200) || 'Tarefa', areaId, position }] })
+          return id
+        },
+        updateDayTask: (id, patch) => {
+          const clean = { ...patch }
+          if (clean.name !== undefined) clean.name = clean.name.trim().slice(0, 200) || 'Tarefa'
+          set({ dayTasks: get().dayTasks.map((t) => (t.id === id ? { ...t, ...clean } : t)) })
+          // O registro do dia guarda a área: acompanha a mudança.
+          const t = get().dayTasks.find((x) => x.id === id)
+          if (t && clean.areaId !== undefined && get().logs[t.date]?.blocks[id]) patchLog(t.date, dayTaskBlock(t), (l) => l)
+        },
+        deleteDayTask: (id) => {
+          const t = get().dayTasks.find((x) => x.id === id)
+          if (!t) return
+          set({ dayTasks: get().dayTasks.filter((x) => x.id !== id) })
+          const day = get().logs[t.date]
+          if (day && (day.blocks[id] || day.order?.includes(id))) {
+            const { [id]: _drop, ...blocks } = day.blocks
+            set({ logs: { ...get().logs, [t.date]: { ...day, blocks, ...(day.order ? { order: day.order.filter((x) => x !== id) } : {}) } } })
+          }
+          if (get().activeBlockId === id) set({ activeBlockId: null })
+        },
+        resolveDayTask: (id, resolution, today) => {
+          const t = get().dayTasks.find((x) => x.id === id)
+          if (!t || t.resolution || t.date >= today) return
+          let list = get().dayTasks.map((x) => (x.id === id ? { ...x, resolution } : x))
+          if (resolution === 'levada') {
+            const position = list.filter((x) => x.date === today).reduce((m, x) => Math.max(m, x.position + 1), 0)
+            list = [...list, { id: uid(), date: today, name: t.name, areaId: t.areaId, position, carriedFrom: t.id }]
+          }
+          set({ dayTasks: list })
+        },
+        setDayOrder: (date, order) => {
+          const day = get().logs[date] ?? { blocks: {} }
+          if (JSON.stringify(day.order) === JSON.stringify(order)) return
+          set({ logs: { ...get().logs, [date]: { ...day, order } } })
+        },
+        markStoryRead: (storyId) => {
+          if (get().storyReads[storyId]) return
+          set({ storyReads: { ...get().storyReads, [storyId]: new Date().toISOString() } })
         },
         setNote: (date, note) => {
           const day = get().logs[date] ?? { blocks: {} }
@@ -403,7 +471,7 @@ export const useRotina = create<RotinaState>()(
     },
     {
       name: LEGACY_KEY,
-      version: 9,
+      version: 10,
       storage: createJSONStorage(() => scopedStorage),
       // Só carrega o cache depois do login, quando já se sabe de quem são os dados.
       skipHydration: true,
@@ -456,6 +524,20 @@ export function migrate(state: Partial<RotinaState>, version: number) {
   if (version < 8) state = { ...state, companion: { ...DEFAULT_COMPANION, ...state.companion } }
   // v8 → v9: itens de eventos sazonais.
   if (version < 9) state = { ...state, eventItems: state.eventItems ?? {} }
+  // v9 → v10: tarefas avulsas, histórias lidas, crescimento por espécie e o coelho de cristal.
+  // O pet secreto era o "coelho": quem o desbloqueou fica com o coelho de cristal (e como favorito, se era).
+  if (version < 10) {
+    const p = { ...DEFAULT_PROGRESS, ...state.petProgress }
+    const companion = { ...DEFAULT_COMPANION, ...state.companion }
+    if (p.unlocked.includes(LEGACY_SECRET_UNLOCK as UnlockId) && companion.kind === 'coelho') companion.kind = 'coelho-cristal'
+    state = {
+      ...state,
+      companion,
+      petProgress: { ...p, unlocked: migrateSecretUnlock(p.unlocked), phases: Object.keys(p.phases ?? {}).length ? p.phases : seedPhases(p.peakActiveDays) },
+      dayTasks: state.dayTasks ?? [],
+      storyReads: state.storyReads ?? {},
+    }
+  }
   return state as RotinaState
 }
 

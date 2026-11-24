@@ -10,7 +10,8 @@ import { usePetEvents } from '../store/usePetEvents'
 import { useStats } from '../store/useCompanion'
 import { ACCESSORIES } from '../data/accessories'
 import { ALL_PETS, PETS } from '../components/pets/pets'
-import { PHASES, phaseFor } from '../lib/companion'
+import { PHASES, conqueredPhase, phaseFor, phaseName } from '../lib/companion'
+import { PET_GROWTH } from '../data/pets'
 import { dayKey, nowInTz, parseKey } from '../lib/dates'
 import { EVENTS, eventItems, eventLabel, isEventActive } from '../data/events'
 import { isFullMoon, moonIllumination, nextFullMoon } from '../lib/moon'
@@ -233,11 +234,13 @@ function Row({ children }: { children: ReactNode }) {
 function StatsReadout() {
   const stats = useStats()
   const peak = useRotina((s) => s.petProgress.peakActiveDays)
+  const phases = useRotina((s) => s.petProgress.phases)
+  const kind = useRotina((s) => s.companion.kind)
   const areas = useAreas()
   const best = Math.max(peak, stats.activeDays)
   const items: [string, ReactNode][] = [
     ['Dias ativos', stats.activeDays],
-    ['Maior já alcançado', `${best} · ${PHASES.find((p) => p.id === phaseFor(best))?.name}`],
+    ['Maior já alcançado', `${best} · ${kind ? `${PETS[kind].name} ${phaseName(conqueredPhase(kind, best, phases)).toLowerCase()}` : 'sem favorito'}`],
     ['Sequência atual', stats.currentStreak],
     ['Blocos concluídos', stats.blocksDone],
     ['Dias desde o último ativo', stats.daysSinceLastActive ?? '—'],
@@ -253,6 +256,37 @@ function StatsReadout() {
           </div>
         ))}
       </dl>
+      {/* Crescimento por espécie (src/data/pets.ts): dias para jovem/adulto, a fase pela regra e a guardada. */}
+      <table className="w-full border-collapse font-mono text-[11px]">
+        <caption className="pb-1 text-left font-sans text-[12px] text-muted">Crescimento (src/data/pets.ts) com {best} dias ativos</caption>
+        <thead>
+          <tr className="text-muted">
+            <th className="text-left font-normal">Pet</th>
+            <th className="font-normal">Jovem</th>
+            <th className="font-normal">Adulto</th>
+            <th className="font-normal">Regra</th>
+            <th className="font-normal">Conquistada</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ALL_PETS.map((k) => {
+            const rule = phaseFor(k, best)
+            const got = conqueredPhase(k, best, phases)
+            return (
+              <tr key={k} className={k === kind ? 'text-accent' : 'text-soft'}>
+                <td>{PETS[k].name}</td>
+                <td className="text-center">{PET_GROWTH[k].jovem}</td>
+                <td className="text-center">{PET_GROWTH[k].adulto}</td>
+                <td className="text-center">{phaseName(rule)}</td>
+                <td className="text-center">
+                  {phaseName(got)}
+                  {got !== rule ? ' (mantida)' : ''}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
       <div className="grid grid-cols-4 gap-1.5">
         {areas.map((a) => (
           <div key={a.id} className="flex flex-col items-center rounded-lg bg-panel px-1 py-1.5">
@@ -362,9 +396,9 @@ function Overrides() {
       </Row>
       <Row>
         <Btn pressed={dev.secretPet} onClick={() => dev.set({ secretPet: !dev.secretPet })}>
-          {dev.secretPet ? 'Coelho desbloqueado (só visual)' : 'Desbloquear coelho'}
+          {dev.secretPet ? 'Coelho de cristal desbloqueado (só visual)' : 'Desbloquear coelho de cristal'}
         </Btn>
-        <Btn onClick={() => push({ type: 'secret' })}>Disparar chegada do coelho</Btn>
+        <Btn onClick={() => push({ type: 'secret' })}>Disparar chegada do coelho de cristal</Btn>
       </Row>
       <div className="flex flex-col gap-1.5">
         <span className="text-[12px] text-muted">Dias por área na semana (constelações do cosmos e vaga-lumes da floresta)</span>
@@ -702,7 +736,7 @@ function Seasons({ onStatus }: { onStatus: (s: string) => void }) {
         ]}
         onChange={(v) => dev.set({ decor: v === null ? null : v === 'on' })}
       />
-      <p className="m-0 text-[11.5px] text-muted">O coelho da lua passa uma vez por visita: recarregue a página para ver de novo.</p>
+      <p className="m-0 text-[11.5px] text-muted">O coelho de cristal da lua passa uma vez por visita: recarregue a página para ver de novo.</p>
     </Section>
   )
 }

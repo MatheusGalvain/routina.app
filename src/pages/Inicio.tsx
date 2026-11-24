@@ -1,8 +1,11 @@
 import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAreas, useRotina } from '../store/useRotina'
-import { computePetState, getTodayItems } from '../lib/today'
-import { dayKey, greeting, nowInTz } from '../lib/dates'
+import { computePetState } from '../lib/today'
+import { greeting, nowInTz } from '../lib/dates'
+import { useTodayItems } from '../store/useTodayItems'
+import { ScrollFade } from '../components/ui/ScrollFade'
+import { NewsNotice } from '../components/home/NewsNotice'
 import { WEEKDAYS } from '../data/areas'
 import { AreaManager } from '../components/areas/AreaManager'
 import { TEMPLATES } from '../data/templates'
@@ -168,10 +171,8 @@ export function Inicio() {
   const openRoutine = (id: string) => navigate(editorPath(id))
   const openTemplate = openRoutine
   const now = nowInTz()
-  const date = dayKey(now)
   const routines = useRotina((s) => s.routines)
-  const dayLog = useRotina((s) => s.logs[date])
-  const completedTasks = useRotina((s) => s.completedTasks)
+  const storyReads = useRotina((s) => s.storyReads)
   const createRoutine = useRotina((s) => s.createRoutine)
   const addTemplate = useRotina((s) => s.addTemplate)
   // Usar um modelo cria uma rotina nova e independente e abre o editor nela.
@@ -190,7 +191,7 @@ export function Inicio() {
     editAreasRef.current?.focus()
   }
 
-  const items = useMemo(() => getTodayItems(routines, dayLog, completedTasks, now, date), [routines, dayLog, completedTasks, date])
+  const items = useTodayItems()
   const done = items.filter((i) => i.done).length
   /**
    * Áreas organizadas pelo dia: primeiro as que ainda têm algo para fazer hoje (mais pendências antes),
@@ -231,6 +232,8 @@ export function Inicio() {
         <PrimaryActionButton items={items} />
       </header>
 
+      <NewsNotice />
+
       <EventBanner />
 
       <Panel title={companion.kind ? `Cantinho ${companion.name ? `de ${companion.name}` : 'do seu pet'}` : 'Cantinho do pet'} icon="paw" color="var(--color-accent)" help="cantinho">
@@ -264,54 +267,68 @@ export function Inicio() {
           </div>
         </Panel>
 
+        {/* Altura definida pelos painéis vizinhos: com muitas rotinas, rola por dentro em vez de crescer. */}
         <Panel title="Minhas rotinas" icon="calendar" color="var(--color-ok)" help="minhas-rotinas">
           {routines.length === 0 ? (
-            <p className="m-0 text-sm text-muted">Você ainda não tem rotinas. Crie uma do zero ou comece por um modelo pronto.</p>
+            <p className="m-0 flex-1 text-sm text-muted">Você ainda não tem rotinas. Crie uma do zero ou comece por um modelo pronto.</p>
           ) : (
-            <ul className="m-0 flex list-none flex-col gap-2 p-0">
-              {routines.map((r) => (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    onClick={() => openRoutine(r.id)}
-                    className="flex w-full items-center justify-between gap-3 rounded-[10px] bg-panel-2 px-3.5 py-3 text-left text-sm font-semibold"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <span className="h-2 w-2 rounded-full" style={{ background: r.color }} />
-                      {r.name}
-                    </span>
-                    <span className="font-mono text-xs font-normal text-muted">
-                      {r.blocks.length} blocos · {daysLabel(r.days)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <ScrollFade label="Minhas rotinas" minHeight={210}>
+              <ul className="m-0 flex list-none flex-col gap-2 p-0 pb-1">
+                {routines.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => openRoutine(r.id)}
+                      className="flex w-full flex-col gap-2 rounded-[10px] bg-panel-2 px-3.5 py-3 text-left text-sm font-semibold hover:bg-line"
+                    >
+                      <span className="flex w-full items-center justify-between gap-3">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: r.color }} aria-hidden="true" />
+                          <span className="min-w-0 [overflow-wrap:anywhere]">{r.name}</span>
+                        </span>
+                        <span className="shrink-0 font-mono text-xs font-normal text-muted">
+                          {r.blocks.length} {r.blocks.length === 1 ? 'bloco' : 'blocos'}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </ScrollFade>
           )}
-          <button
-            type="button"
-            onClick={() => openRoutine(createRoutine())}
-            className="mt-auto self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-ink"
-          >
+          <button type="button" onClick={() => openRoutine(createRoutine())} className="self-start rounded-full bg-ok px-4 py-2 text-[13px] font-bold text-ink">
             + Nova rotina
           </button>
         </Panel>
 
         <Panel title="Os pets" icon="paw" color="var(--color-area-social)" help="os-pets">
-          <div className="grid grid-cols-3 gap-y-4">
-            {PET_ORDER.map((k) => (
-              <div key={k} className="flex flex-col items-center gap-1.5 text-center">
-                <Pet kind={k} size={64} onPoke={() => setStoryPet(k)} />
-                <span className="text-[13px] font-semibold">{PETS[k].name}</span>
-                <span className="font-mono text-[10.5px] tracking-wider uppercase" style={{ color: textColor(PETS[k].color) }}>
-                  {PETS[k].label.split(' / ')[1]}
-                </span>
-                <button type="button" onClick={() => setStoryPet(k)} className="mt-0.5 flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-[11px] font-semibold text-muted hover:text-soft">
-                  <Icon name="book" size={12} /> História
-                </button>
-              </div>
-            ))}
-          </div>
+          <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(92px,1fr))] gap-x-2 gap-y-4 p-0">
+            {PET_ORDER.map((k) => {
+              const read = !!storyReads[k]
+              return (
+                <li key={k} className="flex flex-col items-center gap-1.5 text-center">
+                  <Pet kind={k} size={64} onPoke={() => setStoryPet(k)} />
+                  <span className="text-[13px] font-semibold">{PETS[k].name}</span>
+                  <span className="font-mono text-[10.5px] tracking-wider uppercase" style={{ color: textColor(PETS[k].color) }}>
+                    {PETS[k].label.split(' / ')[1]}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setStoryPet(k)}
+                    aria-label={`${read ? 'Ler de novo' : 'Ler'} a história do ${PETS[k].name}${read ? ' (lida)' : ' (nova)'}`}
+                    className={`relative mt-0.5 inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition-colors ${
+                      read
+                        ? 'border-ok/40 bg-ok/15 text-ok hover:bg-ok/25'
+                        : 'border-line bg-panel-2 text-soft hover:border-line-2 hover:bg-line'
+                    }`}
+                  >
+                    <Icon name={read ? 'check' : 'book'} size={13} /> História
+                    {!read && <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent ring-2 ring-panel" aria-hidden="true" />}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
         </Panel>
       </div>
 

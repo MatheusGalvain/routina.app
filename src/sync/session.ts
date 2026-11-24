@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useRotina, setStorageUser, type RotinaState } from '../store/useRotina'
 import { useAuth } from '../store/useAuth'
 import { deviceTimeZone, setAppTimeZone } from '../lib/dates'
-import type { DayLog } from '../types'
+import type { DayLog, TodaySort } from '../types'
+import { LATEST_VERSION } from '../data/changelog'
 import { areaRow, toStore, type RemoteData, type Row } from './rows'
 import { DEFAULT_AREAS } from '../data/areas'
 import { diff } from './diff'
@@ -27,7 +28,13 @@ export interface Profile {
   createdAt: string
   /** Já concluiu (ou pulou) o onboarding de primeiro acesso. */
   onboardingDone: boolean
+  /** Como a lista do Hoje é ordenada. */
+  todaySort: TodaySort
+  /** Última versão das novidades que a pessoa viu (`null` = nenhuma). */
+  lastSeenVersion: string | null
 }
+
+const SORTS: TodaySort[] = ['rotina', 'auto', 'manual']
 
 /** Limite do nome de exibição (igual ao da tabela profiles). */
 export const NAME_MAX = 30
@@ -74,7 +81,7 @@ async function fetchOptional(table: string, uid: string): Promise<Row[] | null> 
 }
 
 async function loadRemote(uid: string): Promise<RemoteData> {
-  const [profile, routines, blocks, dayLogs, blockLogs, tasks, companion, trophies, slots, areas, templates, sceneItems, eventItems] = await Promise.all([
+  const [profile, routines, blocks, dayLogs, blockLogs, tasks, companion, trophies, slots, areas, templates, sceneItems, eventItems, dayTasks, storyReads] = await Promise.all([
     // select('*'): uma coluna nova que ainda não existe no servidor não derruba o carregamento.
     supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle(),
     fetchAll('routines', uid),
@@ -89,10 +96,12 @@ async function loadRemote(uid: string): Promise<RemoteData> {
     fetchOptional('user_templates', uid),
     fetchOptional('user_scene_items', uid),
     fetchOptional('user_event_items', uid),
+    fetchOptional('day_tasks', uid),
+    fetchOptional('user_story_reads', uid),
   ])
   if (profile.error) throw profile.error
   if (companion.error) throw companion.error
-  return { profile: profile.data, routines, blocks, dayLogs, blockLogs, tasks, companion: companion.data, trophies, slots, areas, templates, sceneItems, eventItems }
+  return { profile: profile.data, routines, blocks, dayLogs, blockLogs, tasks, companion: companion.data, trophies, slots, areas, templates, sceneItems, eventItems, dayTasks, storyReads }
 }
 
 /** Conta sem áreas no servidor (primeiro login): grava as 8 padrão. Os ids fixos tornam isso seguro em dois aparelhos. */
@@ -141,6 +150,9 @@ async function applyProfile(uid: string, p: RemoteData['profile']) {
       createdAt: p?.created_at ?? new Date().toISOString(),
       // Sem a coluna (migration 007 não aplicada), não mostra o onboarding para ninguém.
       onboardingDone: p ? p.onboarding_done !== false : false,
+      todaySort: SORTS.find((x) => x === p?.today_sort) ?? 'rotina',
+      // Sem a coluna (migration 013 não aplicada): considera tudo visto, para o aviso não voltar a cada visita.
+      lastSeenVersion: p && 'last_seen_version' in p ? (p.last_seen_version ?? null) : LATEST_VERSION,
     },
   })
 }
@@ -240,6 +252,22 @@ export function setOnboardingDone() {
   if (!currentUid) return
   enqueue('profiles', 'upsert', { user_id: currentUid, onboarding_done: true })
   useSession.setState((s) => ({ profile: s.profile ? { ...s.profile, onboardingDone: true } : s.profile }))
+  // Conta nova: as novidades antigas não fazem sentido (tudo já é novo).
+  if (useSession.getState().profile?.lastSeenVersion === null) setLastSeenVersion(LATEST_VERSION)
+}
+
+/** Ordem da lista do Hoje (preferência do perfil, vale em todos os aparelhos). */
+export function setTodaySort(today_sort: TodaySort) {
+  if (!currentUid) return
+  enqueue('profiles', 'upsert', { user_id: currentUid, today_sort })
+  useSession.setState((s) => ({ profile: s.profile ? { ...s.profile, todaySort: today_sort } : s.profile }))
+}
+
+/** Guarda a última versão das novidades que a pessoa viu. */
+export function setLastSeenVersion(last_seen_version: string) {
+  if (!currentUid) return
+  enqueue('profiles', 'upsert', { user_id: currentUid, last_seen_version })
+  useSession.setState((s) => ({ profile: s.profile ? { ...s.profile, lastSeenVersion: last_seen_version } : s.profile }))
 }
 
 /** Atualiza o fuso do perfil. */
@@ -315,6 +343,8 @@ export async function exportMyData() {
     sessoes_de_foco: strip((await fetchOptional('focus_sessions', uid)) ?? []),
     areas_da_vida: remote.areas ? strip(remote.areas) : [],
     modelos_de_rotina: remote.templates ? strip(remote.templates) : [],
+    tarefas_avulsas: remote.dayTasks ? strip(remote.dayTasks) : [],
+    historias_lidas: remote.storyReads ? strip(remote.storyReads) : [],
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const a = document.createElement('a')

@@ -1,8 +1,10 @@
-import type { AccessoryId, Area, Block, UserTemplate, BlockLog, Companion, CornerLayout, CornerLayouts, DayLog, EventItemMap, PetProgress, PetPhase, Placed, Routine, SceneItemMap, Slot, TrophyMap, UnlockId } from '../types'
+import type { AccessoryId, Area, Block, UserTemplate, BlockLog, Companion, CornerLayout, CornerLayouts, DayLog, DayTask, EventItemMap, PetKind, PetProgress, PetPhase, Placed, Routine, SceneItemMap, Slot, TrophyMap, UnlockId } from '../types'
 import { TROPHY_BY_ID, type TrophyId, type TrophyTier } from '../data/trophies'
 import { EMPTY_LAYOUTS } from '../lib/corner'
 import { DEFAULT_SCENE, isItemId, isSceneId, type SceneId } from '../data/scenes'
 import { AREA_NAME_MAX, DEFAULT_AREAS, normalizeAreas, pastelArea, pastelRoutine } from '../data/areas'
+import { LEGACY_SECRET_UNLOCK } from '../lib/companion'
+import { migrateSecretUnlock, seedPhases } from '../store/useRotina'
 
 /**
  * Conversão entre o store (formato do app) e as linhas das tabelas do Supabase.
@@ -24,6 +26,8 @@ export type Table =
   | 'user_scene_items'
   | 'user_event_items'
   | 'focus_sessions'
+  | 'day_tasks'
+  | 'user_story_reads'
 export type Row = Record<string, unknown>
 
 const clip = (s: string | undefined | null, max: number) => (s ?? '').slice(0, max)
@@ -52,11 +56,13 @@ export const blockRow = (uid: string, routineId: string, b: Block, position: num
   position,
 })
 
+/** `custom_order` (migration 013) só vai quando a pessoa usou "Minha ordem" naquele dia. */
 export const dayRow = (uid: string, date: string, d: DayLog): Row => ({
   user_id: uid,
   date,
   note: d.note ? clip(d.note, 10000) : null,
   plan: d.plan ?? null,
+  ...(d.order ? { custom_order: d.order.slice(0, 500) } : {}),
 })
 
 export const blockLogRow = (uid: string, date: string, blockId: string, l: BlockLog): Row => ({
@@ -66,9 +72,27 @@ export const blockLogRow = (uid: string, date: string, blockId: string, l: Block
   done: !!l.done,
   skipped: !!l.skipped,
   value: typeof l.value === 'number' ? Math.max(0, l.value) : null,
-  area_id: l.areaId ?? null,
+  // Tarefa avulsa sem área: vai como null.
+  area_id: l.areaId || null,
   type: l.type ?? null,
 })
+
+export const dayTaskRow = (uid: string, t: DayTask): Row => ({
+  id: t.id,
+  user_id: uid,
+  date: t.date,
+  name: clip(t.name.trim(), 200) || 'Tarefa',
+  area_id: t.areaId || null,
+  position: Math.max(0, t.position),
+  carried_from: t.carriedFrom ?? null,
+  resolution: t.resolution ?? null,
+})
+
+export const dayTaskRows = (uid: string, list: DayTask[]) => new Map(list.map((t) => [t.id, dayTaskRow(uid, t)]))
+
+/** Uma linha por história lida. */
+export const storyReadRows = (uid: string, map: Record<string, string>) =>
+  new Map(Object.entries(map).map(([id, at]) => [id, { user_id: uid, story_id: id, read_at: at } as Row]))
 
 export const taskRow = (uid: string, blockId: string, date: string): Row => ({ user_id: uid, block_id: blockId, date })
 
@@ -77,7 +101,7 @@ export const taskRow = (uid: string, blockId: string, date: string): Row => ({ u
  * `withLook`: inclui aparência e detalhe de adulto (colunas da migration 010). Só vai quando a pessoa
  * mexeu nisso, para quem ainda não rodou a migration não perder a gravação do resto do pet.
  */
-export const companionRow = (uid: string, c: Companion, p: PetProgress, withProgress: boolean, withLook = true): Row => ({
+export const companionRow = (uid: string, c: Companion, p: PetProgress, withProgress: boolean, withLook = true, withPhases = false): Row => ({
   user_id: uid,
   kind: c.kind,
   name: clip(c.name, 24),
@@ -86,6 +110,8 @@ export const companionRow = (uid: string, c: Companion, p: PetProgress, withProg
   ...(withProgress
     ? { peak_active_days: p.peakActiveDays, seen_phase: p.seenPhase, unlocked: p.unlocked, progress_initialized: p.initialized }
     : {}),
+  // Coluna da migration 013: só vai quando a fase guardada de alguma espécie mudou.
+  ...(withProgress && withPhases ? { phases: p.phases } : {}),
 })
 
 /** Um registro por nível de troféu conquistado, com a chave "id|nível". */
@@ -180,6 +206,9 @@ export interface RemoteData {
     onboarding_done?: boolean
     /** Falta se a migration 009 não foi aplicada. */
     scene?: string | null
+    /** Faltam se a migration 013 não foi aplicada. */
+    today_sort?: string | null
+    last_seen_version?: string | null
     created_at: string
     updated_at: string
   } | null
@@ -200,6 +229,9 @@ export interface RemoteData {
   sceneItems: Row[] | null
   /** `null` = não deu para ler (migration 011 não aplicada): o store mantém o que tem. */
   eventItems: Row[] | null
+  /** `null` = não deu para ler (migration 013 não aplicada): o store mantém o que tem. */
+  dayTasks: Row[] | null
+  storyReads: Row[] | null
 }
 
 const num = (v: unknown) => (v === null || v === undefined ? undefined : Number(v))
@@ -233,6 +265,7 @@ export function toStore(r: RemoteData) {
     if (d.note !== null) day.note = String(d.note)
     if (d.plan !== null)
       day.plan = (d.plan as NonNullable<DayLog['plan']>).map((p) => ({ ...p, routine: { ...p.routine, color: pastelRoutine(p.routine.color) } }))
+    if (Array.isArray(d.custom_order)) day.order = (d.custom_order as unknown[]).map(String)
     logs[String(d.date)] = day
   }
   for (const l of r.blockLogs) {
@@ -250,9 +283,12 @@ export function toStore(r: RemoteData) {
   for (const t of r.tasks) completedTasks[String(t.block_id)] = String(t.date)
 
   const c = r.companion
+  // Pet secreto antigo ("coelho" com a marca 'pet:coelho'): vira o coelho de cristal.
+  const rawUnlocked = ((c?.unlocked as UnlockId[] | null) ?? []).map(String) as UnlockId[]
+  const legacySecret = rawUnlocked.includes(LEGACY_SECRET_UNLOCK as UnlockId)
   const companion: Companion = c
     ? {
-        kind: (c.kind as Companion['kind']) ?? null,
+        kind: legacySecret && c.kind === 'coelho' ? 'coelho-cristal' : ((c.kind as Companion['kind']) ?? null),
         name: String(c.name ?? ''),
         equipped: (c.equipped as Partial<Record<Slot, AccessoryId>>) ?? {},
         // Sem as colunas (migration 010 não aplicada): segue a fase e mostra o detalhe.
@@ -265,12 +301,36 @@ export function toStore(r: RemoteData) {
         initialized: !!c.progress_initialized,
         peakActiveDays: Number(c.peak_active_days ?? 0),
         seenPhase: (c.seen_phase as PetPhase) ?? 'filhote',
-        unlocked: (c.unlocked as UnlockId[]) ?? [],
+        unlocked: migrateSecretUnlock(rawUnlocked),
+        // Sem a coluna (migration 013 não aplicada): a fase de cada espécie pela regra antiga, para não regredir.
+        phases:
+          c.phases && typeof c.phases === 'object' ? (c.phases as Partial<Record<PetKind, PetPhase>>) : seedPhases(Number(c.peak_active_days ?? 0)),
       }
-    : { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [] }
+    : { initialized: false, peakActiveDays: 0, seenPhase: 'filhote', unlocked: [], phases: {} }
 
   // Troféus de ids que o app não conhece mais são ignorados.
-  const extra: { trophies?: TrophyMap; cornerLayouts?: CornerLayouts; areas?: Area[]; templates?: UserTemplate[]; sceneItems?: SceneItemMap; eventItems?: EventItemMap; scene?: SceneId } = {}
+  const extra: {
+    trophies?: TrophyMap
+    cornerLayouts?: CornerLayouts
+    areas?: Area[]
+    templates?: UserTemplate[]
+    sceneItems?: SceneItemMap
+    eventItems?: EventItemMap
+    scene?: SceneId
+    dayTasks?: DayTask[]
+    storyReads?: Record<string, string>
+  } = {}
+  if (r.dayTasks) {
+    extra.dayTasks = [...r.dayTasks]
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)) || Number(a.position) - Number(b.position))
+      .map((t) => {
+        const task: DayTask = { id: String(t.id), date: String(t.date), name: String(t.name), areaId: t.area_id ? String(t.area_id) : null, position: Number(t.position ?? 0) }
+        if (t.carried_from) task.carriedFrom = String(t.carried_from)
+        if (t.resolution === 'levada' || t.resolution === 'descartada') task.resolution = t.resolution
+        return task
+      })
+  }
+  if (r.storyReads) extra.storyReads = Object.fromEntries(r.storyReads.map((x) => [String(x.story_id), String(x.read_at)]))
   if (r.templates) {
     extra.templates = [...r.templates]
       .sort((a, c) => Number(a.position) - Number(c.position))

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { BasePetKind, PetKind, PetState, SecretPetKind } from '../../types'
 import type { Anchor } from '../../data/accessories'
-import { BunnyBody, Stardust } from './Bunny'
+import { BUNNY_WHITE, BunnyBody, Stardust } from './Bunny'
 
 /** `meh` = sem graça (olhos meio fechados, sem sobrancelha). `angry` só aparece nas historinhas. `spiral` = tonto (brincadeira). */
 export type EyeStyle = 'open' | 'happy' | 'closed' | 'angry' | 'squint' | 'meh' | 'spiral'
@@ -241,26 +241,40 @@ export const SPECIES: Record<PetKind, SpeciesDef> = {
   },
   coelho: {
     kind: 'coelho',
-    colors: { color: '#DCCBFF', detail: '#FFC4E1', accent: '#F59BC4' },
+    colors: { color: BUNNY_WHITE, detail: '#F7B8D6', accent: '#F59BC4' },
     name: 'Coelho',
     homeState: 'neutro',
     eyes: [[48, 63], [72, 63]],
     anchors: { head: { x: 60, y: 40, w: 30 }, eyes: { x: 60, y: 63, w: 24 }, neck: { x: 60, y: 97, w: 52 }, hand: { x: 96, y: 86, w: 0 } },
     adultDetail: 'uma florzinha na orelha',
-    body: (_c, adult) => <BunnyBody adult={adult} />,
+    body: (_c, adult) => <BunnyBody adult={adult} variant="branco" />,
+    idle: 'hop',
+  },
+  'coelho-cristal': {
+    kind: 'coelho-cristal',
+    colors: { color: '#DCCBFF', detail: '#FFC4E1', accent: '#F59BC4' },
+    name: 'Coelho de cristal',
+    homeState: 'neutro',
+    eyes: [[48, 63], [72, 63]],
+    anchors: { head: { x: 60, y: 40, w: 30 }, eyes: { x: 60, y: 63, w: 24 }, neck: { x: 60, y: 97, w: 52 }, hand: { x: 96, y: 86, w: 0 } },
+    adultDetail: 'uma florzinha na orelha',
+    body: (_c, adult) => <BunnyBody adult={adult} variant="cristal" />,
     behind: () => <Stardust />,
     starEyes: true,
     idle: 'hop',
   },
 }
 
-/** Sem favorito, o app inteiro mostra este pet (o mesmo da entrada e do onboarding), vestindo o estado do dia. */
-export const DEFAULT_PET: BasePetKind = 'gatinho'
+/** Sem favorito, o app inteiro mostra o mascote (o mesmo da entrada e do onboarding), vestindo o estado do dia. */
+export const DEFAULT_PET: BasePetKind = 'coelho'
 
-export const PET_ORDER: BasePetKind[] = ['sapinho', 'ourico', 'gatinho', 'pintinho', 'polvinho', 'corujinha']
+export const PET_ORDER: BasePetKind[] = ['coelho', 'sapinho', 'ourico', 'gatinho', 'pintinho', 'polvinho', 'corujinha']
 
-/** O sétimo pet. Só aparece de verdade depois de desbloqueado. */
-export const SECRET_PET: SecretPetKind = 'coelho'
+/** O pet secreto. Só aparece de verdade depois de desbloqueado. */
+export const SECRET_PET: SecretPetKind = 'coelho-cristal'
+
+/** Os dois coelhos dividem a forma, as animações e a reação especial. */
+export const isBunny = (k: PetKind) => k === 'coelho' || k === 'coelho-cristal'
 export const ALL_PETS: PetKind[] = [...PET_ORDER, SECRET_PET]
 
 /** Cada espécie com a cor do corpo e o estado "da casa". */
@@ -276,4 +290,4 @@ export const PETS = Object.fromEntries(
  * Cor legível para TEXTO sobre o fundo escuro (o pet e a aura continuam com a cor viva):
  * o branco do neutro fica um pouco mais suave e o roxo do descanso (4.0:1) vira lilás (10:1).
  */
-export const textColor = (c: string) => (c === '#F1F3F6' ? '#C9CED8' : c === '#8B5CF6' ? '#C4B5FD' : c)
+export const textColor = (c: string) => (c === '#F1F3F6' || c === BUNNY_WHITE ? '#C9CED8' : c === '#8B5CF6' ? '#C4B5FD' : c)
