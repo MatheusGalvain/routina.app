@@ -177,6 +177,22 @@ export const useRotina = create<RotinaState>()(
         return next
       }
 
+      // Tarefas concluídas em dias anteriores voltam a aparecer (quando a rotina passa a valer em outro dia).
+      // O registro daqueles dias não muda (continuam concluídas no histórico); as de hoje ficam como estão.
+      const reopenTasks = (blocks: Block[]) => {
+        const today = dayKey()
+        const tasks = { ...get().completedTasks }
+        let changed = false
+        for (const b of blocks) {
+          const doneOn = tasks[b.id]
+          if (b.type === 'tarefa' && doneOn && doneOn < today) {
+            delete tasks[b.id]
+            changed = true
+          }
+        }
+        if (changed) set({ completedTasks: tasks })
+      }
+
       return {
         areas: DEFAULT_AREAS,
         routines: [],
@@ -275,29 +291,23 @@ export const useRotina = create<RotinaState>()(
         updateRoutine: (id, patch) => {
           const before = get().routines.find((r) => r.id === id)
           set({ routines: mapRoutine(get().routines, id, (r) => ({ ...r, ...patch })) })
-          // Incluiu algum dia novo: as tarefas da rotina concluídas em dias anteriores voltam a aparecer.
-          // O registro daqueles dias não muda (continuam concluídas no histórico); as de hoje ficam como estão.
-          const addedDay = before && patch.days?.some((d) => !before.days.includes(d))
-          if (!addedDay) return
-          const today = dayKey()
-          const tasks = { ...get().completedTasks }
-          let changed = false
-          for (const b of before.blocks) {
-            const doneOn = tasks[b.id]
-            if (b.type === 'tarefa' && doneOn && doneOn < today) {
-              delete tasks[b.id]
-              changed = true
-            }
-          }
-          if (changed) set({ completedTasks: tasks })
+          // Passou a valer em outro dia (dia da semana novo, ou outra data na de um dia só): as tarefas
+          // da rotina concluídas em dias anteriores voltam a aparecer.
+          if (!before) return
+          const addedDay = patch.days?.some((d) => !before.days.includes(d))
+          const newDate = patch.onceDate != null && patch.onceDate !== before.onceDate
+          if (addedDay || newDate) reopenTasks(before.blocks)
         },
         deleteRoutine: (id) => set({ routines: get().routines.filter((r) => r.id !== id) }),
         archiveRoutine: (id, archived) =>
           set({ routines: mapRoutine(get().routines, id, (r) => ({ ...r, archivedAt: archived ? new Date().toISOString() : null })) }),
-        reuseRoutine: (id, date) =>
+        reuseRoutine: (id, date) => {
+          const before = get().routines.find((r) => r.id === id)
           set({
             routines: mapRoutine(get().routines, id, (r) => ({ ...r, repeat: 'once', onceDate: date, days: [weekdayOf(date)], archivedAt: r.archivedAt ? null : r.archivedAt })),
-          }),
+          })
+          if (before) reopenTasks(before.blocks)
+        },
         addTemplate: (keyOrId) => {
           const t = TEMPLATES.find((x) => x.key === keyOrId) ?? get().templates.find((x) => x.id === keyOrId)
           if (!t) return
