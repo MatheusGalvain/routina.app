@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Icon } from '../components/ui/ui'
 import { useBack } from '../lib/navigation'
+import { Footer } from '../components/ui/Footer'
 
 /** E-mail para dúvidas sobre privacidade. Preencha antes de publicar (vazio = a seção não aparece). */
 const CONTATO = ''
@@ -18,7 +19,20 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 /** Rota /privacidade dentro do app: "Voltar" retorna para a página de onde a pessoa veio. */
 export function PrivacidadePage() {
-  return <Privacidade onBack={useBack('/')} />
+  return <Privacidade onBack={useBack()} />
+}
+
+/** /privacidade sem sessão (link da landing e da tela de entrada): "Voltar" retorna de onde veio, ou para a landing. */
+export function PrivacidadePublica() {
+  const back = useBack('/')
+  return (
+    <div className="flex min-h-screen flex-col">
+      <main className="flex-1 px-4 py-8">
+        <Privacidade onBack={back} />
+      </main>
+      <Footer />
+    </div>
+  )
 }
 
 /** Política de privacidade, em linguagem simples. */

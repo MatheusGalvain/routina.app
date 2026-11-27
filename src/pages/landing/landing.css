@@ -1,0 +1,286 @@
+/*
+ * Landing do Habbit Do. Importado só por src/pages/landing/Landing.tsx (vai num CSS separado, com a página).
+ * Valores copiados dos estilos inline de src/docs/referencias/landing-referencia.html.
+ * Tudo com prefixo "ld-". Estas regras ficam fora das camadas do Tailwind, então ganham do reset
+ * (preflight) e das utilidades: a landing não herda line-height, pesos de título nem display dos svgs do app.
+ */
+
+/* ---------- Base ---------- */
+.ld-root {
+  min-height: 100vh;
+  background: #141414;
+  color: #f2f0ed;
+  font-family: Inter, system-ui, sans-serif;
+  line-height: normal;
+}
+.ld-root svg { display: inline; }
+.ld-root a { text-decoration: none; }
+.ld-root h3 { font-weight: 700; }
+.ld-root :focus-visible { outline: 2px solid #a9bfff; outline-offset: 2px; }
+
+.ld-display { font-family: 'Bricolage Grotesque', Inter, sans-serif; }
+.ld-mono { font-family: 'JetBrains Mono', monospace; }
+.ld-wordmark { font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800; letter-spacing: -0.03em; }
+.ld-wordmark span { color: #a9bfff; }
+
+.ld-container { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+.ld-section-line { border-top: 1px solid #222222; }
+.ld-anchor:focus { outline: none; }
+
+.ld-h2 {
+  margin: 0;
+  font-family: 'Bricolage Grotesque', Inter, sans-serif;
+  font-weight: 800;
+  font-size: clamp(36px, 4.6vw, 60px);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+/* ---------- Botões ---------- */
+.ld-btn-primary {
+  background: #a9bfff;
+  color: #141414;
+  font-weight: 700;
+  border-radius: 999px;
+  transition: background-color 0.15s;
+}
+.ld-btn-primary:hover { background: #c9d6ff; }
+
+/* ---------- Navegação ---------- */
+.ld-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 0; }
+.ld-brand { display: inline-flex; align-items: center; gap: 12px; color: #f2f0ed; border-radius: 12px; }
+.ld-brand .ld-wordmark { font-size: 21px; }
+.ld-nav-links { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; font-size: 15px; }
+.ld-nav-links a { color: #c9c5bf; border-radius: 4px; transition: color 0.15s; }
+.ld-nav-links a:hover { color: #f2f0ed; }
+.ld-nav-actions { display: flex; align-items: center; gap: 10px; }
+.ld-nav-login { color: #f2f0ed; font-weight: 600; font-size: 15px; padding: 12px 16px; border-radius: 999px; }
+.ld-nav-login:hover { background: #1c1c1c; }
+.ld-nav-cta { font-size: 15px; padding: 12px 20px; }
+
+/* No celular e tablet, o menu hambúrguer (como no app). */
+.ld-menu { position: relative; display: none; }
+.ld-menu-button {
+  display: grid; place-items: center; width: 44px; height: 44px;
+  border-radius: 999px; border: 1px solid #2c2c2c; background: #1c1c1c; color: #f2f0ed; cursor: pointer;
+}
+.ld-menu-panel {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 40;
+  width: 256px; max-width: calc(100vw - 48px);
+  border-radius: 16px; border: 1px solid #2c2c2c; background: #1c1c1c; padding: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.ld-menu-panel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ld-menu-link {
+  display: flex; align-items: center; min-height: 44px; padding: 0 16px;
+  border-radius: 12px; color: #f2f0ed; font-size: 15px; font-weight: 600;
+}
+.ld-menu-link:hover { background: #232323; }
+.ld-menu-split { margin-top: 4px; padding-top: 8px; border-top: 1px solid #2c2c2c; display: flex; flex-direction: column; gap: 6px; }
+.ld-menu-cta { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 20px; font-size: 15px; }
+
+@media (max-width: 1023px) {
+  .ld-nav-links, .ld-nav-actions { display: none; }
+  .ld-menu { display: block; }
+}
+
+/* ---------- Hero ---------- */
+.ld-hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
+  align-items: center;
+  gap: 56px;
+  padding: 72px 0 96px;
+}
+.ld-hero-text { display: flex; flex-direction: column; gap: 28px; }
+.ld-pill {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #a8e6b8; border: 1px solid #2c3a30; border-radius: 999px; padding: 8px 14px;
+}
+.ld-pill-dot { width: 7px; height: 7px; border-radius: 50%; background: #a8e6b8; }
+.ld-h1 {
+  margin: 0;
+  font-family: 'Bricolage Grotesque', Inter, sans-serif;
+  font-weight: 800;
+  font-size: clamp(48px, 7vw, 92px);
+  line-height: 0.92;
+  letter-spacing: -0.05em;
+  text-wrap: balance;
+}
+.ld-lead { margin: 0; max-width: 46ch; font-size: 19px; line-height: 1.6; color: #c9c5bf; }
+.ld-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.ld-hero-cta { font-size: 17px; padding: 17px 28px; }
+.ld-hero-secondary {
+  color: #f2f0ed; font-weight: 600; font-size: 17px; padding: 16px 26px;
+  border-radius: 999px; border: 1px solid #3a3a3a; transition: background-color 0.15s;
+}
+.ld-hero-secondary:hover { background: #1c1c1c; }
+.ld-hero-note { margin: 0; font-size: 14px; color: #8f8b85; }
+
+/* Cartão do app */
+.ld-preview { position: relative; display: flex; justify-content: center; }
+.ld-app-card {
+  width: 100%; max-width: 520px; background: #1c1c1c; border: 1px solid #2c2c2c; border-radius: 28px;
+  padding: 24px; display: flex; flex-direction: column; gap: 18px;
+}
+.ld-app-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ld-app-date { display: flex; flex-direction: column; gap: 4px; }
+.ld-app-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8f8b85; }
+.ld-app-day { font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.ld-app-count {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #e6e2dc;
+  border: 1px solid #2c2c2c; border-radius: 999px; padding: 6px 12px;
+}
+.ld-focus { display: flex; align-items: center; gap: 16px; background: #232323; border-radius: 18px; padding: 16px; }
+.ld-focus-pet { flex-shrink: 0; overflow: visible; filter: drop-shadow(0 0 14px rgba(169, 191, 255, 0.45)); }
+.ld-focus-text { display: flex; flex-direction: column; gap: 6px; }
+.ld-focus-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #a9bfff; }
+.ld-focus-text p { margin: 0; font-size: 15px; line-height: 1.5; color: #e6e2dc; }
+
+.ld-today { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ld-today li { display: flex; align-items: center; gap: 12px; border: 1px solid; border-radius: 14px; padding: 12px 14px; }
+.ld-today-dot {
+  width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid; color: #141414; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+}
+.ld-today-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ld-today-name { font-weight: 600; font-size: 15px; }
+.ld-today-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.ld-today-side { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a3a09b; }
+
+.ld-badge {
+  position: absolute; right: 24px; bottom: -26px;
+  background: #232323; border: 1px solid #3a3a3a; border-radius: 16px; padding: 12px 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.ld-badge-text { display: flex; flex-direction: column; }
+.ld-badge-text strong { font-size: 13px; }
+.ld-badge-text span { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a3a09b; }
+
+/* ---------- Recursos ---------- */
+.ld-features { padding: 96px 0; }
+.ld-features-inner { display: flex; flex-direction: column; gap: 48px; }
+.ld-features-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.ld-features-head .ld-h2 { max-width: 16ch; }
+.ld-features-head p { margin: 0; max-width: 42ch; font-size: 17px; line-height: 1.6; color: #a3a09b; }
+.ld-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; }
+.ld-card {
+  background: #1c1c1c; border: 1px solid #2c2c2c; border-radius: 24px; padding: 28px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+.ld-card-copy { display: flex; flex-direction: column; gap: 8px; }
+.ld-card-copy h3 { margin: 0; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 24px; letter-spacing: -0.02em; }
+.ld-card-copy p { margin: 0; font-size: 15px; line-height: 1.6; color: #a3a09b; }
+.ld-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.ld-chip { color: #141414; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 6px 12px; border-radius: 999px; }
+.ld-rows { display: flex; flex-direction: column; gap: 10px; }
+.ld-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #232323; border-radius: 12px; padding: 12px 14px; }
+.ld-row-name { font-size: 14px; font-weight: 600; }
+.ld-row-side { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.ld-moods { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; background: #232323; border-radius: 16px; padding: 18px 10px; }
+.ld-mood { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ld-mood svg { max-width: 100%; }
+.ld-mood span, .ld-tier span { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.ld-tiers { display: flex; align-items: flex-end; justify-content: space-around; gap: 8px; background: #232323; border-radius: 16px; padding: 22px 12px 16px; }
+.ld-tier { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ld-tier span { color: #a3a09b; }
+
+/* ---------- Cantinho ---------- */
+.ld-corner { padding: 24px 0 96px; }
+.ld-corner-card { background: #0f1a16; border: 1px solid #1f2e27; border-radius: 32px; overflow: hidden; display: flex; flex-direction: column; }
+.ld-root .ld-corner-scene { display: block; width: 100%; height: clamp(260px, 34vw, 440px); }
+.ld-corner-copy { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 32px; padding: 36px; }
+.ld-corner-title { display: flex; flex-direction: column; gap: 10px; }
+.ld-kicker { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #a8e6b8; }
+.ld-corner-h2 {
+  margin: 0; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800;
+  font-size: clamp(30px, 3.6vw, 46px); line-height: 1; letter-spacing: -0.04em;
+}
+.ld-corner-copy p { margin: 0; align-self: end; font-size: 16px; line-height: 1.65; color: #c9c5bf; }
+
+/* ---------- Como funciona ---------- */
+.ld-steps-section { padding: 96px 0; }
+.ld-steps-inner { display: flex; flex-direction: column; gap: 48px; }
+.ld-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; }
+.ld-step { border-top: 2px solid; padding-top: 22px; display: flex; flex-direction: column; gap: 12px; }
+.ld-step-n { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+.ld-step h3 { margin: 0; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 26px; letter-spacing: -0.02em; }
+.ld-step p { margin: 0; font-size: 16px; line-height: 1.6; color: #a3a09b; }
+
+/* ---------- Perguntas ---------- */
+.ld-faq-section { padding: 96px 0; }
+.ld-faq-inner { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 48px; }
+.ld-faq-list { display: flex; flex-direction: column; }
+.ld-faq { border-bottom: 1px solid #2c2c2c; padding: 22px 0; }
+.ld-faq summary {
+  cursor: pointer; font-size: 18px; font-weight: 600; list-style: none;
+  display: flex; justify-content: space-between; gap: 16px; border-radius: 4px;
+}
+.ld-faq summary::-webkit-details-marker { display: none; }
+.ld-faq-sign { color: #a9bfff; font-family: 'JetBrains Mono', monospace; }
+.ld-faq-sign .ld-minus { display: none; }
+.ld-faq[open] .ld-faq-sign .ld-plus { display: none; }
+.ld-faq[open] .ld-faq-sign .ld-minus { display: inline; }
+.ld-faq p { margin: 12px 0 0; font-size: 16px; line-height: 1.65; color: #a3a09b; }
+
+/* ---------- Chamada final ---------- */
+.ld-signup { padding: 32px 0 96px; }
+.ld-signup-card {
+  background: #a9bfff; color: #141414; border-radius: 32px; padding: clamp(32px, 6vw, 72px);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 32px;
+}
+.ld-signup-text { display: flex; flex-direction: column; gap: 18px; max-width: 560px; }
+.ld-signup-h2 {
+  margin: 0; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800;
+  font-size: clamp(40px, 5.4vw, 72px); line-height: 0.94; letter-spacing: -0.05em;
+}
+.ld-signup-text > p { margin: 0; font-size: 18px; line-height: 1.55; color: #2a3150; }
+.ld-form { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.ld-input {
+  flex: 1 1 240px; min-width: 0; border: 0; border-radius: 999px; padding: 17px 22px;
+  font-family: Inter, sans-serif; font-size: 16px; background: #f2f0ed; color: #141414;
+}
+.ld-input::placeholder { color: #6b6760; }
+.ld-submit {
+  border: 0; border-radius: 999px; background: #141414; color: #f2f0ed;
+  font-family: Inter, sans-serif; font-weight: 700; font-size: 16px; padding: 17px 26px; cursor: pointer;
+}
+.ld-submit:disabled { cursor: default; opacity: 0.7; }
+/* Sobre o fundo pervinca, o contorno de foco pervinca sumiria: fica escuro. */
+.ld-signup-card :focus-visible { outline-color: #141414; }
+.ld-error { margin: 0; border-radius: 16px; background: rgba(242, 240, 237, 0.7); padding: 12px 16px; font-size: 14px; font-weight: 600; color: #141414; }
+.ld-wave { flex-shrink: 0; max-width: 100%; overflow: visible; }
+
+/* ---------- Rodapé ---------- */
+.ld-footer { border-top: 1px solid #222222; }
+.ld-footer-inner {
+  max-width: 1240px; margin: 0 auto; padding: 28px 24px 40px;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+  font-size: 14px; color: #8f8b85;
+}
+.ld-footer-inner .ld-wordmark { font-size: 18px; color: #f2f0ed; }
+.ld-footer-links { display: flex; flex-wrap: wrap; gap: 24px; }
+.ld-footer-links a { color: #a3a09b; border-radius: 4px; transition: color 0.15s; }
+.ld-footer-links a:hover { color: #f2f0ed; }
+
+/* ---------- Animações ---------- */
+@keyframes hd-float { 50% { transform: translateY(-8px); } }
+@keyframes hd-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+@keyframes hd-fly { 0%, 100% { opacity: 0.25; transform: translate(0, 0); } 50% { opacity: 1; transform: translate(8px, -12px); } }
+@keyframes hd-drift { to { transform: translateX(60px); } }
+@keyframes hd-flick { 50% { transform: scaleY(0.88); } }
+
+.ld-float { animation: hd-float 3.6s ease-in-out infinite; }
+.ld-float-slow { animation: hd-float 3.8s ease-in-out infinite; }
+.ld-blink { transform-box: fill-box; transform-origin: center; animation: hd-blink 5s infinite; }
+.ld-mist { animation: hd-drift 16s ease-in-out infinite alternate; }
+.ld-flame { transform-box: fill-box; transform-origin: center bottom; animation: hd-flick 1.6s ease-in-out infinite; }
+/* Vaga-lumes: cada um com a sua duração e atraso (--d, --dl no style). */
+.ld-firefly { animation: hd-fly var(--d, 4s) ease-in-out var(--dl, 0s) infinite; }
+
+/* Movimento reduzido: pelo aparelho, a não ser que o Perfil do app diga "Sempre animar"; ou pelo Perfil em "Reduzir". */
+html[data-motion='reduzir'] .ld-root * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion='sempre']) .ld-root * { animation: none !important; }
+}

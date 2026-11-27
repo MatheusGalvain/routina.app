@@ -280,13 +280,17 @@ export function setProfileTimezone(timezone: string) {
 
 // Liga a sessão de dados ao login.
 let sessionUid: string | null = null
-useAuth.subscribe((s) => {
+const linkSession = (s: ReturnType<typeof useAuth.getState>) => {
   const uid = s.session?.user.id ?? null
   if (uid === sessionUid) return
   if (sessionUid) endSession()
   sessionUid = uid
   if (uid) void startSession(uid)
-})
+}
+useAuth.subscribe(linkSession)
+// Este módulo é carregado junto com o app (lazy), muitas vezes depois do login já ter acontecido:
+// o subscribe só avisa as mudanças, então liga a sessão que já existe agora.
+linkSession(useAuth.getState())
 
 // ---------------------------------------------------------------------
 // Dados antigos deste aparelho (etapa 4)

@@ -38,6 +38,8 @@
 
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* Só nos títulos da landing e na assinatura "Habbit Do" (pesos 400, 600 e 800). */
+  --font-display: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
 }
 
 html,

@@ -1,5 +1,5 @@
-import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
-import { NavLink, Navigate, Outlet, useLocation, useMatches, useNavigate } from 'react-router-dom'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Pet } from './components/pets/Pet'
 import { useShownPet } from './store/useCompanion'
 import { useSyncTodayPlan } from './store/useSyncTodayPlan'
@@ -23,111 +23,30 @@ import { Tour } from './components/help/Tour'
 import { useRotina } from './store/useRotina'
 import { setOnboardingDone } from './sync/session'
 import { readLegacy } from './sync/legacy'
-import { peekPending, rememberPending, takePending } from './lib/authUrl'
-import type { RouteHandle } from './router'
-import { withReload } from './lib/staleBuild'
+import { takePending } from './lib/authUrl'
+import { HOME } from './lib/navigation'
 
 // Só existe no modo dev: em produção a condição vira `false` e o import some do build.
 const DevPanel = import.meta.env.DEV ? lazy(() => import('./dev/DevPanel')) : null
-// A política também abre sem sessão (link no rodapé da tela de entrada).
-const Privacidade = lazy(withReload(() => import('./pages/Privacidade').then((m) => ({ default: m.Privacidade }))))
 
 const TABS: { to: string; label: string }[] = [
-  { to: '/', label: 'Início' },
+  { to: HOME, label: 'Início' },
   { to: '/hoje', label: 'Hoje' },
   { to: '/rotinas', label: 'Rotinas' },
   { to: '/pet', label: 'Pets' },
   { to: '/historico', label: 'Histórico' },
 ]
 
-/** A rota atual pertence a esta aba? ("/" só na raiz; "/rotinas" também em "/rotinas/:id".) */
-const tabActive = (to: string, pathname: string) => (to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`))
+/** A rota atual pertence a esta aba? ("/rotinas" também em "/rotinas/:id".) */
+const tabActive = (to: string, pathname: string) => pathname === to || pathname.startsWith(`${to}/`)
 
 /**
- * Raiz de todas as rotas: título da aba, rolar para o topo ao trocar de página
- * (ou até a âncora, como /pet#colecao) e o carregamento das páginas.
+ * O app logado (carregado só depois do login, ver shell.tsx): espera os dados da conta
+ * antes de mostrar qualquer página.
  */
-export function RootLayout() {
-  const { pathname, search, hash, state } = useLocation()
-  const matches = useMatches()
-  // Renomear a rotina troca a URL (/rotinas/<nome>) a cada tecla: aí não rola para o topo.
-  const renaming = !!(state as { rename?: boolean } | null)?.rename
-  const title = [...matches].reverse().find((m) => (m.handle as RouteHandle | undefined)?.title)?.handle as RouteHandle | undefined
-
-  useEffect(() => {
-    document.title = title?.title ? `${title.title} · Habbit Do` : 'Habbit Do'
-  }, [title?.title])
-
-  useEffect(() => {
-    if (renaming) return
-    // Sem `return window.scrollTo(...)`: no Chrome ele devolve uma Promise, e o React
-    // trataria isso como a limpeza do efeito ("l is not a function" ao trocar de página).
-    if (!hash) {
-      window.scrollTo({ top: 0 })
-      return
-    }
-    // A página pode estar carregando: procura a âncora por até 2 s.
-    let tries = 0
-    const timer = window.setInterval(() => {
-      const el = document.getElementById(decodeURIComponent(hash.slice(1)))
-      if (el || ++tries > 20) window.clearInterval(timer)
-      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 100)
-    return () => window.clearInterval(timer)
-  }, [pathname, search, hash])
-
-  return (
-    <Suspense fallback={<PetLoader full />}>
-      <Outlet />
-    </Suspense>
-  )
-}
-
-/** /entrar: com sessão, volta para a rota que a pessoa tentou abrir (ou para o início). */
-export function PublicOnly({ children }: { children: ReactNode }) {
-  const status = useAuth((s) => s.status)
-  const location = useLocation()
-  if (status === 'loading') return <PetLoader full />
-  if (status === 'signedIn') {
-    const from = (location.state as { from?: string } | null)?.from
-    return <Navigate to={from ?? peekPending() ?? '/'} replace />
-  }
-  return <>{children}</>
-}
-
-/** Sem sessão: vai para /entrar guardando a rota pedida (menos quando a pessoa acabou de sair da conta). */
-function ToLogin() {
-  const { pathname, search, hash } = useLocation()
-  const signedOutNow = useAuth((s) => s.hadSession)
-  const from = pathname + search + hash
-  useEffect(() => {
-    if (!signedOutNow) rememberPending(from)
-  }, [from, signedOutNow])
-  return <Navigate to="/entrar" replace state={signedOutNow ? null : { from }} />
-}
-
-/** Protege o app: espera o login e os dados da conta antes de mostrar qualquer página. */
-export function RequireAuth() {
-  const status = useAuth((s) => s.status)
+export function AuthedApp() {
   const data = useSession((s) => s.status)
-  const { pathname } = useLocation()
-  const navigate = useNavigate()
-
-  if (status === 'signedOut') {
-    if (pathname === '/privacidade')
-      return (
-        <div className="flex min-h-screen flex-col">
-          <main className="flex-1 px-4 py-8">
-            <Suspense fallback={<PetLoader />}>
-              <Privacidade onBack={() => navigate('/entrar')} />
-            </Suspense>
-          </main>
-          <Footer />
-        </div>
-      )
-    return <ToLogin />
-  }
-  if (status === 'loading' || data !== 'ready') return <PetLoader full text={status === 'signedIn' ? 'Carregando suas rotinas…' : 'Carregando…'} />
+  if (data !== 'ready') return <PetLoader full text="Carregando suas rotinas…" />
   return <SignedIn />
 }
 
@@ -237,7 +156,7 @@ function SectionNav() {
       <nav aria-label="Seções" className="hidden min-w-0 max-w-full gap-1 self-start rounded-full border border-line bg-panel p-1 md:flex">
         {/* NavLink marca a aba atual com aria-current="page". */}
         {TABS.map((t) => (
-          <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => `shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${tabClass(isActive)}`}>
+          <NavLink key={t.to} to={t.to} className={({ isActive }) => `shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${tabClass(isActive)}`}>
             {t.label}
           </NavLink>
         ))}
@@ -266,7 +185,7 @@ function SectionNav() {
                 <li key={t.to}>
                   <NavLink
                     to={t.to}
-                    end={t.to === '/'}
+                   
                     onClick={() => close(false)}
                     className={({ isActive }) => `flex min-h-11 w-full items-center rounded-xl px-4 text-left text-[15px] font-semibold ${tabClass(isActive)}`}
                   >

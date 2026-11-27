@@ -3,7 +3,7 @@
   "short_name": "Habbit Do",
   "description": "Organize o seu dia, um bloco de cada vez, com pets que crescem junto com seus hábitos.",
   "lang": "pt-BR",
-  "start_url": "/",
+  "start_url": "/inicio",
   "scope": "/",
   "display": "standalone",
   "background_color": "#141414",

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { HOME } from '../lib/navigation'
 import { useTour } from '../components/help/Tour'
 import { useRef, useState, type ReactNode } from 'react'
 import { useRotina } from '../store/useRotina'
@@ -66,7 +67,7 @@ export function Perfil() {
   const openCollection = () => navigate('/pet#colecao')
   // O tour passa pelos "?" da tela Início.
   const startTour = () => {
-    navigate('/')
+    navigate(HOME)
     useTour.getState().start()
   }
   return (

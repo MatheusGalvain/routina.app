@@ -1,0 +1,17 @@
+# Habbit Do: só a landing e a política de privacidade aparecem nos buscadores.
+# O resto são telas do app (precisam de login).
+User-agent: *
+Allow: /$
+Allow: /privacidade
+Disallow: /entrar
+Disallow: /bem-vindo
+Disallow: /inicio
+Disallow: /hoje
+Disallow: /historico
+Disallow: /rotinas
+Disallow: /pet
+Disallow: /perfil
+Disallow: /novidades
+Disallow: /dev
+
+Sitemap: https://habbitdo.com.br/sitemap.xml

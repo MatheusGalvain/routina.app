@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { useAreas, useRotina } from '../../store/useRotina'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { HOME } from '../../lib/navigation'
 import { chooseFavorite } from '../../store/useCompanion'
 import { setOnboardingDone } from '../../sync/session'
 import { TEMPLATES } from '../../data/templates'
@@ -272,7 +273,7 @@ export function BemVindo() {
 
   const end = () => {
     setOnboardingDone()
-    navigate('/', { replace: true })
+    navigate(HOME, { replace: true })
   }
   const petKind: BasePetKind = kind && kind !== 'coelho-cristal' ? kind : 'coelho'
   const t = TITLES[step]

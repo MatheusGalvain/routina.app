@@ -1,32 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, GOOGLE_ENABLED, redirectTo } from '../lib/supabase'
+import { cooldownLeft, friendlyAuthError, sendCode } from '../lib/sendCode'
 import { Logo } from '../components/ui/ui'
 import { Pet } from '../components/pets/Pet'
 import { URL_ERROR } from '../lib/authUrl'
 import { Footer } from '../components/ui/Footer'
-import { OTP_LENGTH, cleanCode, logAuth, normalizeEmail } from '../lib/otp'
-
-/** Intervalo mínimo entre e-mails para o mesmo endereço (padrão do Supabase). */
-const RESEND_SECONDS = 60
-
-/** Traduz o erro do Supabase. `wait` = segundos que o servidor pede para esperar. */
-function friendly(message: string): { text: string; wait?: number } {
-  const m = message.toLowerCase()
-  const secs = m.match(/after (\d+) second/)
-  if (secs) return { text: 'Por segurança, existe um intervalo entre um e-mail e outro.', wait: Number(secs[1]) }
-  if (m.includes('rate limit'))
-    return {
-      text: 'O limite de e-mails por hora foi atingido. Se você já recebeu um e-mail nosso, use o código que está nele. Se não, tente de novo mais tarde.',
-    }
-  if (m.includes('invalid') && m.includes('email')) return { text: 'Esse e-mail não parece válido. Confere?' }
-  if (m.includes('provider is not enabled')) return { text: 'O login com Google ainda não está ativado.' }
-  if (m.includes('error sending'))
-    return { text: 'O servidor não conseguiu enviar o e-mail agora. Tente de novo em alguns minutos.' }
-  console.error('[Entrar] erro do Supabase:', message)
-  return { text: 'Não foi possível enviar agora. Verifique sua conexão e tente de novo.' }
-}
+import { OTP_LENGTH, cleanCode, logAuth } from '../lib/otp'
 
 /**
  * /entrar: link mágico no e-mail e, se ativado, Google.
@@ -105,19 +86,23 @@ function ConfirmLink({ tokenHash, type }: { tokenHash: string; type: 'email' | '
   )
 }
 
+/** Vindo da landing: o e-mail já foi enviado lá e a pessoa chega direto no passo do código. */
+export type EntrarState = { sentTo?: string } | null
+
 function EntrarForm() {
-  const [email, setEmail] = useState('')
-  const [sentTo, setSentTo] = useState<string | null>(null)
+  const arrived = (useLocation().state as EntrarState)?.sentTo ?? null
+  const [email, setEmail] = useState(arrived ?? '')
+  const [sentTo, setSentTo] = useState<string | null>(arrived)
   const [sending, setSending] = useState(false)
-  const [error, setError] = useState<string | null>(URL_ERROR)
-  const [cooldown, setCooldown] = useState(0)
+  const [error, setError] = useState<string | null>(arrived ? null : URL_ERROR)
+  const [cooldown, setCooldown] = useState(() => (arrived ? cooldownLeft() : 0))
   const [code, setCode] = useState('')
   const [verifying, setVerifying] = useState(false)
   /** A verificação falhou: mostra "Pedir um código novo" (nada é reenviado sozinho). */
   const [codeFailed, setCodeFailed] = useState(false)
-  // Travas síncronas: o estado do React só atualiza no próximo render, então dois eventos seguidos
-  // (Enter + clique, colar + digitar) passariam pelo `sending`/`verifying`. O ref barra na hora.
-  const sendingRef = useRef(false)
+  // Trava síncrona: o estado do React só atualiza no próximo render, então dois eventos seguidos
+  // (colar + digitar) passariam pelo `verifying`. O ref barra na hora. O envio de e-mail tem a
+  // mesma trava dentro de sendCode (lib/sendCode), compartilhada com a landing.
   const verifyingRef = useRef(false)
   /** Códigos já verificados desde o último envio: cada código vai ao servidor uma vez só. */
   const triedRef = useRef(new Set<string>())
@@ -128,29 +113,25 @@ function EntrarForm() {
     return () => window.clearTimeout(t)
   }, [cooldown])
 
-  /** Único lugar que pede e-mail. Só roda quando a pessoa aperta um botão. */
+  /** Pede o e-mail (por sendCode, o único lugar que chama o Supabase para isso). Só roda quando a pessoa aperta um botão. */
   const sendLink = async (e?: FormEvent) => {
     e?.preventDefault()
-    const target = normalizeEmail(sentTo ?? email)
-    if (!target || sendingRef.current || cooldown > 0) return
-    sendingRef.current = true
+    if (cooldown > 0) return
     setSending(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithOtp({ email: target, options: { emailRedirectTo: redirectTo() } })
-    logAuth('signInWithOtp', { email: target, result: error ? `erro: ${error.message}` : 'ok' })
-    sendingRef.current = false
+    const result = await sendCode(sentTo ?? email)
     setSending(false)
-    if (error) {
-      const f = friendly(error.message)
-      setError(f.text)
-      if (f.wait) setCooldown(f.wait)
+    if (!result.ok) {
+      if (result.busy) return
+      if (result.error) setError(result.error)
+      if (result.wait) setCooldown(result.wait)
       return
     }
-    setSentTo(target)
+    setSentTo(result.email)
     setCode('')
     setCodeFailed(false)
     triedRef.current.clear()
-    setCooldown(RESEND_SECONDS)
+    setCooldown(cooldownLeft())
   }
 
   /**
@@ -203,7 +184,7 @@ function EntrarForm() {
   const google = async () => {
     setError(null)
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectTo() } })
-    if (error) setError(friendly(error.message).text)
+    if (error) setError(friendlyAuthError(error.message).text)
   }
 
   const bubble = sentTo ? 'Prontinho! Agora é só abrir o seu e-mail.' : 'Oi! Que bom te ver por aqui. Vamos organizar o seu dia?'

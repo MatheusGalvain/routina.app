@@ -1,6 +1,6 @@
 import { lazy, type ComponentType } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
-import { AppShell, PublicOnly, RequireAuth, RootLayout } from './App'
+import { Home, PublicOnly, RequireAuth, RootLayout } from './shell'
 import { withReload } from './lib/staleBuild'
 
 /** Carrega a página só quando a rota abre (cada página vira um pedaço separado do build). */
@@ -9,6 +9,8 @@ function page<K extends string>(load: () => Promise<Record<K, ComponentType<any>
   return lazy(withReload(() => load().then((m) => ({ default: m[name] }))))
 }
 
+// O app logado inteiro (header, abas e as janelas por cima) fica no mesmo arquivo do AuthedApp (shell.tsx).
+const AppShell = page(() => import('./App'), 'AppShell')
 const Inicio = page(() => import('./pages/Inicio'), 'Inicio')
 const Hoje = page(() => import('./pages/Hoje'), 'Hoje')
 const Historico = page(() => import('./pages/Historico'), 'Historico')
@@ -21,8 +23,12 @@ const BemVindo = page(() => import('./pages/BemVindo'), 'BemVindo')
 const NaoEncontrada = page(() => import('./pages/NaoEncontrada'), 'NaoEncontrada')
 const Novidades = page(() => import('./pages/Novidades'), 'Novidades')
 
-/** Título da aba: "<title> · Habbit Do" (lido pelo RootLayout). */
-export type RouteHandle = { title?: string }
+/** Título da aba: "<title> · Habbit Do", ou `documentTitle` inteiro (lido pelo RootLayout). */
+export type RouteHandle = { title?: string; documentTitle?: string }
+
+/** Título da landing (o mesmo do index.html, que é o que os buscadores e as redes leem). */
+export const LANDING_TITLE = 'Habbit Do · Uma rotina que dá vontade de cuidar'
+
 
 // Páginas de desenvolvimento: em produção a condição vira `false` e os imports somem do build.
 const devRoutes: RouteObject[] = import.meta.env.DEV
@@ -42,6 +48,8 @@ export const router = createBrowserRouter([
   {
     element: <RootLayout />,
     children: [
+      // Landing para quem não está logado; com sessão, vai para /inicio (ver Home).
+      { index: true, element: <Home />, handle: { documentTitle: LANDING_TITLE } },
       {
         path: 'entrar',
         element: (
@@ -52,14 +60,14 @@ export const router = createBrowserRouter([
         handle: { title: 'Entrar' },
       },
       {
-        // Sem sessão, tudo daqui para baixo vai para /entrar (a política de privacidade é a exceção).
+        // Sem sessão, tudo daqui para baixo vai para /entrar (a política de privacidade e as novidades são a exceção).
         element: <RequireAuth />,
         children: [
           { path: 'bem-vindo', element: <BemVindo />, handle: { title: 'Bem-vindo' } },
           {
             element: <AppShell />,
             children: [
-              { index: true, element: <Inicio />, handle: { title: 'Início' } },
+              { path: 'inicio', element: <Inicio />, handle: { title: 'Início' } },
               { path: 'hoje', element: <Hoje />, handle: { title: 'Hoje' } },
               { path: 'historico', element: <Historico />, handle: { title: 'Histórico' } },
               { path: 'rotinas', element: <Rotinas />, handle: { title: 'Rotinas' } },

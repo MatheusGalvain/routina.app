@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import { HOME } from '../lib/navigation'
 import { Pet } from '../components/pets/Pet'
 import { useShownPet } from '../store/useCompanion'
 
@@ -33,7 +34,7 @@ export function NaoEncontrada() {
         <h1 className="m-0 text-2xl font-extrabold tracking-tight">Hmm… essa página não existe</h1>
         <p className="m-0 text-muted">Procurei em todo canto e não achei. Pode ser um link antigo ou digitado errado.</p>
       </div>
-      <Link to="/" className="inline-flex min-h-12 items-center rounded-full bg-accent px-6 text-[15px] font-bold text-ink">
+      <Link to={HOME} className="inline-flex min-h-12 items-center rounded-full bg-accent px-6 text-[15px] font-bold text-ink">
         Voltar para o início
       </Link>
     </section>
